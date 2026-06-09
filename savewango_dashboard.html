@@ -1,0 +1,1956 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เซฟวันโก | รายงานการจองตลาด</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#1a1f2e; --surface:#242938; --surface2:#2d3347; --surface3:#363d55;
+  --border:#3a4260; --ink:#e8ecf5; --ink2:#9aa3bc; --ink3:#5c6480;
+  --gold:#f0a500; --gold2:#ffd166; --green:#3dd68c; --green2:#27ae60;
+  --orange:#f07a35; --red:#e05c5c; --blue:#4a9eff; --purple:#a78bfa;
+  --shadow:0 2px 8px rgba(0,0,0,.3);
+}
+body.light-mode {
+  --bg:#f5f6fa; --surface:#ffffff; --surface2:#eef0f7; --surface3:#e2e5f0;
+  --border:#d0d4e8; --ink:#1a1f2e; --ink2:#3a4260; --ink3:#6b7399;
+  --gold:#c47f00; --green:#1a9e5c; --orange:#d4600a; --red:#c0392b;
+  --blue:#2563eb; --purple:#7c3aed;
+  --shadow:0 2px 8px rgba(0,0,0,.1);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-serif;font-size:13px;line-height:1.5;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+/* HEADER */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:50px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand-logo{width:30px;height:30px;background:var(--gold);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#1a1f2e;font-family:'JetBrains Mono',monospace;}
+.brand-name{font-size:14px;font-weight:700;color:var(--ink);}
+.brand-sub{font-size:10px;color:var(--ink3);}
+.header-right{display:flex;align-items:center;gap:10px;}
+.upd{font-size:10px;color:var(--ink3);font-family:'JetBrains Mono',monospace;}
+.rfbtn{background:var(--surface2);border:1px solid var(--border);color:var(--ink2);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'Noto Sans Thai',sans-serif;transition:all .15s;}
+.rfbtn:hover{border-color:var(--gold);color:var(--gold);}
+
+/* LAYOUT */
+.layout{display:flex;flex:1;overflow:hidden;}
+
+/* SIDEBAR */
+.sidebar{width:210px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
+.sb-sec{padding:14px 12px;border-bottom:1px solid var(--border);}
+.sb-lbl{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+
+/* Branch */
+.branch-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;cursor:pointer;transition:all .15s;border:1px solid transparent;margin-bottom:3px;}
+.branch-item:hover:not(.disabled){background:var(--surface2);}
+.branch-item.active{background:rgba(240,165,0,.12);border-color:rgba(240,165,0,.3);}
+.branch-item.disabled{opacity:.35;cursor:not-allowed;}
+.branch-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.branch-name{font-size:12px;font-weight:600;}
+.branch-sub{font-size:10px;color:var(--ink3);}
+.soon-tag{font-size:9px;background:var(--surface3);color:var(--ink3);padding:1px 5px;border-radius:3px;margin-left:auto;}
+
+/* Zone / Type pills */
+.pill-list{display:flex;flex-direction:column;gap:3px;}
+.pill{padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--ink2);background:transparent;border:1px solid transparent;transition:all .15s;text-align:left;font-family:'Noto Sans Thai',sans-serif;display:flex;align-items:center;gap:7px;}
+.pill:hover{background:var(--surface2);}
+.pill.active{background:var(--surface3);border-color:var(--border);color:var(--ink);font-weight:600;}
+.pill-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+
+/* Period */
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:3px;}
+.pbtn{padding:5px;border-radius:5px;cursor:pointer;text-align:center;border:1px solid var(--border);font-size:11px;font-family:'Noto Sans Thai',sans-serif;color:var(--ink2);background:var(--bg);transition:all .15s;}
+.pbtn:hover{border-color:var(--gold);color:var(--gold);}
+.pbtn.active{background:var(--gold);color:#1a1f2e;border-color:var(--gold);font-weight:700;}
+
+/* Month select */
+.msel{width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:11px;font-family:'Noto Sans Thai',sans-serif;outline:none;cursor:pointer;}
+.msel:focus{border-color:var(--gold);}
+
+/* Dropdown group */
+.ddsel{width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:11px;font-family:'Noto Sans Thai',sans-serif;outline:none;cursor:pointer;margin-bottom:4px;}
+.ddsel:focus{border-color:var(--gold);}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:16px 18px;}
+
+/* Report title */
+.report-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.rt-left{display:flex;align-items:center;gap:10px;}
+.rt-name{font-size:18px;font-weight:700;color:var(--ink);}
+.rt-branch{font-size:18px;font-weight:700;color:var(--gold);}
+.rt-badge{background:var(--gold);color:#1a1f2e;font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;}
+.rt-range{font-size:11px;color:var(--ink2);background:var(--surface2);border:1px solid var(--border);padding:4px 12px;border-radius:6px;}
+
+/* VIEW TABS */
+.vtabs{display:flex;gap:2px;margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:3px;width:fit-content;}
+.vtab{padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--ink2);transition:all .15s;border:none;background:transparent;font-family:'Noto Sans Thai',sans-serif;font-weight:500;}
+.vtab:hover{color:var(--ink);}
+.vtab.active{background:var(--surface3);color:var(--ink);font-weight:700;}
+
+/* KPI SECTION */
+.kpi-section{margin-bottom:16px;}
+.kpi-sec-title{font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;font-weight:700;}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:10px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:13px 15px;transition:transform .15s;}
+.kpi:hover{transform:translateY(-1px);}
+.kpi-lbl{font-size:10px;color:var(--ink2);margin-bottom:5px;font-weight:500;}
+.kpi-val{font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;margin-bottom:3px;}
+.kpi-sub{font-size:10px;color:var(--ink3);}
+.kpi.gold .kpi-val{color:var(--gold);}
+.kpi.green .kpi-val{color:var(--green);}
+.kpi.orange .kpi-val{color:var(--orange);}
+.kpi.red .kpi-val{color:var(--red);}
+.kpi.blue .kpi-val{color:var(--blue);}
+.kpi.purple .kpi-val{color:var(--purple);}
+
+/* MAIN CHART */
+.main-chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
+.mc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.mc-title{font-size:13px;font-weight:700;color:var(--ink);}
+.mc-legend{display:flex;gap:14px;}
+.mc-leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink2);}
+.mc-leg-bar{width:12px;height:12px;border-radius:2px;}
+.mc-leg-line{width:20px;height:3px;border-radius:2px;}
+.ch-main{height:280px;position:relative;}
+
+/* SECONDARY CHARTS */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;}
+.charts-grid2{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:14px;}
+@media(max-width:1200px){.charts-grid{grid-template-columns:1fr 1fr;}}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;}
+.sc-title{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:10px;}
+.sc-sub{font-size:10px;color:var(--ink3);margin-top:-8px;margin-bottom:10px;}
+.ch-sm{height:160px;position:relative;}
+.ch-md{height:200px;position:relative;}
+
+/* FREEDAY PANEL */
+.fd-panel{background:linear-gradient(135deg,rgba(240,165,0,.08),rgba(240,165,0,.02));border:1px solid rgba(240,165,0,.25);border-radius:10px;padding:16px;margin-bottom:14px;}
+.fd-title{font-size:13px;font-weight:700;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.fd-kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px;}
+.fd-kpi{background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.15);border-radius:7px;padding:10px 12px;text-align:center;}
+.fd-kpi-val{font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--gold);}
+.fd-kpi-lbl{font-size:10px;color:var(--ink2);margin-top:2px;}
+.fd-table-wrap{overflow-x:auto;}
+.fd-table{width:100%;border-collapse:collapse;font-size:11px;}
+.fd-table th{padding:7px 10px;border-bottom:1px solid rgba(240,165,0,.2);color:var(--ink3);font-size:10px;text-transform:uppercase;text-align:left;}
+.fd-table td{padding:7px 10px;border-bottom:1px solid var(--border);}
+.fd-table tr:last-child td{border:none;}
+.fd-table tr:hover td{background:rgba(255,255,255,.02);}
+
+/* PRICE NOTE */
+.pn-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
+.pn-title{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px;}
+.pn-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:800px){.pn-grid{grid-template-columns:1fr;}}
+.pn-zone{background:var(--surface2);border-radius:8px;padding:13px;border:1px solid var(--border);}
+.pn-zone-title{font-size:11px;font-weight:700;color:var(--green);margin-bottom:10px;}
+.pn-tbl{width:100%;border-collapse:collapse;font-size:11px;}
+.pn-tbl th{padding:5px 8px;color:var(--ink3);font-size:10px;border-bottom:1px solid var(--border);text-align:left;}
+.pn-tbl td{padding:5px 8px;border-bottom:1px solid var(--border);}
+.pn-tbl tr:last-child td{border:none;}
+.price-num{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--green);}
+.fd-mark{color:var(--gold);font-size:10px;}
+.formula-box{background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.2);border-radius:6px;padding:10px 12px;margin-top:10px;font-size:11px;color:var(--blue);line-height:1.9;}
+.formula-box code{font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(74,158,255,.12);padding:1px 4px;border-radius:3px;}
+.admin-note{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:7px;padding:11px 14px;margin-top:12px;font-size:11px;color:var(--ink2);line-height:1.9;}
+
+/* FORECAST */
+.fc-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
+.fc-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px;}
+.fc-card{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2);border-radius:7px;padding:12px;text-align:center;}
+.fc-val{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--purple);}
+.fc-lbl{font-size:10px;color:var(--ink2);margin-top:3px;}
+.fc-note{font-size:10px;color:var(--ink3);background:var(--surface2);border-radius:6px;padding:8px 12px;line-height:1.8;border:1px solid var(--border);}
+
+/* DATA TABLE */
+.dtbl-wrap{overflow-x:auto;}
+.dtbl{width:100%;border-collapse:collapse;font-size:11px;}
+.dtbl thead th{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--ink3);font-size:10px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;text-align:left;background:var(--surface2);}
+.dtbl tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
+.dtbl tbody tr:hover{background:rgba(255,255,255,.02);}
+.dtbl td{padding:7px 10px;white-space:nowrap;}
+.dtbl td.num{font-family:'JetBrains Mono',monospace;font-size:11px;}
+.tag{display:inline-block;padding:1px 6px;border-radius:5px;font-size:10px;font-weight:600;}
+.tag-free{background:rgba(240,165,0,.15);color:var(--gold);}
+.tag-ok{background:rgba(255,255,255,.05);color:var(--ink3);}
+.tag-wknd{background:rgba(61,214,140,.1);color:var(--green);}
+
+/* TOP/BOT */
+.topbot{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+@media(max-width:800px){.topbot{grid-template-columns:1fr;}}
+.tb-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;}
+.tb-title{font-size:12px;font-weight:700;margin-bottom:10px;}
+.tb-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);}
+.tb-row:last-child{border:none;}
+.tb-num{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;}
+.tb-row.top .tb-num{background:rgba(61,214,140,.15);color:var(--green);}
+.tb-row.bot .tb-num{background:rgba(224,92,92,.15);color:var(--red);}
+.tb-date{font-size:11px;flex:1;}
+.tb-val{font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.tb-row.top .tb-val{color:var(--green);}
+.tb-row.bot .tb-val{color:var(--red);}
+
+/* DATE RANGE BAR */
+.date-range-bar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;margin-bottom:14px;flex-wrap:wrap;}
+.dr-label{font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.8px;font-weight:700;}
+.dr-value{font-size:12px;font-family:"JetBrains Mono",monospace;color:var(--gold);font-weight:600;}
+.dr-sep{color:var(--ink3);font-size:12px;}
+.dr-count{font-size:11px;color:var(--ink2);background:var(--surface2);padding:2px 8px;border-radius:4px;}
+.dr-divider{width:1px;height:16px;background:var(--border);}
+/* LOADING */
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;gap:12px;}
+.spin{width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.spin-txt{font-size:12px;color:var(--ink3);}
+/* MONTH COMPARE */
+.mc-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
+.mc-month-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+.mc-pill{padding:5px 12px;border-radius:20px;border:1px solid var(--border);font-size:11px;cursor:pointer;font-family:"Noto Sans Thai",sans-serif;color:var(--ink2);background:var(--bg);transition:all .15s;}
+.mc-pill:hover{border-color:var(--gold);color:var(--gold);}
+.mc-pill.sel{background:var(--gold);color:#1a1f2e;border-color:var(--gold);font-weight:700;}
+/* HEATMAP */
+.hm-wrap{overflow-x:auto;}
+.hm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;min-width:500px;}
+.hm-day-lbl{text-align:center;font-size:9px;color:var(--ink3);padding:3px 0;font-weight:700;}
+.hm-cell{aspect-ratio:1;border-radius:3px;cursor:default;transition:transform .1s;position:relative;}
+.hm-cell:hover{transform:scale(1.15);z-index:10;}
+.hm-empty{aspect-ratio:1;}
+.hm-month-lbl{font-size:10px;color:var(--ink3);margin:10px 0 5px;font-weight:600;}
+/* MOM */
+.mom-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px;}
+.mom-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
+.mom-month{font-size:11px;color:var(--ink3);margin-bottom:4px;}
+.mom-val{font-size:18px;font-weight:700;font-family:"JetBrains Mono",monospace;}
+.mom-chg{font-size:11px;margin-top:3px;display:flex;align-items:center;gap:4px;}
+.chg-up{color:var(--green);} .chg-dn{color:var(--red);} .chg-eq{color:var(--ink3);}
+/* BENCHMARK */
+.bm-note{background:rgba(74,158,255,.06);border:1px solid rgba(74,158,255,.2);border-radius:8px;padding:14px;text-align:center;color:var(--ink2);font-size:12px;}
+
+/* SPLASH SCREEN */
+.splash{position:fixed;inset:0;background:#0a0a0a;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;}
+.splash-logo{display:flex;align-items:center;gap:0;}
+.splash-sg{font-size:72px;font-weight:900;color:#3dd68c;letter-spacing:-3px;font-family:'JetBrains Mono',monospace;transition:all .6s ease;}
+.splash-expand{display:flex;align-items:center;overflow:hidden;max-width:0;transition:max-width .8s ease;}
+.splash-expand.show{max-width:500px;}
+.splash-logo-savewan{font-size:52px;font-weight:900;color:#fff;font-family:'Noto Sans Thai',sans-serif;white-space:nowrap;}
+.splash-logo-go{background:#3dd68c;color:#0a0a0a;padding:2px 12px;border-radius:5px;margin-left:6px;font-size:52px;font-weight:900;font-family:'Noto Sans Thai',sans-serif;white-space:nowrap;}
+.splash-company{font-size:13px;color:rgba(255,255,255,.5);margin-top:10px;letter-spacing:1px;font-family:'Noto Sans Thai',sans-serif;transition:opacity .5s ease;}
+.splash-company.show{opacity:1!important;}
+.splash-bar{width:200px;height:3px;background:rgba(255,255,255,.1);border-radius:3px;margin-top:20px;overflow:hidden;opacity:0;animation:splashIn .4s ease forwards 2s;}
+.splash-bar-fill{height:100%;background:#3dd68c;border-radius:3px;animation:loadBar 2.5s ease forwards 2s;}
+@keyframes splashIn{to{opacity:1;}}
+@keyframes loadBar{from{width:0}to{width:100%}}
+@keyframes splashOut{to{opacity:0;pointer-events:none;}}
+.splash.hide{animation:splashOut .5s ease forwards;}
+
+
+/* SIDEBAR TOGGLE */
+.sidebar{transition:width .3s ease,opacity .3s ease;}
+.sidebar.collapsed{width:0!important;overflow:hidden;opacity:0;padding:0;}
+.layout{transition:all .3s ease;}
+
+
+/* RESPONSIVE MOBILE */
+@media(max-width:768px){
+  .layout{flex-direction:column;}
+  .sidebar{width:100%!important;height:auto;position:relative;top:0;display:flex;flex-wrap:wrap;gap:0;padding:8px;}
+  .sb-sec{padding:8px;border:none;flex:1;min-width:140px;}
+  .content{padding:12px;}
+  .kpi-row{grid-template-columns:repeat(2,1fr);}
+  .charts-grid{grid-template-columns:1fr;}
+  .charts-grid2{grid-template-columns:1fr;}
+  .charts-row{grid-template-columns:1fr;}
+  .charts-row2{grid-template-columns:1fr;}
+  .topbot{grid-template-columns:1fr;}
+  .header{padding:0 12px;}
+  .brand-name{font-size:13px;}
+  .vtabs{flex-wrap:wrap;}
+  .vtab{font-size:11px;padding:5px 10px;}
+  .splash-sg{font-size:52px!important;}
+  .splash-logo-savewan,.splash-logo-go{font-size:38px!important;}
+}
+
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<!-- SPLASH SCREEN -->
+<div class="splash" id="splash">
+  <div class="splash-logo" id="splashLogo" style="opacity:0;transform:scale(.85)">
+    <span class="splash-logo-savewan">เซฟวัน</span>
+    <span class="splash-logo-go">GO</span>
+  </div>
+  <div class="splash-company" id="splashCompany" style="opacity:0">บริษัท เซฟวันโก จำกัด</div>
+  <div class="splash-bar"><div class="splash-bar-fill"></div></div>
+</div>
+
+<div class="header">
+  <div class="brand">
+    <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
+    <div>
+      <div class="brand-name">เซฟวันโก</div>
+      <div class="brand-sub">ระบบรายงานการจองตลาด</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="upd" id="updTime">—</span>
+    <button class="rfbtn" id="sidebarBtn" onclick="toggleSidebar()" title="พับ/แสดง Sidebar">◀</button>
+    <button class="rfbtn" id="themeBtn" onclick="toggleTheme()" title="สลับ Light/Dark Mode">🌙 Dark</button>
+    <button class="rfbtn" onclick="refreshBranch()">↻ รีเฟรช</button>
+  </div>
+</div>
+
+<div class="layout">
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+
+  <div class="sb-sec">
+    <div class="sb-lbl">สาขา</div>
+    <div class="branch-item active" onclick="setBranch('SS',this)">
+      <div class="branch-dot" style="background:var(--gold)"></div>
+      <div><div class="branch-name">ศรีสมาน</div><div class="branch-sub">SS · มีข้อมูล</div></div>
+    </div>
+    <div class="branch-item" onclick="setBranch('BG',this)">
+      <div class="branch-dot" style="background:var(--blue)"></div>
+      <div><div class="branch-name">ประตูกรุงเทพ</div><div class="branch-sub">BG · มีข้อมูล</div></div>
+    </div>
+    <div class="branch-item" onclick="setBranch('BN',this)">
+      <div class="branch-dot" style="background:var(--green)"></div>
+      <div><div class="branch-name">บางนา</div><div class="branch-sub">BN · มีข้อมูล</div></div>
+    </div>
+  </div>
+
+  <div class="sb-sec">
+    <div class="sb-lbl">โซน</div>
+    <div class="pill-list">
+      <button class="pill active" id="z-all" onclick="setZone('all',this)"><div class="pill-dot" style="background:var(--ink)"></div>ทั้งหมด</button>
+      <button class="pill" id="z-st" onclick="setZone('st',this)"><div class="pill-dot" style="background:var(--blue)"></div>ST · Street Food</button>
+      <button class="pill" id="z-non" onclick="setZone('non',this)"><div class="pill-dot" style="background:var(--purple)"></div>Non · Boot Seller</button>
+    </div>
+  </div>
+
+  <div class="sb-sec">
+    <div class="sb-lbl">กลุ่มข้อมูล</div>
+    <select class="ddsel" id="groupSel" onchange="setGroup(this.value)">
+      <option value="all">ทั้งหมด</option>
+      <option value="online">ออนไลน์</option>
+      <option value="walkin">วอคอิน</option>
+      <option value="extra">ล็อกเสริม</option>
+      <option value="cancel">ยกเลิก / ลา</option>
+    </select>
+  </div>
+
+  <div class="sb-sec">
+    <div class="sb-lbl">ช่วงเวลา</div>
+    <div class="pgrid">
+      <button class="pbtn" id="p7" onclick="setPeriod(7,this)">7 วัน</button>
+      <button class="pbtn" id="p30" onclick="setPeriod(30,this)">30 วัน</button>
+      <button class="pbtn active" id="p90" onclick="setPeriod(90,this)">3 เดือน</button>
+      <button class="pbtn" id="p0" onclick="setPeriod(0,this)">ทั้งหมด</button>
+    </div>
+  </div>
+
+  <div class="sb-sec">
+    <div class="sb-lbl">เดือน</div>
+    <select class="msel" id="monthSel" onchange="setMonth(this.value)">
+      <option value="">— ทุกเดือน —</option>
+    </select>
+    <div style="font-size:9px;color:var(--ink3);margin-top:5px">* เลือกเดือนจะ override ช่วงเวลา</div>
+  </div>
+
+  <div class="sb-sec">
+    <div class="sb-lbl">🎯 เป้าหมายล็อก/วัน</div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <input type="number" id="targetInput" value="400" min="1" max="9999"
+        style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:12px;font-family:'Noto Sans Thai',sans-serif;outline:none;"
+        onchange="setTarget(this.value)" oninput="setTarget(this.value)">
+      <span style="font-size:10px;color:var(--ink3);white-space:nowrap">ล็อก</span>
+    </div>
+    <div style="font-size:9px;color:var(--ink3);margin-top:5px">แสดงเส้นเป้าในกราฟ</div>
+  </div>
+
+</div><!-- /sidebar -->
+
+<!-- CONTENT -->
+<div class="content">
+  <div id="loadingState" class="loading">
+    <div class="spin"></div>
+    <div class="spin-txt" id="spinTxt">กำลังโหลดข้อมูล...</div>
+  </div>
+
+  <div id="mainContent" style="display:none">
+
+    <!-- REPORT TITLE -->
+    <div class="report-title">
+      <div class="rt-left">
+        <span class="rt-name">รายงาน เซฟวันโก</span>
+        <span class="rt-branch" id="rtBranch">ศรีสมาน</span>
+        <span class="rt-badge">SS</span>
+      </div>
+      
+    </div>
+
+    <!-- DATE RANGE BAR -->
+    <div class="date-range-bar" style="justify-content:space-between">
+      <span class="dr-label">ช่วงข้อมูล</span>
+      <span class="dr-value" id="drFrom">—</span>
+      <span class="dr-sep">→</span>
+      <span class="dr-value" id="drTo">—</span>
+      <div class="dr-divider"></div>
+      <span class="dr-count" id="drDays">— วัน</span>
+      <div class="dr-divider"></div>
+      <span class="dr-count" id="drZone">ทุกโซน</span>
+      <div class="dr-divider"></div>
+      <span class="dr-count" id="drGroup">ทุกประเภท</span>
+      <div style="margin-left:auto">
+        <button onclick="exportCSV()" style="background:var(--surface2);border:1px solid var(--border);color:var(--ink2);padding:4px 14px;border-radius:5px;cursor:pointer;font-size:11px;font-family:'Noto Sans Thai',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--ink2)'">⬇️ Export CSV</button>
+      </div>
+    </div>
+
+    <!-- VIEW TABS -->
+    <div class="vtabs">
+      <button class="vtab active" onclick="setView('overview',this)">📊 ภาพรวม</button>
+      <button class="vtab" onclick="setView('freeday',this)">🌧 วันฝน</button>
+      <button class="vtab" onclick="setView('forecast',this)">🔮 พยากรณ์</button>
+      <button class="vtab" onclick="setView('pricenote',this)">📋 หมายเหตุราคา</button>
+      <button class="vtab" onclick="setView('rawdata',this)">📄 ข้อมูลดิบ</button>
+      <button class="vtab" onclick="setView('compare',this)">📅 เปรียบเทียบเดือน</button>
+      <button class="vtab" onclick="setView('heatmap',this)">🗓 ปฏิทินล็อก</button>
+      <button class="vtab" onclick="setView('benchmark',this)">⚖️ Benchmark</button>
+    </div>
+
+    <!-- ===== OVERVIEW ===== -->
+    <div id="view-overview">
+
+      <!-- KPI รายรับ -->
+      <div class="kpi-sec-title">💰 รายรับ</div>
+      <div class="kpi-row">
+        <div class="kpi gold">
+          <div class="kpi-lbl">รายรับก่อนหักส่วนลด</div>
+          <div class="kpi-val" id="k-revbefore">—</div>
+          <div class="kpi-sub">บาท (ถ้าไม่มีวันฝน)</div>
+        </div>
+        <div class="kpi red">
+          <div class="kpi-lbl">ส่วนลดวันฝน (FreeDay)</div>
+          <div class="kpi-val" id="k-disc">—</div>
+          <div class="kpi-sub" id="k-disc-sub">บาท</div>
+        </div>
+        <div class="kpi green">
+          <div class="kpi-lbl">รายรับสุทธิ ST</div>
+          <div class="kpi-val" id="k-revst">—</div>
+          <div class="kpi-sub">บาท</div>
+        </div>
+        <div class="kpi blue">
+          <div class="kpi-lbl">รายรับสุทธิรวม (ST+Non)</div>
+          <div class="kpi-val" id="k-revtotal">—</div>
+          <div class="kpi-sub">บาท</div>
+        </div>
+        <div class="kpi orange">
+          <div class="kpi-lbl">ค่าไฟ (L1+L2)</div>
+          <div class="kpi-val" id="k-elec">—</div>
+          <div class="kpi-sub" id="k-elec-sub">บาท</div>
+        </div>
+      </div>
+
+      <!-- TARGET SUMMARY -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="font-size:11px;color:var(--ink3)">🎯 เป้าหมาย <strong style="color:var(--gold)" id="targetDisplay">400</strong> ล็อก/วัน</div>
+        <div style="font-size:11px;color:var(--ink2)">เฉลี่ยจริง: <strong id="targetActual" style="color:var(--green)">—</strong> ล็อก/วัน</div>
+        <div style="font-size:11px;color:var(--ink2)">ถึงเป้า: <strong id="targetHit" style="color:var(--green)">—</strong> วัน</div>
+        <div style="font-size:11px;color:var(--ink2)">ไม่ถึงเป้า: <strong id="targetMiss" style="color:var(--red)">—</strong> วัน</div>
+        <div style="font-size:11px;color:var(--ink2)">% วันที่ถึงเป้า: <strong id="targetPct" style="color:var(--purple)">—</strong></div>
+      </div>
+
+      <!-- KPI สถิติ -->
+      <div class="kpi-sec-title">📊 สถิติการจอง</div>
+      <div class="kpi-row">
+        <div class="kpi orange">
+          <div class="kpi-lbl">จำนวนวันฝน</div>
+          <div class="kpi-val" id="k-fdays">—</div>
+          <div class="kpi-sub">วัน FreeDay</div>
+        </div>
+        <div class="kpi red">
+          <div class="kpi-lbl">ลา (ล็อก)</div>
+          <div class="kpi-val" id="k-absent">—</div>
+          <div class="kpi-sub">Absent Lock</div>
+        </div>
+        <div class="kpi red">
+          <div class="kpi-lbl">ไม่มา (ล็อก)</div>
+          <div class="kpi-val" id="k-cancel">—</div>
+          <div class="kpi-sub">Cancel Lock</div>
+        </div>
+        <div class="kpi purple">
+          <div class="kpi-lbl">ล็อกเสริม</div>
+          <div class="kpi-val" id="k-extra">—</div>
+          <div class="kpi-sub">Lock</div>
+        </div>
+        <div class="kpi green">
+          <div class="kpi-lbl">จำนวนราย <span style="color:var(--ink3);font-size:9px">/ เฉลี่ย/วัน ↓</span></div>
+          <div class="kpi-val" id="k-rai">—</div>
+          <div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:rgba(30,25,15,.5);border:1px solid rgba(240,122,53,.4);padding:5px 12px;border-radius:8px;">
+            <span style="font-size:11px;color:rgba(255,255,255,.5)">เฉลี่ย/วัน</span>
+            <span id="k-rai-sub" style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#ffb347;">—</span>
+            <span style="font-size:11px;color:rgba(255,255,255,.5)">ราย</span>
+          </div>
+        </div>
+        <div class="kpi gold">
+          <div class="kpi-lbl">จำนวนล็อก <span style="color:var(--ink3);font-size:9px">/ เฉลี่ย/วัน ↓</span></div>
+          <div class="kpi-val" id="k-lock">—</div>
+          <div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:rgba(20,15,0,.5);border:1px solid rgba(240,165,0,.4);padding:5px 12px;border-radius:8px;">
+            <span style="font-size:11px;color:rgba(255,255,255,.5)">เฉลี่ย/วัน</span>
+            <span id="k-lock-sub" style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#ffd166;">—</span>
+            <span style="font-size:11px;color:rgba(255,255,255,.5)">ล็อก</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN CHART: แท่ง=ราย เส้น=ล็อก -->
+      <div class="main-chart-card">
+        <div class="mc-header">
+          <div class="mc-title" id="mcTitle">จำนวนราย และ จำนวนล็อก รายวัน</div>
+          <div class="mc-legend">
+            <div class="mc-leg-item"><div class="mc-leg-bar" style="background:var(--green)"></div>จำนวนราย</div>
+            <div class="mc-leg-item"><div class="mc-leg-line" style="background:var(--orange)"></div>จำนวนล็อก</div>
+          </div>
+        </div>
+        <div class="ch-main"><canvas id="cMain"></canvas></div>
+      </div>
+
+      <!-- SECONDARY CHARTS -->
+      <div class="charts-grid">
+        <div class="sc">
+          <div class="sc-title">ล็อกรายเดือน</div>
+          <div class="sc-sub">แยกประเภท Online / วอคอิน / Non</div>
+          <div class="ch-sm"><canvas id="cMonthly"></canvas></div>
+        </div>
+        <div class="sc">
+          <div class="sc-title">ค่าเฉลี่ยล็อก แต่ละวันในสัปดาห์</div>
+          <div class="sc-sub">จันทร์ – อาทิตย์</div>
+          <div class="ch-sm"><canvas id="cWeekday"></canvas></div>
+        </div>
+        <div class="sc">
+          <div class="sc-title">สัดส่วนประเภทล็อก</div>
+          <div class="ch-sm"><canvas id="cPie"></canvas></div>
+        </div>
+      </div>
+
+      <!-- TOP / BOTTOM -->
+      <div class="topbot" id="topbot"></div>
+
+    </div><!-- /overview -->
+
+    <!-- ===== FREEDAY ===== -->
+    <div id="view-freeday" style="display:none">
+      <div class="fd-panel">
+        <div class="fd-title">🌧 สรุปวันฝน — รายได้ที่สูญเสียไป</div>
+        <div class="fd-kpi-row" id="fdKpi"></div>
+        <div class="charts-grid2" style="margin-bottom:12px">
+          <div class="sc">
+            <div class="sc-title">ส่วนลดวันฝน รายเดือน (บาท)</div>
+            <div class="ch-md"><canvas id="cFDMonth"></canvas></div>
+          </div>
+          <div class="sc">
+            <div class="sc-title">จำนวนวันฝน รายเดือน</div>
+            <div class="ch-md"><canvas id="cFDCount"></canvas></div>
+          </div>
+        </div>
+        <div class="fd-table-wrap">
+          <table class="fd-table">
+            <thead><tr><th>วันที่</th><th>วัน</th><th>ออนไลน์ล็อก</th><th>ลา</th><th>ไม่มา</th><th>ราคา/ล็อก</th><th>รายได้ปกติ</th><th>รายได้จริง</th><th>เสียไป (฿)</th></tr></thead>
+            <tbody id="fdTbl"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== FORECAST ===== -->
+    <div id="view-forecast" style="display:none">
+      <div class="fc-panel">
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px">🔮 พยากรณ์เดือนถัดไป</div>
+        <div style="font-size:11px;color:var(--ink3);margin-bottom:14px">คำนวณจากค่าเฉลี่ยย้อนหลัง 3 เดือนล่าสุด</div>
+        <div class="fc-cards" id="fcCards"></div>
+        <div class="fc-note" id="fcNote"></div>
+      </div>
+
+      <!-- WHAT IF -->
+      <div class="fc-panel" style="margin-top:14px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">🎯 What If — จำลองสถานการณ์</div>
+        <div style="font-size:11px;color:var(--ink3);margin-bottom:14px">ใส่จำนวนล็อก/วันที่ต้องการ แล้วดูผลลัพธ์</div>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:11px;color:var(--ink3)">ล็อก/วัน (จำลอง)</label>
+            <input type="number" id="wiLock" min="1" max="9999" placeholder="เช่น 500"
+              style="width:120px;padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--ink);font-size:14px;font-family:'JetBrains Mono',monospace;outline:none;"
+              oninput="calcWhatIf()">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:11px;color:var(--ink3)">จำนวนวัน</label>
+            <input type="number" id="wiDays" value="30" min="1" max="365"
+              style="width:100px;padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--ink);font-size:14px;font-family:'JetBrains Mono',monospace;outline:none;"
+              oninput="calcWhatIf()">
+          </div>
+
+        </div>
+        <div id="wiResult" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px"></div>
+        <div id="wiNote" style="font-size:10px;color:var(--ink3);margin-top:10px;background:var(--surface2);border-radius:6px;padding:8px 12px;line-height:1.8"></div>
+      </div>
+      <div class="charts-grid2">
+        <div class="sc">
+          <div class="sc-title">ล็อกรายเดือน + เส้นพยากรณ์</div>
+          <div class="ch-md"><canvas id="cFC"></canvas></div>
+        </div>
+        <div class="sc">
+          <div class="sc-title">ล็อกเฉลี่ย/วัน แต่ละเดือน</div>
+          <div class="ch-md"><canvas id="cAvg"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PRICE NOTE ===== -->
+    <div id="view-pricenote" style="display:none">
+      <div class="pn-panel">
+        <div class="pn-title" id="pnTitle">📋 หมายเหตุลอจิกราคา</div>
+
+        <!-- ===== ST ทุกสาขา ===== -->
+        <div id="pn-ST-section" style="margin-bottom:20px">
+          <div style="font-size:12px;font-weight:700;color:var(--gold);padding:8px 12px;background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.3);border-radius:8px;margin-bottom:10px">
+            📦 โซน Street Food (ST) — ราคาเหมือนกันทุกสาขา
+          </div>
+          <div class="pn-grid">
+            <div class="pn-zone">
+              <table class="pn-tbl">
+                <thead><tr><th>ประเภท</th><th>จ–พฤ</th><th>ศ–อา</th><th>วันฝน</th></tr></thead>
+                <tbody>
+                  <tr><td>วอคอิน / ล็อกเสริม</td><td class="price-num">130 ฿</td><td class="price-num">160 ฿</td><td class="fd-mark">ราคาเต็ม (ไม่ลด)</td></tr>
+                  <tr><td>ออนไลน์ (มาจริง)</td><td class="price-num">100 ฿</td><td class="price-num">130 ฿</td><td class="fd-mark">× 0.5 (ลด 50%)</td></tr>
+                  <tr><td>ลา (Absent)</td><td class="price-num">100 ฿</td><td class="price-num">130 ฿</td><td class="fd-mark">× 0.5 (ลด 50%)</td></tr>
+                  <tr><td>ไม่มา (Cancel)</td><td class="price-num">100 ฿</td><td class="price-num">130 ฿</td><td class="fd-mark">× 0.5 (ลด 50%)</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pn-zone">
+              <div class="formula-box">
+                <strong>ออนไลน์สุทธิ:</strong><br>
+                <code>= Online_Lock − Absent_Lock − Cancel_Lock</code><br><br>
+                <strong>รายรับ ST:</strong><br>
+                <code>= (Online Net × ราคา × FD?) + (Absent × ราคา × FD?) + (Cancel × ราคา × FD?) + (WalkIn × ราคาวอค) + (Extra × ราคาวอค)</code><br><br>
+                <span style="font-size:10px;color:var(--ink3)">FD? = ×0.5 ถ้าวันฝน | ราคาวอค = 130/160 ฿</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== SS Non ===== -->
+        <div id="pn-SS" style="margin-bottom:20px;padding:12px;border-radius:8px;border:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:10px">🏪 ศรีสมาน (SS) — โซน Non · Boot Seller</div>
+          <div class="pn-grid">
+            <div class="pn-zone">
+              <table class="pn-tbl">
+                <thead><tr><th>ประเภท</th><th>ทุกวัน</th><th>วันฝน</th></tr></thead>
+                <tbody>
+                  <tr><td>ทุกประเภท</td><td class="price-num">30 ฿</td><td class="fd-mark">Online/ลา/ไม่มา × 0.5 เท่านั้น</td></tr>
+                  <tr><td>วอคอิน</td><td class="price-num">30 ฿</td><td class="fd-mark">ราคาเต็ม (ยังไม่เข้าระบบ)</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pn-zone">
+              <div class="formula-box">
+                <code>รายรับ = (Online Net + Absent + Cancel) × 30 × (FD ? 0.5 : 1) + WalkIn × 30</code><br>
+                <span style="font-size:10px;color:var(--ink3)">WalkIn SS Non ยังไม่เข้าระบบ → ไม่ได้ส่วนลดวันฝน</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== BG Car ===== -->
+        <div id="pn-BG" style="margin-bottom:20px;padding:12px;border-radius:8px;border:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:10px">🏙 ประตูกรุงเทพ (BG) — โซน Car · Boot Sale</div>
+          <div class="pn-grid">
+            <div class="pn-zone">
+              <div style="font-size:10px;color:var(--ink3);margin-bottom:6px;font-weight:600">Low Season (มี.ค.–ต.ค.)</div>
+              <table class="pn-tbl">
+                <thead><tr><th>ประเภท</th><th>จ–พฤ</th><th>ศ–อา</th><th>วันฝน</th></tr></thead>
+                <tbody>
+                  <tr><td>ทุกประเภท</td><td class="price-num">250 ฿</td><td class="price-num">300 ฿</td><td class="fd-mark">× 0.5 ทุกประเภท</td></tr>
+                </tbody>
+              </table>
+              <div style="font-size:10px;color:var(--ink3);margin:8px 0 6px;font-weight:600">High Season (พ.ย.–ก.พ.)</div>
+              <table class="pn-tbl">
+                <thead><tr><th>ประเภท</th><th>จ–พฤ</th><th>ศ–อา</th><th>วันฝน</th></tr></thead>
+                <tbody>
+                  <tr><td>ทุกประเภท</td><td class="price-num">300 ฿</td><td class="price-num">350 ฿</td><td class="fd-mark">× 0.5 ทุกประเภท</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pn-zone">
+              <div class="formula-box">
+                <code>รายรับ = (Online Net + Absent + Cancel + WalkIn + Extra) × ราคา × (FD ? 0.5 : 1)</code><br>
+                <span style="font-size:10px;color:var(--ink3)">WalkIn BG เข้าระบบแล้ว → ได้ส่วนลดวันฝนด้วย</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== BN Car ===== -->
+        <div id="pn-BN" style="margin-bottom:20px;padding:12px;border-radius:8px;border:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:10px">🌿 บางนา (BN) — โซน Car · Boot Sale</div>
+          <div class="pn-grid">
+            <div class="pn-zone">
+              <div style="font-size:10px;color:var(--ink3);margin-bottom:6px;font-weight:600">Low Season (มี.ค.–ต.ค.)</div>
+              <table class="pn-tbl">
+                <thead><tr><th>ประเภท</th><th>จ–พฤ</th><th>ศ–อา</th><th>วันฝน</th></tr></thead>
+                <tbody>
+                  <tr><td>ทุกประเภท</td><td class="price-num">200 ฿</td><td class="price-num">250 ฿</td><td class="fd-mark">× 0.5 ทุกประเภท</td></tr>
+                </tbody>
+              </table>
+              <div style="font-size:10px;color:var(--ink3);margin:8px 0 6px;font-weight:600">High Season (พ.ย.–ก.พ.)</div>
+              <table class="pn-tbl">
+                <thead><tr><th>ประเภท</th><th>จ–พฤ</th><th>ศ–อา</th><th>วันฝน</th></tr></thead>
+                <tbody>
+                  <tr><td>ทุกประเภท</td><td class="price-num">250 ฿</td><td class="price-num">300 ฿</td><td class="fd-mark">× 0.5 ทุกประเภท</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pn-zone">
+              <div class="formula-box">
+                <code>รายรับ = (Online Net + Absent + Cancel + WalkIn + Extra) × ราคา × (FD ? 0.5 : 1)</code><br>
+                <span style="font-size:10px;color:var(--ink3)">WalkIn BN เข้าระบบแล้ว → ได้ส่วนลดวันฝนด้วย</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Admin Note ===== -->
+        <div class="admin-note">
+          <strong>หมายเหตุสำหรับผู้บริหาร:</strong><br>
+          • <strong>ST ทุกสาขา</strong> — ราคาเหมือนกัน จ–พฤ ต่ำกว่า ศ–อา เพราะปริมาณลูกค้าต่างกัน<br>
+          • <strong>SS Non</strong> — WalkIn ยังไม่เข้าระบบ ไม่ได้รับส่วนลดวันฝน<br>
+          • <strong>BG/BN Car</strong> — WalkIn เข้าระบบแล้ว ได้รับส่วนลดวันฝน 50% ทุกประเภท<br>
+          • <strong>วันฝน (FreeDay)</strong> — ลด 50% เป็นนโยบายดูแลพ่อค้าแม่ค้า<br>
+          • <strong>ค่าไฟ</strong> — 200W แรก = 30฿, เกิน 100W ละ 10฿ บันทึกจากมิเตอร์จริงรายวัน
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== RAW DATA ===== -->
+    <div id="view-rawdata" style="display:none">
+      <div class="sc" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="sc-title">ข้อมูลรายวัน</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:10px;color:var(--ink3)" id="rawCount">—</span>
+            <button onclick="exportCSV()" style="background:var(--surface2);border:1px solid var(--border);color:var(--ink2);padding:4px 12px;border-radius:5px;cursor:pointer;font-size:11px;font-family:'Noto Sans Thai',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--ink2)'">⬇️ Export CSV</button>
+          </div>
+        </div>
+        <div class="dtbl-wrap">
+          <table class="dtbl">
+            <thead><tr>
+              <th>วันที่</th><th>วัน</th>
+              <th>ออนไลน์สุทธิ</th><th>วอคอิน ST</th><th>เสริม</th><th>Non ล็อก</th>
+              <th>ยกเลิก</th><th>ลา</th>
+              <th>ราคา/ล็อก</th><th>รายรับรวม</th>
+              <th>ค่าไฟ L1</th><th>ค่าไฟ L2</th>
+              <th>สถานะ</th>
+            </tr></thead>
+            <tbody id="rawTbl"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== COMPARE ===== -->
+    <div id="view-compare" style="display:none">
+      <div class="mc-panel">
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">&#128197; เปรียบเทียบหลายเดือน</div>
+        <div style="font-size:11px;color:var(--ink3);margin-bottom:12px">กดเลือกเดือนได้หลายเดือนพร้อมกัน ไม่จำกัด</div>
+        <div class="mc-month-pills" id="mcPills"></div>
+        <div class="sc" style="margin-bottom:12px">
+          <div class="sc-title">จำนวนล็อกรายวัน — เทียบแต่ละเดือนบนแกนเดียวกัน</div>
+          <div style="height:260px;position:relative"><canvas id="cCompare"></canvas></div>
+        </div>
+        <div class="sc" style="margin-bottom:12px">
+          <div class="sc-title">Month-over-Month — % เปลี่ยนแปลงเทียบเดือนก่อน</div>
+          <div class="mom-grid" id="momGrid"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="sc"><div class="sc-title">ล็อกรวมต่อเดือน</div><div style="height:180px;position:relative"><canvas id="cMonthTotal"></canvas></div></div>
+          <div class="sc"><div class="sc-title">รายรับต่อเดือน (บาท)</div><div style="height:180px;position:relative"><canvas id="cMonthRev"></canvas></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== HEATMAP ===== -->
+    <div id="view-heatmap" style="display:none">
+      <div class="mc-panel">
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">&#128197; ปฏิทินล็อก — Heatmap</div>
+        <div style="font-size:11px;color:var(--ink3);margin-bottom:10px">สีเข้ม = ล็อกมาก | สีเขียว = วันฝน (FreeDay)</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+          <div style="display:flex;gap:3px;align-items:center">
+            <div style="width:14px;height:14px;border-radius:2px;background:rgba(240,165,0,.1)"></div>
+            <div style="width:14px;height:14px;border-radius:2px;background:rgba(240,165,0,.3)"></div>
+            <div style="width:14px;height:14px;border-radius:2px;background:rgba(240,165,0,.55)"></div>
+            <div style="width:14px;height:14px;border-radius:2px;background:rgba(240,165,0,.8)"></div>
+            <div style="width:14px;height:14px;border-radius:2px;background:rgba(240,165,0,1)"></div>
+            <span style="font-size:10px;color:var(--ink3);margin-left:4px">น้อย to มาก</span>
+          </div>
+          <div style="display:flex;gap:4px;align-items:center">
+            <div style="width:14px;height:14px;border-radius:2px;background:rgba(61,214,140,.7)"></div>
+            <span style="font-size:10px;color:var(--green)">วันฝน</span>
+          </div>
+          <div style="display:flex;gap:4px;align-items:center">
+            <div style="width:14px;height:14px;border-radius:2px;background:var(--surface3)"></div>
+            <span style="font-size:10px;color:var(--ink3)">ไม่มีข้อมูล</span>
+          </div>
+        </div>
+        <div id="hmWrap"></div>
+      </div>
+    </div>
+
+    <!-- ===== BENCHMARK ===== -->
+    <div id="view-benchmark" style="display:none">
+      <div class="mc-panel">
+        <div style="font-size:13px;font-weight:700;margin-bottom:12px">&#9878; Benchmark เปรียบเทียบสาขา</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap" id="bmBranchPills">
+          <button class="mc-pill sel" onclick="toggleBmBranch('SS',this)">ศรีสมาน (SS)</button>
+          <button class="mc-pill" onclick="toggleBmBranch('BG',this)">ประตูกรุงเทพ (BG)</button>
+          <button class="mc-pill" onclick="toggleBmBranch('BN',this)">บางนา (BN)</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px" id="bmKpiRow"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div class="sc"><div class="sc-title">ล็อกเฉลี่ย/วัน แต่ละสาขา</div><div style="height:220px;position:relative"><canvas id="cBmAvg"></canvas></div></div>
+          <div class="sc"><div class="sc-title">ล็อกรายเดือน เปรียบเทียบ</div><div style="height:220px;position:relative"><canvas id="cBmMonth"></canvas></div></div>
+        </div>
+        <div class="sc"><div class="sc-title">แนวโน้มล็อกรายวัน ทุกสาขา (60 วันล่าสุด)</div><div style="height:200px;position:relative"><canvas id="cBmDaily"></canvas></div></div>
+      </div>
+    </div>
+
+  </div><!-- /mainContent -->
+</div><!-- /content -->
+</div><!-- /layout -->
+
+<script>
+const PROXIES={
+  SS:'https://script.google.com/macros/s/AKfycbwi_fXqPttjmkiNdjdN46Gqx1cM3-9_k2r4AAjR3b6rBTPPGtVLjUHiidad5mx7pieR/exec',
+  BG:'https://script.google.com/macros/s/AKfycbzgZx9slbAw95GBMHAJFRURU-Zlh-5coW9_aIg1lae0TS1pG8qeNfrGxBMy7chZpFNP/exec',
+  BN:'https://script.google.com/macros/s/AKfycbwQPzzxpQsWY8fqiS1AZ1V0eYTU7xB1wKEMEb4N19lwnADguiPuzAbOjKb3eHc7cj7DAg/exec',
+};
+const DAYS=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+const MONTHS=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+let stData=[],nonData=[],merged=[];
+let bgStData=[],bgCarData=[],bgMerged=[];
+let bnStData=[],bnCarData=[],bnMerged=[];
+let period=90,selMonth='',zone='all',group='all',view='overview';
+let activeBranch='SS'; // SS, BG, BN
+let targetLock=400; // เป้าล็อกต่อวัน
+
+function setTarget(v){
+  targetLock=Math.max(1,parseInt(v)||400);
+  if(view==='overview') applyAll();
+}
+let charts={};
+
+const n=v=>parseFloat(String(v||0).replace(/[,"']/g,'').trim())||0;
+const parseD=s=>{
+  if(!s) return null;
+  const str=String(s).trim();
+  const p=str.split('/');
+  if(p.length===3){
+    const d=parseInt(p[0]),m=parseInt(p[1]),y=parseInt(p[2]);
+    if(!isNaN(d)&&!isNaN(m)&&!isNaN(y)) return new Date(y,m-1,d);
+  }
+  return null;
+};
+const fmtD=d=>`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()+543}`;
+const fmtN=(x,d=0)=>d?parseFloat(x).toFixed(d):Math.round(x).toLocaleString('th-TH');
+const mKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+const mLbl=d=>`${MONTHS[d.getMonth()]} ${String(d.getFullYear()+543).slice(-2)}`;
+const isWknd=d=>[0,5,6].includes(d.getDay());
+
+// ── ราคา ──
+function getBranchPrice(date){
+  // ST ทุกสาขาใช้ราคาเดียวกัน
+  const wk=isWknd(date);
+  return{po:wk?130:100, pw:wk?160:130};
+}
+function getNonPrice(date){
+  // Car/Non แยกตามสาขา+Season
+  const wk=isWknd(date);
+  const m=date.getMonth()+1;
+  const isHigh=(m>=11||m<=2); // พ.ย.–ก.พ.
+  if(activeBranch==='BG'){
+    if(isHigh) return wk?350:300;
+    return wk?300:250;
+  } else if(activeBranch==='BN'){
+    if(isHigh) return wk?300:250;
+    return wk?250:200;
+  }
+  return 30; // SS Non
+}
+function revST(r){
+  // ST ทุกสาขาใช้ราคาเดียวกัน (100/130 Online, 130/160 WalkIn)
+  const{po,pw}=getBranchPrice(r.date); // po=Online, pw=WalkIn/Extra
+  const fd=r.freeDay;
+  const online=r.onlineLock||0;
+  const walkin=r.walkInLock||0;
+  const extra=r.extraLock||0;
+
+  if(activeBranch==='SS'){
+    // SS: Online ลด FreeDay | WalkIn/เสริม ราคาเต็มเสมอ
+    return online*po*(fd?0.5:1) + walkin*pw + extra*pw;
+  } else {
+    // BG/BN: ทุกประเภทลด FreeDay (เข้าระบบหมดแล้ว)
+    return online*po*(fd?0.5:1) + walkin*pw*(fd?0.5:1) + extra*pw*(fd?0.5:1);
+  }
+}
+function revSTNormal(r){
+  const{po,pw}=getBranchPrice(r.date);
+  const online=r.onlineLock||0;
+  const walkin=r.walkInLock||0;
+  const extra=r.extraLock||0;
+  return online*po + walkin*pw + extra*pw;
+}
+function revNon(r){
+  if(!r||!r.date) return 0;
+  const p=getNonPrice(r.date);
+  const fd=r.nonFree||r.freeDay||false;
+  const online=r.nonOnlineLock||0;
+  const walkin=r.nonWalkInLock||0;
+  const extra=r.nonExtraLock||0;
+
+  if(activeBranch==='SS'){
+    // SS Non: WalkIn ราคาเต็ม (ยังไม่เข้าระบบ) | Online/เสริม ลด FreeDay
+    return online*p*(fd?0.5:1) + walkin*p + extra*p;
+  } else {
+    // BG/BN Car: ทุกประเภทลด FreeDay
+    return (online+walkin+extra)*p*(fd?0.5:1);
+  }
+}
+function calcDiscount(r){
+  if(!r.freeDay) return 0;
+  const{po,pw}=getBranchPrice(r.date);
+  const np=getNonPrice(r.date);
+  const nonFd=r.nonFree||r.freeDay||false;
+  let stDisc=0, nonDisc=0;
+
+  if(activeBranch==='SS'){
+    // SS ST: เฉพาะ Online ที่ลด
+    stDisc=(r.onlineLock||0)*po*0.5;
+    // SS Non: WalkIn ไม่ลด
+    nonDisc=(r.nonOnlineLock||0)*np*0.5;
+  } else {
+    // BG/BN ST: ทุกประเภทลด
+    stDisc=((r.onlineLock||0)+(r.walkInLock||0)+(r.extraLock||0))*po*0.5;
+    // BG/BN Car: ทุกประเภทลด
+    if(nonFd){
+      nonDisc=((r.nonOnlineLock||0)+(r.nonWalkInLock||0)+(r.nonExtraLock||0))*np*0.5;
+    }
+  }
+  return stDisc+nonDisc;
+}
+const discST=r=>calcDiscount(r);
+
+function getLock(r,g){
+  // ล็อกรวม = Online + WalkIn + Extra (ไม่หัก Absent/Cancel เพราะอยู่ในกลุ่มนี้อยู่แล้ว)
+  const stOnline=r.onlineLock||0;
+  const stWalkIn=r.walkInLock||0;
+  const stExtra=r.extraLock||0;
+  const stAbsent=r.absentLock||0;
+  const stCancel=r.cancelLock||0;
+  const nonTotal=r.nonLock||0; // nonLock = online+walkin+extra ของ Non
+
+  if(g==='online') return stOnline; // Online ทั้งหมด รวมลา/ไม่มา
+  if(g==='walkin') return stWalkIn+nonTotal;
+  if(g==='extra') return stExtra+(r.nonExtraLock||0);
+  if(g==='cancel') return stCancel+stAbsent+(r.nonCancelLock||0)+(r.nonAbsentLock||0);
+  // all = Online + WalkIn + Extra (ST + Non)
+  return stOnline+stWalkIn+stExtra+nonTotal;
+}
+function getRai(r,g){
+  const stOnlineRai=r.onlineRai||0;
+  const stWalkInRai=r.walkInRai||0;
+  const nonRai=r.nonRai||0; // nonRai = onlineRai+walkInRai ของ Non
+  if(g==='online') return stOnlineRai;
+  if(g==='walkin') return stWalkInRai+nonRai;
+  if(g==='extra') return 0;
+  if(g==='cancel') return 0;
+  return stOnlineRai+stWalkInRai+nonRai;
+}
+
+const mapST=r=>{
+  const date=parseD(r['วันที่']);if(!date)return null;
+  // รองรับทุกสาขา SS/BG/BN
+  const l1=n(r['L1_SS_Street']||r['L1_BG_Street']||r['L1_BN_Street']||0);
+  const l2=n(r['L2_SS_Street']||r['L2_BG_Street']||r['L2_BN_Street']||0);
+  return{date,dateStr:r['วันที่'],onlineLock:n(r['Online_Lock']),onlineRai:n(r['Online_Rai']),
+    walkInLock:n(r['WalkIn_Lock']),walkInRai:n(r['WalkIn_Rai']),extraLock:n(r['ล็อกเสริม-Lock']),
+    cancelLock:n(r['Cancel_Lock']),absentLock:n(r['Absent_Lock']),
+    freeDay:['1','true','1'].includes(String(r['FreeDay']).trim().toLowerCase())&&String(r['FreeDay']).trim()!=='0'&&String(r['FreeDay']).trim().toLowerCase()!=='n'&&String(r['FreeDay']).trim().toLowerCase()!=='false',
+    l1,l2};
+};
+const mapNon=r=>{
+  const date=parseD(r['วันที่']);if(!date)return null;
+  // รองรับทุกสาขา SS Non / BG Car / BN Car — อ่านครบทุกคอลัมน์
+  const l1=n(r['L1_SS_Non']||r['L1_BG_Car']||r['L1_BN_Car']||0);
+  const l2=n(r['L2_SS_Non']||r['L2_BG_Car']||r['L2_BN_Car']||0);
+  const onlineLock=n(r['Online_Lock']);
+  const onlineRai=n(r['Online_Rai']);
+  const walkInLock=n(r['WalkIn_Lock']);
+  const walkInRai=n(r['WalkIn_Rai']);
+  const extraLock=n(r['ล็อกเสริม-Lock']);
+  const cancelLock=n(r['Cancel_Lock']);
+  const absentLock=n(r['Absent_Lock']);
+  const cutLock=n(r['ตัดไม่มาทำการค้า_Lock']);
+  const fd_raw=String(r['FreeDay']||'').trim().toLowerCase();const freeDay=fd_raw==='1'||fd_raw==='true';
+  // รวม lock ทั้งหมดสำหรับโซน Non/Car
+  const totalLock=onlineLock+walkInLock+extraLock;
+  const totalRai=onlineRai+walkInRai;
+  return{date,dateStr:r['วันที่'],
+    onlineLock,onlineRai,walkInLock,walkInRai,extraLock,
+    cancelLock,absentLock,cutLock,
+    freeDay,l1,l2,
+    // เก็บไว้ backward compat
+    totalLock,totalRai};
+};
+
+async function fetchCSV(url){
+  try {
+    const r=await fetch(url,{
+      redirect:'follow',
+      mode:'cors',
+      cache:'no-cache'
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const text=await r.text();
+    const parsed=Papa.parse(text,{header:true,skipEmptyLines:true,dynamicTyping:false});
+    console.log('Fetched:',url.slice(-30),'rows:',parsed.data.length);
+    return parsed.data;
+  } catch(e) {
+    console.error('fetchCSV error:',url.slice(-30),e.message);
+    return [];
+  }
+}
+
+let dataLoaded={SS:false,BG:false,BN:false};
+
+async function loadAll(){
+  document.getElementById('loadingState').style.display='flex';
+  document.getElementById('mainContent').style.display='none';
+  const ts=Date.now();
+  try{
+    // โหลดทุกสาขาพร้อมกันครั้งแรก
+    document.getElementById('spinTxt').textContent='กำลังโหลดข้อมูลทุกสาขา...';
+    document.getElementById('spinTxt').textContent='กำลังโหลด SS...';
+    stData=(await fetchCSV(`${PROXIES.SS}?sheet=ST&t=${ts}`)).map(mapST).filter(Boolean);
+    nonData=(await fetchCSV(`${PROXIES.SS}?sheet=NON&t=${ts}`)).map(mapNon).filter(Boolean);
+    mergeData(); dataLoaded.SS=true;
+    console.log('SS ST:',stData.length,'Non:',nonData.length,'Merged:',merged.length);
+
+    document.getElementById('spinTxt').textContent='กำลังโหลด BG...';
+    bgStData=(await fetchCSV(`${PROXIES.BG}?sheet=BG_ST&t=${ts}`)).map(mapST).filter(Boolean);
+    bgCarData=(await fetchCSV(`${PROXIES.BG}?sheet=BG_CAR&t=${ts}`)).map(mapNon).filter(Boolean);
+    mergeBG(); dataLoaded.BG=true;
+    console.log('BG ST:',bgStData.length,'Car:',bgCarData.length,'Merged:',bgMerged.length);
+
+    document.getElementById('spinTxt').textContent='กำลังโหลด BN...';
+    bnStData=(await fetchCSV(`${PROXIES.BN}?sheet=BN_ST&t=${ts}`)).map(mapST).filter(Boolean);
+    bnCarData=(await fetchCSV(`${PROXIES.BN}?sheet=BN_CAR&t=${ts}`)).map(mapNon).filter(Boolean);
+    mergeBN(); dataLoaded.BN=true;
+    console.log('BN ST:',bnStData.length,'Car:',bnCarData.length,'Merged:',bnMerged.length);
+
+    buildMonths();applyAll();
+    document.getElementById('updTime').textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH');
+    document.getElementById('loadingState').style.display='none';
+    document.getElementById('mainContent').style.display='block';
+    // ซ่อน splash screen
+    const splash=document.getElementById('splash');
+    if(splash){splash.classList.add('hide');setTimeout(()=>splash.remove(),500);}
+  }catch(e){
+    document.getElementById('loadingState').innerHTML=`<div style="text-align:center;color:var(--red)">❌ โหลดไม่ได้: ${e.message}<br><br><button class="rfbtn" onclick="loadAll()">ลองใหม่</button></div>`;
+  }
+}
+
+async function refreshBranch(){
+  // รีเฟรชเฉพาะสาขาที่กำลังดูอยู่
+  const ts=Date.now();
+  try{
+    if(activeBranch==='SS'){
+      const [r1,r2]=await Promise.all([fetchCSV(`${PROXIES.SS}?sheet=ST&t=${ts}`),fetchCSV(`${PROXIES.SS}?sheet=NON&t=${ts}`)]);
+      stData=r1.map(mapST).filter(Boolean);nonData=r2.map(mapNon).filter(Boolean);mergeData();
+    } else if(activeBranch==='BG'){
+      const [r1,r2]=await Promise.all([fetchCSV(`${PROXIES.BG}?sheet=BG_ST&t=${ts}`),fetchCSV(`${PROXIES.BG}?sheet=BG_CAR&t=${ts}`)]);
+      bgStData=r1.map(mapST).filter(Boolean);bgCarData=r2.map(mapNon).filter(Boolean);mergeBG();
+    } else if(activeBranch==='BN'){
+      const [r1,r2]=await Promise.all([fetchCSV(`${PROXIES.BN}?sheet=BN_ST&t=${ts}`),fetchCSV(`${PROXIES.BN}?sheet=BN_CAR&t=${ts}`)]);
+      bnStData=r1.map(mapST).filter(Boolean);bnCarData=r2.map(mapNon).filter(Boolean);mergeBN();
+    }
+    buildMonths();applyAll();
+    document.getElementById('updTime').textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH');
+  }catch(e){alert('รีเฟรชไม่ได้: '+e.message);}
+}
+
+function getDateKey(date){
+  if(!date) return '';
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
+function mergeBranch(stArr, nonArr){
+  const map={};
+  // ใส่ ST ก่อน
+  stArr.forEach(r=>{
+    const key=getDateKey(r.date);
+    if(!key) return;
+    map[key]={
+      date:r.date, dateStr:r.dateStr,
+      onlineLock:r.onlineLock||0, onlineRai:r.onlineRai||0,
+      walkInLock:r.walkInLock||0, walkInRai:r.walkInRai||0,
+      extraLock:r.extraLock||0,
+      cancelLock:r.cancelLock||0, absentLock:r.absentLock||0,
+      freeDay:r.freeDay,
+      l1:r.l1||0, l2:r.l2||0,
+      // Non fields เริ่มที่ 0
+      nonLock:0, nonRai:0, l1n:0, l2n:0, nonFree:false,
+      nonOnlineLock:0, nonWalkInLock:0, nonExtraLock:0,
+      nonCancelLock:0, nonAbsentLock:0
+    };
+  });
+  // merge Non เข้าไป โดยใช้ getDateKey เพื่อให้ format ตรงกัน
+  nonArr.forEach(r=>{
+    const key=getDateKey(r.date);
+    if(!key) return;
+    const nOnline=r.onlineLock||0;
+    const nWalkIn=r.walkInLock||0;
+    const nExtra=r.extraLock||0;
+    const nLock=nOnline+nWalkIn+nExtra;
+    const nRai=(r.onlineRai||0)+(r.walkInRai||0);
+    if(map[key]){
+      map[key].nonLock=nLock;
+      map[key].nonRai=nRai;
+      map[key].nonOnlineLock=nOnline;
+      map[key].nonWalkInLock=nWalkIn;
+      map[key].nonExtraLock=nExtra;
+      map[key].nonCancelLock=r.cancelLock||0;
+      map[key].nonAbsentLock=r.absentLock||0;
+      map[key].l1n=r.l1||0;
+      map[key].l2n=r.l2||0;
+      map[key].nonFree=r.freeDay;
+    } else {
+      // มี Non แต่ไม่มี ST วันนั้น
+      map[key]={
+        date:r.date, dateStr:r.dateStr,
+        onlineLock:0, onlineRai:0,
+        walkInLock:0, walkInRai:0,
+        extraLock:0, cancelLock:0, absentLock:0,
+        freeDay:r.freeDay, l1:0, l2:0,
+        nonLock:nLock, nonRai:nRai,
+        nonOnlineLock:nOnline, nonWalkInLock:nWalkIn, nonExtraLock:nExtra,
+        nonCancelLock:r.cancelLock||0, nonAbsentLock:r.absentLock||0,
+        l1n:r.l1||0, l2n:r.l2||0, nonFree:r.freeDay
+      };
+    }
+  });
+  return Object.values(map).sort((a,b)=>b.date-a.date);
+}
+function mergeBG(){bgMerged=mergeBranch(bgStData,bgCarData);}
+function mergeBN(){bnMerged=mergeBranch(bnStData,bnCarData);}
+function getActiveMerged(){
+  if(activeBranch==='BG') return bgMerged;
+  if(activeBranch==='BN') return bnMerged;
+  return merged;
+}
+
+function mergeData(){
+  merged=mergeBranch(stData,nonData);
+}
+
+let selMonths=new Set(); // multi-select months for compare view
+
+function buildMonths(){
+  const sel=document.getElementById('monthSel');
+  const ks=[...new Set(getActiveMerged().map(r=>mKey(r.date)))].sort().reverse();
+  sel.innerHTML='<option value="">— ทุกเดือน —</option>';
+  ks.forEach(k=>{const[y,m]=k.split('-');const o=document.createElement('option');o.value=k;o.textContent=mLbl(new Date(y,m-1,1));sel.appendChild(o);});
+  // สร้าง pills สำหรับ compare
+  const pills=document.getElementById('mcPills');
+  if(pills){
+    // เลือก 3 เดือนล่าสุดเป็น default
+    const recent=ks.slice(0,3);
+    recent.forEach(k=>selMonths.add(k));
+    pills.innerHTML=ks.map(k=>{const[y,m]=k.split('-');return `<button class="mc-pill${selMonths.has(k)?' sel':''}" onclick="toggleMonth('${k}',this)">${mLbl(new Date(y,m-1,1))}</button>`;}).join('');
+  }
+}
+
+function toggleMonth(k,btn){
+  if(selMonths.has(k)){selMonths.delete(k);btn.classList.remove('sel');}
+  else{selMonths.add(k);btn.classList.add('sel');}
+  if(view==='compare') renderCompare();
+}
+
+function setBranch(b,btn){
+  document.querySelectorAll('.branch-item').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+  activeBranch=b;
+  // อัปเดตชื่อสาขาใน header
+  const names={SS:'ศรีสมาน',BG:'ประตูกรุงเทพ',BN:'บางนา'};
+  const badges={SS:'SS',BG:'BG',BN:'BN'};
+  const el=document.getElementById('rtBranch');if(el)el.textContent=names[b]||b;
+  const badge=document.querySelector('.rt-badge');if(badge)badge.textContent=badges[b]||b;
+  // รีเซ็ต zone เป็น all
+  zone='all';document.querySelectorAll('[id^="z-"]').forEach(x=>x.classList.remove('active'));
+  const za=document.getElementById('z-all');if(za)za.classList.add('active');
+  // สลับข้อมูลทันที ไม่ต้องโหลดใหม่
+  buildMonths();applyAll();
+}
+function setZone(z,btn){zone=z;document.querySelectorAll('[id^="z-"]').forEach(x=>x.classList.remove('active'));btn.classList.add('active');applyAll();}
+function setGroup(v){group=v;applyAll();}
+function setPeriod(d,btn){period=d;selMonth='';document.getElementById('monthSel').value='';document.querySelectorAll('[id^="p"]').forEach(x=>x.classList.remove('active'));btn.classList.add('active');applyAll();}
+function setMonth(v){selMonth=v;period=0;document.querySelectorAll('[id^="p"]').forEach(x=>x.classList.remove('active'));applyAll();}
+function setView(v,btn){
+  view=v;
+  document.querySelectorAll('.vtab').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+  ['overview','freeday','forecast','pricenote','rawdata','compare','heatmap','benchmark'].forEach(id=>{
+    const el=document.getElementById('view-'+id);
+    if(el)el.style.display=id===v?'block':'none';
+  });
+  applyAll();
+}
+
+function getFiltered(){
+  let d=getActiveMerged();
+  if(selMonth) d=d.filter(r=>mKey(r.date)===selMonth);
+  else if(period>0){const cut=new Date();cut.setDate(cut.getDate()-period);d=d.filter(r=>r.date>=cut);}
+  if(zone==='st'){
+    // ดูแค่ ST — ซ่อน Non
+    d=d.map(r=>({...r,nonLock:0,nonRai:0,l1n:0,l2n:0,
+      nonOnlineLock:0,nonWalkInLock:0,nonExtraLock:0,nonCancelLock:0,nonAbsentLock:0}));
+  } else if(zone==='non'){
+    // ดูแค่ Non — ย้าย Non fields มาที่ ST fields เพื่อให้ KPI/กราฟแสดงถูก
+    d=d.map(r=>({...r,
+      onlineLock:r.nonOnlineLock||0,
+      onlineRai:0,
+      walkInLock:r.nonWalkInLock||0,
+      walkInRai:r.nonRai||0,
+      extraLock:r.nonExtraLock||0,
+      cancelLock:r.nonCancelLock||0,
+      absentLock:r.nonAbsentLock||0,
+      l1:r.l1n||0, l2:r.l2n||0,
+      freeDay:r.nonFree||r.freeDay,
+      nonLock:0,nonRai:0,l1n:0,l2n:0,
+      nonOnlineLock:0,nonWalkInLock:0,nonExtraLock:0,nonCancelLock:0,nonAbsentLock:0
+    }));
+  }
+  return d;
+}
+
+function updateRange(d){
+  if(!d.length){document.getElementById('rtRange').textContent='ไม่มีข้อมูล';return;}
+  const sorted=[...d].sort((a,b)=>a.date-b.date);
+  document.getElementById('rtRange').textContent=`${fmtD(sorted[0].date)} – ${fmtD(sorted[sorted.length-1].date)}`;
+}
+
+function applyAll(){
+  const d=getFiltered();
+  
+  if(view==='overview') renderOverview(d);
+  else if(view==='freeday') renderFreeday(d);
+  else if(view==='forecast') renderForecast();
+  else if(view==='rawdata') renderRaw(d);
+}
+
+// ── OVERVIEW ──
+function renderOverview(d){
+  // คำนวณ KPI
+  let revSTsum=0,revNonSum=0,revNormal=0,disc=0,l1=0,l2=0;
+  let fdays=0,absent=0,cancel=0,extra=0,rai=0,lock=0;
+  d.forEach(r=>{
+    revSTsum+=revST(r);revNonSum+=revNon(r);
+    revNormal+=revSTNormal(r)+revNon({...r,nonFree:false,nonFree:false});
+    disc+=discST(r);l1+=r.l1+r.l1n;l2+=r.l2+r.l2n;
+    if(r.freeDay)fdays++;
+    absent+=r.absentLock;cancel+=r.cancelLock;extra+=r.extraLock;
+    rai+=getRai(r,group);lock+=getLock(r,group);
+  });
+  const days=d.length||1;
+  animateNumber(document.getElementById('k-revbefore'),revNormal);
+  animateNumber(document.getElementById('k-disc'),disc);
+  document.getElementById('k-disc-sub').textContent=`${fdays} วัน FreeDay`;
+  animateNumber(document.getElementById('k-revst'),revSTsum);
+  animateNumber(document.getElementById('k-revtotal'),revSTsum+revNonSum);
+  animateNumber(document.getElementById('k-elec'),l1+l2);
+  document.getElementById('k-elec-sub').textContent=`L1: ${fmtN(l1)} | L2: ${fmtN(l2)} ฿`;
+  // ดึงตรงจาก raw data ไม่ผ่าน getLock
+  const totalAbsent=d.reduce((s,r)=>s+(r.absentLock||0),0);
+  const totalCancel=d.reduce((s,r)=>s+(r.cancelLock||0),0);
+  const totalExtra=d.reduce((s,r)=>s+(r.extraLock||0),0);
+  document.getElementById('k-fdays').textContent=fmtN(fdays);
+  document.getElementById('k-absent').textContent=fmtN(totalAbsent);
+  document.getElementById('k-cancel').textContent=fmtN(totalCancel);
+  document.getElementById('k-extra').textContent=fmtN(totalExtra);
+  animateNumber(document.getElementById('k-rai'),rai);
+  document.getElementById('k-rai-sub').textContent=fmtN(rai/days,1);
+  animateNumber(document.getElementById('k-lock'),lock);
+  document.getElementById('k-lock-sub').textContent=fmtN(lock/days,1);
+  
+  // Target summary
+  const avgActual=lock/days;
+  const hitDays=d.filter(r=>getLock(r,group)>=targetLock).length;
+  const missDays=d.length-hitDays;
+  const hitPct=d.length>0?(hitDays/d.length*100).toFixed(1)+'%':'—';
+  const td=document.getElementById('targetDisplay');if(td)td.textContent=fmtN(targetLock);
+  const ta=document.getElementById('targetActual');if(ta)ta.textContent=fmtN(avgActual,1);
+  const th=document.getElementById('targetHit');if(th)th.textContent=fmtN(hitDays);
+  const tm=document.getElementById('targetMiss');if(tm)tm.textContent=fmtN(missDays);
+  const tp=document.getElementById('targetPct');if(tp)tp.textContent=hitPct;
+
+  // MAIN CHART — แท่ง=ราย เส้น=ล็อก รายวัน (60 วันล่าสุด)
+  const sorted=[...d].sort((a,b)=>a.date-b.date);
+  const daily=sorted.slice(-90);
+    dChart('cMain');
+  // คำนวณ max ของ ราย และ ล็อก เพื่อปรับ scale
+  const maxRai=Math.max(...daily.map(r=>getRai(r,group)),1);
+  const maxLock=Math.max(...daily.map(r=>getLock(r,group)),targetLock,1);
+  // ทำให้เส้นล็อกอยู่สูงกว่าแท่งราย โดยปรับ max ของแต่ละแกน
+  const raiMax=maxRai*3.5; // เพิ่ม max ทำให้แท่งเขียวดูเล็กลง มีช่องว่างด้านบน
+  const lockMax=maxLock*1.05;
+
+  charts.cMain=makeChart('cMain',{
+    data:{
+      labels:daily.map(r=>fmtD(r.date)),
+      datasets:[
+        {type:'bar',label:'จำนวนราย',data:daily.map(r=>getRai(r,group)),backgroundColor:daily.map(r=>r.freeDay?'rgba(240,165,0,.7)':'rgba(61,214,140,.6)'),yAxisID:'y',order:3},
+        {type:'line',label:'จำนวนล็อก',data:daily.map(r=>getLock(r,group)),borderColor:'rgba(240,122,53,1)',backgroundColor:'rgba(240,122,53,.05)',borderWidth:2,pointRadius:1.5,fill:false,tension:.3,yAxisID:'y',order:1},
+        {type:'line',label:`เป้าหมาย (${fmtN(targetLock)} ล็อก)`,data:daily.map(()=>targetLock),borderColor:'rgba(167,139,250,.9)',borderWidth:2,borderDash:[6,3],pointRadius:0,fill:false,yAxisID:'y',order:2},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      animation:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{color:'#9aa3bc',font:{family:'Noto Sans Thai',size:11}}},
+        tooltip:{callbacks:{title:items=>`${items[0].label} (${DAYS[new Date(daily[items[0].dataIndex]?.date).getDay()]})`}}
+      },
+      scales:{
+        x:{ticks:{color:'#5c6480',font:{family:'Noto Sans Thai',size:9},maxTicksLimit:15,maxRotation:0},grid:{color:'rgba(255,255,255,.04)'}},
+        y:{position:'left',min:0,max:lockMax,title:{display:true,text:'ราย / ล็อก',color:'#9aa3bc',font:{size:10}},ticks:{color:'#9aa3bc',font:{family:'JetBrains Mono',size:9}},grid:{color:'rgba(255,255,255,.04)'}},
+      }
+    }
+  });
+
+  // Monthly stacked bar
+  const mon={};
+  sorted.forEach(r=>{
+    const k=mLbl(r.date);if(!mon[k])mon[k]={o:0,w:0,e:0,n:0,c:0};
+    mon[k].o+=Math.max(0,r.onlineLock-r.absentLock-r.cancelLock);
+    mon[k].w+=r.walkInLock;mon[k].e+=r.extraLock;mon[k].n+=r.nonLock;
+    mon[k].c+=r.cancelLock+r.absentLock;
+  });
+  const mks=Object.keys(mon);
+  dChart('cMonthly');
+  charts.cMonthly=makeChart('cMonthly',{type:'bar',data:{labels:mks,datasets:[
+    {label:'ออนไลน์สุทธิ',data:mks.map(k=>mon[k].o),backgroundColor:'rgba(74,158,255,.8)',borderRadius:2,stack:'s'},
+    {label:'วอคอิน ST',data:mks.map(k=>mon[k].w),backgroundColor:'rgba(240,165,0,.75)',borderRadius:2,stack:'s'},
+    {label:'Non',data:mks.map(k=>mon[k].n),backgroundColor:'rgba(167,139,250,.7)',borderRadius:2,stack:'s'},
+    {label:'เสริม',data:mks.map(k=>mon[k].e),backgroundColor:'rgba(61,214,140,.65)',borderRadius:2,stack:'s'},
+    {label:'ยกเลิก/ลา',data:mks.map(k=>mon[k].c),backgroundColor:'rgba(224,92,92,.55)',borderRadius:2,stack:'s'},
+  ]},options:cOpts()});
+
+  // Weekday avg
+  const ws=[0,0,0,0,0,0,0],wc=[0,0,0,0,0,0,0];
+  d.forEach(r=>{const wd=r.date.getDay();ws[wd]+=getLock(r,group);wc[wd]++;});
+  const wa=ws.map((s,i)=>wc[i]?+(s/wc[i]).toFixed(1):0);
+  dChart('cWeekday');
+  charts.cWeekday=makeChart('cWeekday',{type:'bar',data:{labels:DAYS,datasets:[{data:wa,backgroundColor:wa.map((_,i)=>[0,5,6].includes(i)?'rgba(240,165,0,.8)':'rgba(74,158,255,.7)'),borderRadius:4}]},options:{...cOpts(),plugins:{legend:{display:false}}}});
+
+  // Pie
+  const totO=d.reduce((s,r)=>s+Math.max(0,r.onlineLock-r.absentLock-r.cancelLock),0);
+  const totW=d.reduce((s,r)=>s+r.walkInLock,0);
+  const totN=d.reduce((s,r)=>s+r.nonLock,0);
+  const totE=d.reduce((s,r)=>s+r.extraLock,0);
+  const totC=d.reduce((s,r)=>s+r.cancelLock+r.absentLock,0);
+  dChart('cPie');
+  charts.cPie=makeChart('cPie',{type:'doughnut',data:{labels:['ออนไลน์สุทธิ','วอคอิน ST','Non','เสริม','ยกเลิก/ลา'],datasets:[{data:[totO,totW,totN,totE,totC],backgroundColor:['rgba(74,158,255,.85)','rgba(240,165,0,.85)','rgba(167,139,250,.8)','rgba(61,214,140,.75)','rgba(224,92,92,.65)'],borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom',labels:{color:'#9aa3bc',font:{family:'Noto Sans Thai',size:10},padding:8}}}}});
+
+  // Top/Bottom
+  const s2=[...d].filter(r=>getLock(r,group)>0).sort((a,b)=>getLock(b,group)-getLock(a,group));
+  const top5=s2.slice(0,5),bot5=[...s2].reverse().slice(0,5);
+  document.getElementById('topbot').innerHTML=`
+    <div class="tb-card">
+      <div class="tb-title" style="color:var(--green)">🏆 5 วันที่ล็อกมากสุด</div>
+      ${top5.map((r,i)=>`<div class="tb-row top"><div class="tb-num">${i+1}</div><div class="tb-date">${fmtD(r.date)} <span style="color:var(--ink3);font-size:10px">${DAYS[r.date.getDay()]}</span></div><div class="tb-val">${fmtN(getLock(r,group))}</div></div>`).join('')}
+    </div>
+    <div class="tb-card">
+      <div class="tb-title" style="color:var(--red)">📉 5 วันที่ล็อกน้อยสุด</div>
+      ${bot5.map((r,i)=>`<div class="tb-row bot"><div class="tb-num">${i+1}</div><div class="tb-date">${fmtD(r.date)} <span style="color:var(--ink3);font-size:10px">${DAYS[r.date.getDay()]}</span></div><div class="tb-val">${fmtN(getLock(r,group))}</div></div>`).join('')}
+    </div>`;
+}
+
+// ── FREEDAY ──
+function renderFreeday(d){
+  const fds=d.filter(r=>r.freeDay);
+  let td=0,tn=0,ta=0;
+  fds.forEach(r=>{td+=discST(r);tn+=revSTNormal(r);ta+=revST(r);});
+  document.getElementById('fdKpi').innerHTML=`
+    <div class="fd-kpi"><div class="fd-kpi-val">${fds.length}</div><div class="fd-kpi-lbl">จำนวนวันฝน</div></div>
+    <div class="fd-kpi"><div class="fd-kpi-val">${fmtN(td)}</div><div class="fd-kpi-lbl">รายได้ที่เสียไป (฿)</div></div>
+    <div class="fd-kpi"><div class="fd-kpi-val">${fmtN(tn)}</div><div class="fd-kpi-lbl">รายได้ถ้าไม่มีวันฝน (฿)</div></div>
+    <div class="fd-kpi"><div class="fd-kpi-val">${fmtN(ta)}</div><div class="fd-kpi-lbl">รายได้จริง (฿)</div></div>
+    <div class="fd-kpi"><div class="fd-kpi-val">${tn>0?(td/tn*100).toFixed(1)+'%':'—'}</div><div class="fd-kpi-lbl">% ที่หายไป</div></div>
+  `;
+  const fdm={};
+  [...d].sort((a,b)=>a.date-b.date).forEach(r=>{const k=mLbl(r.date);if(!fdm[k])fdm[k]={d:0,c:0};if(r.freeDay){fdm[k].d+=discST(r);fdm[k].c++;}});
+  const fmks=Object.keys(fdm);
+  dChart('cFDMonth');charts.cFDMonth=makeChart('cFDMonth',{type:'bar',data:{labels:fmks,datasets:[{label:'ส่วนลดวันฝน (฿)',data:fmks.map(k=>fdm[k].d),backgroundColor:'rgba(240,165,0,.7)',borderRadius:3}]},options:cOpts()});
+  dChart('cFDCount');charts.cFDCount=makeChart('cFDCount',{type:'bar',data:{labels:fmks,datasets:[{label:'จำนวนวันฝน',data:fmks.map(k=>fdm[k].c),backgroundColor:'rgba(61,214,140,.7)',borderRadius:3}]},options:cOpts()});
+  document.getElementById('fdTbl').innerHTML=fds.sort((a,b)=>b.date-a.date).map(r=>{
+    const po=isWknd(r.date)?130:100,dc=discST(r),ac=revST(r),nm=revSTNormal(r);
+    return`<tr><td style="color:var(--gold)">${fmtD(r.date)}</td><td>${DAYS[r.date.getDay()]}</td><td class="num">${fmtN(r.onlineLock)}</td><td class="num">${fmtN(r.absentLock)}</td><td class="num">${fmtN(r.cancelLock)}</td><td class="num">${po} → ${po/2} ฿</td><td class="num">${fmtN(nm)}</td><td class="num">${fmtN(ac)}</td><td class="num" style="color:var(--red);font-weight:700">−${fmtN(dc)}</td></tr>`;
+  }).join('');
+}
+
+// ── FORECAST ──
+function renderForecast(){
+  const sorted=[...getActiveMerged()].sort((a,b)=>a.date-b.date);
+  const mon={};
+  sorted.forEach(r=>{const k=mKey(r.date);if(!mon[k])mon[k]={lock:0,rev:0,days:0};mon[k].lock+=getLock(r,'all');mon[k].rev+=revST(r)+revNon(r);mon[k].days++;});
+  const mks=Object.keys(mon).sort();
+  const last3=mks.slice(-3);
+  const avgLock=last3.reduce((s,k)=>s+mon[k].lock/mon[k].days,0)/last3.length;
+  const avgRev=last3.reduce((s,k)=>s+mon[k].rev/mon[k].days,0)/last3.length;
+  const fcLock=Math.round(avgLock*30),fcRev=Math.round(avgRev*30);
+  document.getElementById('fcCards').innerHTML=`
+    <div class="fc-card"><div class="fc-val">${fmtN(avgLock,1)}</div><div class="fc-lbl">ล็อกเฉลี่ย/วัน (3 เดือน)</div></div>
+    <div class="fc-card"><div class="fc-val">${fmtN(fcLock)}</div><div class="fc-lbl">ล็อกพยากรณ์ (30 วัน)</div></div>
+    <div class="fc-card"><div class="fc-val">${fmtN(avgRev)}</div><div class="fc-lbl">รายรับเฉลี่ย/วัน (฿)</div></div>
+    <div class="fc-card"><div class="fc-val">${fmtN(fcRev)}</div><div class="fc-lbl">รายรับพยากรณ์ (฿)</div></div>
+  `;
+  document.getElementById('fcNote').innerHTML=`คำนวณจากค่าเฉลี่ยต่อวันของ <strong>${last3.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));}).join(', ')}</strong> → ฉาย 30 วันข้างหน้า | เป็นการพยากรณ์จากสถิติย้อนหลังเท่านั้น`;
+  // ตั้งค่า default ล็อก/วัน จากพยากรณ์
+  const wiInput=document.getElementById('wiLock');
+  if(wiInput&&!wiInput.value) wiInput.value=Math.round(avgLock);
+  calcWhatIf();
+  dChart('cFC');
+  charts.cFC=makeChart('cFC',{type:'line',data:{labels:[...mks.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));}),'พยากรณ์'],datasets:[
+    {label:'ล็อกจริง',data:[...mks.map(k=>mon[k].lock)],borderColor:'rgba(74,158,255,.9)',backgroundColor:'rgba(74,158,255,.05)',borderWidth:2,pointRadius:2.5,fill:true,tension:.3},
+    {label:'ล็อกพยากรณ์',data:[...mks.map(()=>null),fcLock],borderColor:'rgba(240,165,0,.9)',borderWidth:2,borderDash:[5,3],pointRadius:5,pointStyle:'star',fill:false},
+  ]},options:cOpts()});
+  dChart('cAvg');
+  charts.cAvg=makeChart('cAvg',{type:'bar',data:{labels:mks.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));}),datasets:[{label:'ล็อกเฉลี่ย/วัน',data:mks.map(k=>+(mon[k].lock/mon[k].days).toFixed(1)),backgroundColor:'rgba(61,214,140,.7)',borderRadius:3}]},options:cOpts()});
+}
+
+// ── RAW ──
+function renderRaw(d){
+  document.getElementById('rawCount').textContent=`แสดง ${Math.min(d.length,200)} จาก ${d.length} แถว`;
+  document.getElementById('rawTbl').innerHTML=d.slice(0,200).map(r=>{
+    const wk=isWknd(r.date),fd=r.freeDay;
+    const net=Math.max(0,r.onlineLock-r.absentLock-r.cancelLock);
+    const po=wk?130:100,pw=wk?160:130;
+    const rv=revST(r)+revNon(r);
+    return`<tr>
+      <td style="color:${fd?'var(--gold)':wk?'var(--green)':'var(--ink)'}">${fmtD(r.date)}</td>
+      <td style="color:${wk?'var(--gold)':'var(--ink2)'}">${DAYS[r.date.getDay()]}</td>
+      <td class="num">${fmtN(net)}</td>
+      <td class="num">${fmtN(r.walkInLock)}</td>
+      <td class="num">${r.extraLock||'—'}</td>
+      <td class="num" style="color:var(--purple)">${r.nonLock||'—'}</td>
+      <td class="num" style="color:var(--red)">${r.cancelLock||'—'}</td>
+      <td class="num" style="color:var(--red)">${r.absentLock||'—'}</td>
+      <td class="num" style="color:var(--ink3);font-size:10px">${fd?`${po/2}/${pw}`:`${po}/${pw}`}</td>
+      <td class="num" style="font-weight:700;color:var(--green)">${fmtN(rv)}</td>
+      <td class="num">${r.l1+r.l1n>0?fmtN(r.l1+r.l1n):'—'}</td>
+      <td class="num">${r.l2+r.l2n>0?fmtN(r.l2+r.l2n):'—'}</td>
+      <td>${fd?'<span class="tag tag-free">วันฝน</span>':wk?'<span class="tag tag-wknd">ศ–อา</span>':'<span class="tag tag-ok">ปกติ</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Plugin วาดเส้นจากซ้ายไปขวา เหมือน progress bar
+const revealPlugin={
+  id:'reveal',
+  beforeDraw(chart){
+    if(chart._revealProgress===undefined) return;
+    const{ctx,chartArea:{left,top,right,bottom}}=chart;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(left,top,(right-left)*chart._revealProgress,bottom-top+2);
+    ctx.clip();
+  },
+  afterDraw(chart){
+    if(chart._revealProgress!==undefined) chart.ctx.restore();
+  }
+};
+Chart.register(revealPlugin);
+
+function animateChartReveal(chart,duration=1200){
+  if(!chart) return;
+  chart._revealProgress=0;
+  const start=performance.now();
+  function step(now){
+    const t=Math.min((now-start)/duration,1);
+    const ease=t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2; // easeInOutQuad
+    chart._revealProgress=ease;
+    chart.draw();
+    if(t<1) requestAnimationFrame(step);
+    else chart._revealProgress=undefined;
+  }
+  requestAnimationFrame(step);
+}
+
+function cOpts(){
+  return{responsive:true,maintainAspectRatio:false,
+    animation:false, // ปิด animation ของ Chart.js ใช้ plugin แทน
+    plugins:{legend:{labels:{color:'#9aa3bc',font:{family:'Noto Sans Thai',size:11}}}},
+    scales:{x:{ticks:{color:'#5c6480',font:{family:'Noto Sans Thai',size:10},maxTicksLimit:12,maxRotation:0},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#5c6480',font:{family:'JetBrains Mono',size:10}},grid:{color:'rgba(255,255,255,.04)'}}}
+  };
+}
+function dChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function makeChart(id,config){
+  dChart(id);
+  // ตรวจว่าเป็น bar หรือ line
+  const hasLine=config.data?.datasets?.some(d=>d.type==='line'||config.type==='line');
+  const hasBar=config.data?.datasets?.some(d=>d.type==='bar'||config.type==='bar');
+  const isLineOnly=config.type==='line'||(hasLine&&!hasBar);
+  const isBarOnly=config.type==='bar';
+  const isMixed=hasLine&&hasBar;
+
+  if(isBarOnly){
+    // กราฟแท่ง — โตจากล่างขึ้นบน
+    config.options=config.options||{};
+    config.options.animation={duration:900,easing:'easeOutQuart',
+      y:{from:(ctx)=>ctx.chart.chartArea?.bottom||0}
+    };
+  } else if(isLineOnly){
+    // กราฟเส้น — reveal จากซ้ายไปขวา
+    config.options=config.options||{};
+    config.options.animation=false;
+  }
+  // Mixed (แท่ง+เส้น) — ใช้ reveal
+
+  charts[id]=new Chart(document.getElementById(id),config);
+
+  // กราฟเส้นหรือ mixed ใช้ reveal plugin
+  if(isLineOnly||isMixed) animateChartReveal(charts[id],1200);
+  return charts[id];
+}
+
+loadAll();
+
+// ── COMPARE ──
+const MONTH_COLORS=['rgba(240,165,0,.85)','rgba(74,158,255,.85)','rgba(61,214,140,.8)','rgba(224,92,92,.8)','rgba(167,139,250,.8)','rgba(240,122,53,.8)','rgba(255,200,60,.8)','rgba(100,200,180,.8)'];
+
+function renderCompare(){
+  const mks=[...selMonths].sort();
+  if(!mks.length){
+    document.getElementById('momGrid').innerHTML='<div style="color:var(--ink3);font-size:12px;padding:10px">เลือกเดือนด้านบนก่อนครับ</div>';
+    return;
+  }
+  // สร้างข้อมูลแต่ละเดือน
+  const monData={};
+  mks.forEach(k=>{
+    const[y,m]=k.split('-');
+    const days=new Date(y,m,0).getDate();
+    monData[k]=Array(days).fill(null);
+  });
+  getActiveMerged().forEach(r=>{
+    const k=mKey(r.date);
+    if(monData[k]){
+      const day=r.date.getDate()-1;
+      monData[k][day]=getLock(r,group);
+    }
+  });
+
+  // กราฟรายวัน overlay
+  const maxDays=Math.max(...mks.map(k=>monData[k].length));
+  const labels=Array.from({length:maxDays},(_,i)=>`วันที่ ${i+1}`);
+  dChart('cCompare');
+  charts.cCompare=makeChart('cCompare',{
+    type:'line',
+    data:{
+      labels,
+      datasets:mks.map((k,i)=>{
+        const[y,m]=k.split('-');
+        return{label:mLbl(new Date(y,m-1,1)),data:monData[k],borderColor:MONTH_COLORS[i%MONTH_COLORS.length],backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:.3,spanGaps:true};
+      })
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#9aa3bc',font:{family:'Noto Sans Thai',size:11}}}},
+      scales:{x:{ticks:{color:'#5c6480',font:{size:9},maxTicksLimit:16},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#5c6480',font:{family:'JetBrains Mono',size:10}},grid:{color:'rgba(255,255,255,.04)'}}}
+    }
+  });
+
+  // รวมต่อเดือน + รายรับ
+  const totals={},revs={};
+  mks.forEach(k=>{totals[k]=0;revs[k]=0;});
+  getActiveMerged().forEach(r=>{
+    const k=mKey(r.date);
+    if(totals[k]!==undefined){totals[k]+=getLock(r,group);revs[k]+=revST(r)+revNon(r);}
+  });
+  const mkLabels=mks.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));});
+  dChart('cMonthTotal');
+  charts.cMonthTotal=makeChart('cMonthTotal',{type:'bar',data:{labels:mkLabels,datasets:[{label:'ล็อกรวม',data:mks.map(k=>totals[k]),backgroundColor:mks.map((_,i)=>MONTH_COLORS[i%MONTH_COLORS.length]),borderRadius:4}]},options:cOpts()});
+  dChart('cMonthRev');
+  charts.cMonthRev=makeChart('cMonthRev',{type:'bar',data:{labels:mkLabels,datasets:[{label:'รายรับ (บาท)',data:mks.map(k=>revs[k]),backgroundColor:mks.map((_,i)=>MONTH_COLORS[i%MONTH_COLORS.length]),borderRadius:4}]},options:cOpts()});
+
+  // MoM cards
+  const allMks=[...new Set(merged.map(r=>mKey(r.date)))].sort();
+  const allTotals={};
+  allMks.forEach(k=>{allTotals[k]=0;});
+  merged.forEach(r=>{const k=mKey(r.date);if(allTotals[k]!==undefined)allTotals[k]+=getLock(r,group);});
+  const days_in={};
+  allMks.forEach(k=>{const[y,m]=k.split('-');days_in[k]=merged.filter(r=>mKey(r.date)===k).length||1;});
+
+  document.getElementById('momGrid').innerHTML=mks.map((k,i)=>{
+    const[y,m]=k.split('-');const lbl=mLbl(new Date(y,m-1,1));
+    const total=allTotals[k]||0;const avg=(total/days_in[k]).toFixed(1);
+    const prevIdx=allMks.indexOf(k)-1;
+    let chgHtml='';
+    if(prevIdx>=0){
+      const pk=allMks[prevIdx];const pt=allTotals[pk]||0;const pa=(pt/days_in[pk]);
+      const pct=pa>0?((avg-pa)/pa*100).toFixed(1):0;
+      const cls=pct>0?'chg-up':pct<0?'chg-dn':'chg-eq';
+      const arrow=pct>0?'▲':pct<0?'▼':'—';
+      chgHtml=`<div class="mom-chg"><span class="${cls}">${arrow} ${Math.abs(pct)}%</span><span style="color:var(--ink3)">vs เดือนก่อน</span></div>`;
+    }
+    return`<div class="mom-card">
+      <div class="mom-month" style="color:${MONTH_COLORS[i%MONTH_COLORS.length]}">${lbl}</div>
+      <div class="mom-val">${fmtN(total)}</div>
+      <div style="font-size:10px;color:var(--ink3)">เฉลี่ย ${avg} ล็อก/วัน</div>
+      ${chgHtml}
+    </div>`;
+  }).join('');
+}
+
+// ── HEATMAP ──
+function renderHeatmap(){
+  const wrap=document.getElementById('hmWrap');
+  if(!wrap) return;
+  
+  // ใช้ข้อมูลทั้งหมดของสาขาที่เลือก ไม่ filter ช่วงเวลา
+  const allData=getActiveMerged();
+  if(!allData||!allData.length){
+    wrap.innerHTML='<div style="color:var(--ink3);padding:20px;text-align:center">ไม่มีข้อมูล</div>';
+    return;
+  }
+  
+  const allMks=[...new Set(allData.map(r=>mKey(r.date)))].sort();
+  const maxLock=Math.max(...allData.map(r=>getLock(r,group)),1);
+  
+  let html='';
+  allMks.forEach(mk=>{
+    const[y,m]=mk.split('-');
+    const yr=parseInt(y), mo=parseInt(m);
+    const label=mLbl(new Date(yr,mo-1,1));
+    const daysInMonth=new Date(yr,mo,0).getDate();
+    const firstDay=new Date(yr,mo-1,1).getDay();
+    
+    const dayMap={};
+    allData.filter(r=>mKey(r.date)===mk).forEach(r=>{
+      dayMap[r.date.getDate()]={lock:getLock(r,group),free:r.freeDay};
+    });
+    
+    html+=`<div class="hm-month-lbl">${label}</div><div class="hm-grid">`;
+    ['อา','จ','อ','พ','พฤ','ศ','ส'].forEach(d=>html+=`<div class="hm-day-lbl">${d}</div>`);
+    for(let i=0;i<firstDay;i++) html+='<div class="hm-empty"></div>';
+    for(let d=1;d<=daysInMonth;d++){
+      const info=dayMap[d];
+      let bg,title;
+      if(!info){
+        bg='background:var(--surface3)';
+        title='ไม่มีข้อมูล';
+      } else if(info.free){
+        bg='background:rgba(61,214,140,.7)';
+        title=`วันฝน | ล็อก: ${info.lock}`;
+      } else {
+        const intensity=Math.min(info.lock/maxLock,1);
+        const a=(0.1+intensity*0.9).toFixed(2);
+        bg=`background:rgba(240,165,0,${a})`;
+        title=`วันที่ ${d} | ล็อก: ${info.lock}`;
+      }
+      html+=`<div class="hm-cell" style="${bg};position:relative" title="${title}">
+        <span style="font-size:8px;color:rgba(255,255,255,.6);position:absolute;top:1px;left:2px;line-height:1">${d}</span>
+      </div>`;
+    }
+    html+='</div>';
+  });
+  wrap.innerHTML=html;
+}
+
+
+// ── BENCHMARK ──
+let bmBranches=new Set(['SS']);
+const BM_COLORS={SS:'rgba(240,165,0,.85)',BG:'rgba(74,158,255,.85)',BN:'rgba(61,214,140,.85)'};
+const BM_NAMES={SS:'ศรีสมาน',BG:'ประตูกรุงเทพ',BN:'บางนา'};
+
+function toggleBmBranch(b,btn){
+  if(bmBranches.has(b)){if(bmBranches.size>1){bmBranches.delete(b);btn.classList.remove('sel');}}
+  else{bmBranches.add(b);btn.classList.add('sel');}
+  renderBenchmark();
+}
+
+function getBranchMerged(b){
+  if(b==='SS') return merged;
+  if(b==='BG') return bgMerged;
+  if(b==='BN') return bnMerged;
+  return [];
+}
+
+function renderBenchmark(){
+  const branches=[...bmBranches];
+  // KPI cards
+  const kpiRow=document.getElementById('bmKpiRow');
+  if(kpiRow){
+    kpiRow.innerHTML=branches.map(b=>{
+      const d=getBranchMerged(b);
+      if(!d.length) return `<div class="mom-card" style="border-color:${BM_COLORS[b]}"><div class="mom-month" style="color:${BM_COLORS[b]}">${BM_NAMES[b]}</div><div style="font-size:11px;color:var(--ink3)">ยังไม่มีข้อมูล</div></div>`;
+      const days=d.length||1;
+      const totalLock=d.reduce((s,r)=>s+getLock(r,'all'),0);
+      const avgLock=(totalLock/days).toFixed(1);
+      const totalRev=d.reduce((s,r)=>s+revST(r)+revNon(r),0);
+      const fds=d.filter(r=>r.freeDay).length;
+      return `<div class="mom-card" style="border-color:${BM_COLORS[b]}">
+        <div class="mom-month" style="color:${BM_COLORS[b]};font-weight:700">${BM_NAMES[b]}</div>
+        <div class="mom-val" style="color:${BM_COLORS[b]}">${fmtN(avgLock,1)}</div>
+        <div style="font-size:10px;color:var(--ink3)">ล็อกเฉลี่ย/วัน</div>
+        <div style="font-size:10px;color:var(--ink2);margin-top:4px">รายรับรวม ${fmtN(totalRev)} ฿</div>
+        <div style="font-size:10px;color:var(--gold);margin-top:2px">วันฝน ${fds} วัน</div>
+      </div>`;
+    }).join('');
+  }
+
+  // กราฟล็อกเฉลี่ย/วัน รายเดือน แต่ละสาขา
+  const allMks=[...new Set(branches.flatMap(b=>getBranchMerged(b).map(r=>mKey(r.date))))].sort();
+  const mkLabels=allMks.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));});
+
+  dChart('cBmAvg');
+  charts.cBmAvg=makeChart('cBmAvg',{
+    type:'bar',
+    data:{
+      labels:mkLabels,
+      datasets:branches.map(b=>{
+        const d=getBranchMerged(b);
+        const mon={};
+        d.forEach(r=>{const k=mKey(r.date);if(!mon[k])mon[k]={s:0,c:0};mon[k].s+=getLock(r,'all');mon[k].c++;});
+        return{label:BM_NAMES[b],data:allMks.map(k=>mon[k]?+(mon[k].s/mon[k].c).toFixed(1):null),backgroundColor:BM_COLORS[b],borderRadius:3};
+      })
+    },
+    options:cOpts()
+  });
+
+  // กราฟล็อกรวมรายเดือน
+  dChart('cBmMonth');
+  charts.cBmMonth=makeChart('cBmMonth',{
+    type:'line',
+    data:{
+      labels:mkLabels,
+      datasets:branches.map(b=>{
+        const d=getBranchMerged(b);
+        const mon={};
+        d.forEach(r=>{const k=mKey(r.date);if(!mon[k])mon[k]=0;mon[k]+=getLock(r,'all');});
+        return{label:BM_NAMES[b],data:allMks.map(k=>mon[k]||null),borderColor:BM_COLORS[b],backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3,spanGaps:true};
+      })
+    },
+    options:cOpts()
+  });
+
+  // กราฟรายวัน 60 วันล่าสุด
+  const today=new Date();
+  const cut=new Date(today);cut.setDate(cut.getDate()-60);
+  // รวม unique dates จากทุกสาขา sort ตาม Date object จริง
+  const dayMapRaw={};
+  branches.forEach(b=>{
+    getBranchMerged(b).filter(r=>r.date>=cut).forEach(r=>{
+      const k=r.date.getTime(); // ใช้ timestamp เป็น key
+      if(!dayMapRaw[k])dayMapRaw[k]={date:r.date,label:fmtD(r.date)};
+      dayMapRaw[k][b]=getLock(r,'all');
+    });
+  });
+  // เรียงตาม timestamp
+  const daySorted=Object.values(dayMapRaw).sort((a,b)=>a.date-b.date);
+  const dayKeys=daySorted.map(d=>d.label);
+  const dayMap={};
+  daySorted.forEach(d=>{dayMap[d.label]=d;});
+  dChart('cBmDaily');
+  charts.cBmDaily=makeChart('cBmDaily',{
+    type:'line',
+    data:{
+      labels:dayKeys,
+      datasets:branches.map(b=>({
+        label:BM_NAMES[b],
+        data:daySorted.map(d=>d[b]||null),
+        borderColor:BM_COLORS[b],
+        backgroundColor:'transparent',
+        borderWidth:1.5,pointRadius:1.5,tension:.3,spanGaps:false
+      }))
+    },
+    options:{...cOpts(),plugins:{legend:{labels:{color:'#9aa3bc',font:{family:'Noto Sans Thai',size:11}}}}}
+  });
+}
+
+
+// ── EXPORT CSV ──
+function exportCSV(){
+  const d=getFiltered();
+  const branchNames={SS:'ศรีสมาน',BG:'ประตูกรุงเทพ',BN:'บางนา'};
+  const header=['วันที่','วัน','สาขา','ออนไลน์สุทธิ','วอคอิน ST','ล็อกเสริม','Non/Car ล็อก','ยกเลิก','ลา','ล็อกรวม','รายรวม','รายรับรวม','ค่าไฟ L1','ค่าไฟ L2','วันฝน','เป้าหมาย','ถึงเป้า'];
+  const rows=d.map(r=>{
+    const net=Math.max(0,r.onlineLock-r.absentLock-r.cancelLock);
+    const totalLock=getLock(r,group);
+    const totalRai=getRai(r,group);
+    const rev=Math.round(revST(r)+revNon(r));
+    const elec=r.l1+r.l1n+r.l2+r.l2n;
+    const hitTarget=totalLock>=targetLock?'ใช่':'ไม่';
+    return[
+      fmtD(r.date),DAYS[r.date.getDay()],branchNames[activeBranch]||activeBranch,
+      net,r.walkInLock,r.extraLock,r.nonLock,
+      r.cancelLock,r.absentLock,totalLock,totalRai,rev,
+      r.l1+(r.l1n||0),r.l2+(r.l2n||0),
+      r.freeDay?'ใช่':'ไม่',targetLock,hitTarget
+    ];
+  });
+  const csvContent='﻿'+[header,...rows].map(row=>row.map(v=>`"${v}"`).join(',')).join('\n');
+  const blob=new Blob([csvContent],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const brName=branchNames[activeBranch]||activeBranch;
+  a.href=url;a.download=`SaveOneGo_${brName}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();URL.revokeObjectURL(url);
+}
+
+
+
+// ── SPLASH ANIMATION ──
+(function(){
+  // โลโก้ fade in ช้าๆ
+  const logo=document.getElementById('splashLogo');
+  const company=document.getElementById('splashCompany');
+  if(logo){
+    setTimeout(()=>{
+      logo.style.transition='opacity 1.2s ease, transform 1.2s ease';
+      logo.style.opacity='1';
+      logo.style.transform='scale(1)';
+    },300);
+  }
+  if(company){
+    setTimeout(()=>{
+      company.style.transition='opacity 1s ease';
+      company.style.opacity='1';
+    },1200);
+  }
+})();
+
+// ── SIDEBAR TOGGLE ──
+let sidebarOpen=true;
+function toggleSidebar(){
+  sidebarOpen=!sidebarOpen;
+  const sb=document.getElementById('sidebar');
+  const btn=document.getElementById('sidebarBtn');
+  if(sb) sb.classList.toggle('collapsed',!sidebarOpen);
+  if(btn) btn.textContent=sidebarOpen?'◀':'▶';
+}
+
+// ── DARK/LIGHT MODE จำค่า ──
+let isDark=localStorage.getItem('swTheme')!=='light';
+function toggleTheme(){
+  isDark=!isDark;
+  document.body.classList.toggle('light-mode',!isDark);
+  const btn=document.getElementById('themeBtn');
+  if(btn) btn.textContent=isDark?'🌙 Dark':'☀️ Light';
+  localStorage.setItem('swTheme',isDark?'dark':'light');
+  if(Object.keys(charts).length>0) applyAll();
+}
+// โหลดค่า theme จาก localStorage
+(function(){
+  if(!isDark){
+    document.body.classList.add('light-mode');
+    const btn=document.getElementById('themeBtn');
+    if(btn) btn.textContent='☀️ Light';
+  }
+})();
+
+// ── AUTO REFRESH ──
+let autoRefreshInterval=null;
+let autoRefreshMin=5;
+function startAutoRefresh(minutes){
+  if(autoRefreshInterval) clearInterval(autoRefreshInterval);
+  autoRefreshMin=minutes||5;
+  autoRefreshInterval=setInterval(()=>{
+    console.log('Auto refresh...');
+    refreshBranch();
+  },autoRefreshMin*60*1000);
+}
+// เริ่ม auto refresh ทุก 5 นาที
+startAutoRefresh(5);
+
+// ── KPI ANIMATE ──
+function animateNumber(el,target,duration=1400){
+  if(!el) return;
+  const start=0;
+  const startTime=performance.now();
+  const isFloat=String(target).includes('.');
+  function update(now){
+    const elapsed=now-startTime;
+    const progress=Math.min(elapsed/duration,1);
+    const ease=1-Math.pow(1-progress,3);
+    const current=start+(target-start)*ease;
+    el.textContent=isFloat?fmtN(current,1):fmtN(Math.round(current));
+    if(progress<1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+
+
+// ── WHAT IF ──
+function calcWhatIf(){
+  const lockPerDay=parseFloat(document.getElementById('wiLock')?.value)||0;
+  const days=parseInt(document.getElementById('wiDays')?.value)||30;
+  // คำนวณ % วันหยุดอัตโนมัติจากวันที่จริง
+  const startDate=new Date();
+  let wkndDaysAuto=0;
+  for(let i=0;i<days;i++){const d=new Date(startDate);d.setDate(d.getDate()+i);if([0,5,6].includes(d.getDay()))wkndDaysAuto++;}
+  const wkndPct=wkndDaysAuto/days;
+  const res=document.getElementById('wiResult');
+  const note=document.getElementById('wiNote');
+  if(!res||lockPerDay<=0) return;
+
+  const wkndDays=Math.round(days*wkndPct);
+  const wdDays=days-wkndDays;
+  
+  // คำนวณรายรับตามสาขา
+  let revPerDay=0;
+  if(activeBranch==='SS'){
+    const po_wd=100, po_wk=130, pw_wd=130, pw_wk=160;
+    // สมมติ 70% online 30% walkin
+    const onlineWd=lockPerDay*0.7*po_wd, walkWd=lockPerDay*0.3*pw_wd;
+    const onlineWk=lockPerDay*0.7*po_wk, walkWk=lockPerDay*0.3*pw_wk;
+    revPerDay=(onlineWd*wdDays+onlineWk*wkndDays+walkWd*wdDays+walkWk*wkndDays)/days;
+  } else {
+    const m=new Date().getMonth()+1;
+    const isHigh=(m>=11||m<=2);
+    const p_wd=activeBranch==='BG'?(isHigh?300:250):(isHigh?250:200);
+    const p_wk=activeBranch==='BG'?(isHigh?350:300):(isHigh?300:250);
+    revPerDay=(p_wd*wdDays+p_wk*wkndDays)/days*lockPerDay;
+  }
+
+  const totalLock=lockPerDay*days;
+  const totalRev=Math.round(revPerDay*days);
+  const revPerDayRound=Math.round(revPerDay);
+
+  res.innerHTML=`
+    <div class="fc-card"><div class="fc-val">${fmtN(lockPerDay,1)}</div><div class="fc-lbl">ล็อก/วัน (จำลอง)</div></div>
+    <div class="fc-card"><div class="fc-val">${fmtN(totalLock)}</div><div class="fc-lbl">ล็อกรวม ${days} วัน</div></div>
+    <div class="fc-card" style="background:rgba(63,185,80,.1);border-color:rgba(63,185,80,.3)"><div class="fc-val" style="color:var(--green)">${fmtN(revPerDayRound)}</div><div class="fc-lbl">รายรับเฉลี่ย/วัน (฿)</div></div>
+    <div class="fc-card" style="background:rgba(63,185,80,.1);border-color:rgba(63,185,80,.3)"><div class="fc-val" style="color:var(--green)">${fmtN(totalRev)}</div><div class="fc-lbl">รายรับรวม ${days} วัน (฿)</div></div>
+  `;
+  note.innerHTML=`สมมติฐาน: ${wkndDays} วันหยุด (ศ-อา) ${wdDays} วันธรรมดา | สาขา ${activeBranch} | ราคาตามฤดูกาลปัจจุบัน`;
+}
+
+</script>
+</body>
+</html>
