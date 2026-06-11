@@ -22,8 +22,12 @@ body.light-mode {
   --blue:#2563eb; --purple:#7c3aed;
   --shadow:0 2px 8px rgba(0,0,0,.1);
 }
+body.light-mode .brand-name{color:#1a1f2e!important;}
+body.light-mode .splash-logo-savewan{color:#1a1f2e!important;}
+body.light-mode .login-logo-text{color:#1a1f2e!important;}
+body.light-mode .splash{background:#f5f6fa!important;}
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-serif;font-size:13px;line-height:1.5;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-serif;font-size:13px;line-height:1.5;display:flex;flex-direction:column;height:100vh;overflow:hidden;}#appWrapper_removed{display:flex;flex-direction:column;height:100%;}
 
 /* HEADER */
 .header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:50px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
@@ -37,7 +41,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 .rfbtn:hover{border-color:var(--gold);color:var(--gold);}
 
 /* LAYOUT */
-.layout{display:flex;flex:1;overflow:hidden;}
+.layout{display:flex;flex:1;min-height:0;overflow:hidden;}
 
 /* SIDEBAR */
 .sidebar{width:210px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
@@ -231,22 +235,43 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 /* BENCHMARK */
 .bm-note{background:rgba(74,158,255,.06);border:1px solid rgba(74,158,255,.2);border-radius:8px;padding:14px;text-align:center;color:var(--ink2);font-size:12px;}
 
+
+
+/* ADMIN ONLY */
+.admin-only{display:block;}
+body.manager-mode .admin-only{display:none!important;}
+
+/* LOGIN PAGE */
+#loginPage{position:fixed;inset:0;background:var(--bg);z-index:8888;display:flex;align-items:center;justify-content:center;flex-direction:column;}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 40px;width:360px;max-width:90vw;}
+.login-logo{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px;}
+.login-logo-text{font-size:32px;font-weight:900;color:#fff;font-family:'Noto Sans Thai',sans-serif;}
+.login-logo-go{background:#3dd68c;color:#0a0a0a;padding:2px 10px;border-radius:5px;font-size:32px;font-weight:900;}
+.login-company{text-align:center;font-size:11px;color:var(--ink3);margin-bottom:28px;}
+.login-label{font-size:11px;color:var(--ink3);margin-bottom:5px;display:block;}
+.login-input{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--ink);font-size:14px;font-family:'Noto Sans Thai',sans-serif;outline:none;box-sizing:border-box;margin-bottom:14px;transition:border-color .2s;}
+.login-input:focus{border-color:var(--green);}
+.login-btn{width:100%;padding:12px;border-radius:8px;border:none;background:#3dd68c;color:#0a0a0a;font-size:15px;font-weight:700;font-family:'Noto Sans Thai',sans-serif;cursor:pointer;transition:all .2s;}
+.login-btn:hover{background:#2bc47a;}
+.login-btn:disabled{opacity:.6;cursor:not-allowed;}
+.login-err{color:var(--red);font-size:12px;text-align:center;margin-top:10px;min-height:18px;}
+
 /* SPLASH SCREEN */
-.splash{position:fixed;inset:0;background:#0a0a0a;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;}
-.splash-logo{display:flex;align-items:center;gap:0;}
-.splash-sg{font-size:72px;font-weight:900;color:#3dd68c;letter-spacing:-3px;font-family:'JetBrains Mono',monospace;transition:all .6s ease;}
-.splash-expand{display:flex;align-items:center;overflow:hidden;max-width:0;transition:max-width .8s ease;}
-.splash-expand.show{max-width:500px;}
+.splash{position:fixed;inset:0;background:#0a0a0a;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0;}
+.splash-sg{font-size:80px;font-weight:900;color:#3dd68c;letter-spacing:-2px;font-family:'JetBrains Mono',monospace;opacity:1;transition:all .7s cubic-bezier(.4,0,.2,1);}
+.splash-sg.shrink{font-size:52px;color:#fff;letter-spacing:-1px;}
+.splash-full{display:flex;align-items:center;gap:0;overflow:hidden;max-width:0;opacity:0;transition:max-width .9s cubic-bezier(.4,0,.2,1),opacity .5s ease;}
+.splash-full.show{max-width:600px;opacity:1;}
 .splash-logo-savewan{font-size:52px;font-weight:900;color:#fff;font-family:'Noto Sans Thai',sans-serif;white-space:nowrap;}
-.splash-logo-go{background:#3dd68c;color:#0a0a0a;padding:2px 12px;border-radius:5px;margin-left:6px;font-size:52px;font-weight:900;font-family:'Noto Sans Thai',sans-serif;white-space:nowrap;}
-.splash-company{font-size:13px;color:rgba(255,255,255,.5);margin-top:10px;letter-spacing:1px;font-family:'Noto Sans Thai',sans-serif;transition:opacity .5s ease;}
-.splash-company.show{opacity:1!important;}
-.splash-bar{width:200px;height:3px;background:rgba(255,255,255,.1);border-radius:3px;margin-top:20px;overflow:hidden;opacity:0;animation:splashIn .4s ease forwards 2s;}
-.splash-bar-fill{height:100%;background:#3dd68c;border-radius:3px;animation:loadBar 2.5s ease forwards 2s;}
-@keyframes splashIn{to{opacity:1;}}
-@keyframes loadBar{from{width:0}to{width:100%}}
+.splash-logo-go{background:#3dd68c;color:#0a0a0a;padding:2px 14px;border-radius:6px;margin-left:8px;font-size:52px;font-weight:900;font-family:'Noto Sans Thai',sans-serif;white-space:nowrap;}
+.splash-company{font-size:13px;color:rgba(255,255,255,.45);margin-top:12px;letter-spacing:1.5px;font-family:'Noto Sans Thai',sans-serif;opacity:0;transition:opacity .6s ease;}
+.splash-company.show{opacity:1;}
+.splash-bar{width:220px;height:3px;background:rgba(255,255,255,.1);border-radius:3px;margin-top:24px;overflow:hidden;opacity:0;transition:opacity .3s ease;}
+.splash-bar.show{opacity:1;}
+.splash-bar-fill{height:100%;background:#3dd68c;border-radius:3px;width:0;transition:width 2.5s ease;}
+.splash-bar-fill.go{width:100%;}
 @keyframes splashOut{to{opacity:0;pointer-events:none;}}
-.splash.hide{animation:splashOut .5s ease forwards;}
+.splash.hide{animation:splashOut .6s ease forwards;}
 
 
 /* SIDEBAR TOGGLE */
@@ -276,21 +301,204 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 }
 
 </style>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD37irb272WHjyIxj3KE5hUZB4dXMe6Pvs",
+      authDomain: "saveone-go-5fe9d.firebaseapp.com",
+      projectId: "saveone-go-5fe9d",
+      storageBucket: "saveone-go-5fe9d.firebasestorage.app",
+      messagingSenderId: "868815689407",
+      appId: "1:868815689407:web:a828e97b081da19908180a",
+      measurementId: "G-3377NJYQFG"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // เช็ค login state
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        let role = 'manager';
+        let branches = ['SS'];
+        let perms = {
+          showRevenue: false,
+          showElec: false,
+          showExport: false,
+          showPriceNote: false,
+          showFreeday: false,
+          showWhatIf: false
+        };
+
+        try {
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          if (userDoc.exists()) {
+            const d = userDoc.data();
+            role = d.role || 'manager';
+            branches = d.branches || ['SS'];
+            // ถ้าเป็น admin ให้เห็นทุกอย่าง
+            if (role === 'admin') {
+              perms = {
+                showRevenue: true,
+                showElec: true,
+                showExport: true,
+                showPriceNote: true,
+                showFreeday: true,
+                showWhatIf: true
+              };
+            } else {
+              // อ่านค่าจาก Firestore ถ้ามี ไม่งั้นใช้ default false
+              perms.showRevenue = d.showRevenue === true;
+              perms.showElec = d.showElec === true;
+              perms.showExport = d.showExport === true;
+              perms.showPriceNote = d.showPriceNote === true;
+              perms.showFreeday = d.showFreeday === true;
+              perms.showWhatIf = d.showWhatIf === true;
+            }
+          }
+        } catch(e) {
+          console.error('Firestore error:', e);
+        }
+
+        // ซ่อน login page แสดง dashboard
+        document.getElementById('loginPage').style.display = 'none';
+        document.getElementById('mainHeader').style.display = 'flex';
+        document.getElementById('mainLayout').style.display = 'flex';
+
+        // ตั้งค่า global
+        window.userRole = role;
+        window.userBranches = branches;
+        window.userPerms = perms;
+        window.userEmail = user.email;
+
+        // แสดง email ใน header
+        const userEl = document.getElementById('userDisplay');
+        if (userEl) userEl.textContent = user.email;
+
+        // ซ่อนสาขาที่ไม่มีสิทธิ์
+        document.querySelectorAll('.branch-item[data-branch]').forEach(el => {
+          const branch = el.getAttribute('data-branch');
+          el.style.display = branches.includes(branch) ? '' : 'none';
+        });
+
+        // ตั้ง activeBranch เป็นสาขาแรกที่มีสิทธิ์
+        if (typeof activeBranch !== 'undefined' && !branches.includes(activeBranch)) {
+          if(typeof setBranch === 'function'){
+            const firstBtn = document.querySelector('.branch-item[data-branch="'+branches[0]+'"]');
+            if(firstBtn) setBranch(branches[0], firstBtn);
+          }
+        }
+
+        // แสดง/ซ่อน features ตาม permissions
+        // รายรับ (admin only)
+        const revSection = document.getElementById('revSection');
+        if(revSection) revSection.style.display = perms.showRevenue ? '' : 'none';
+        // สถิติการจอง (ทุก role เห็น — ไม่มีตัวเงิน)
+        const statsSection = document.getElementById('statsSection');
+        if(statsSection) statsSection.style.display = '';
+        // ค่าไฟ
+        const elecCard = document.getElementById('k-elec-card');
+        if(elecCard) elecCard.style.display = perms.showElec ? '' : 'none';
+        // Export CSV
+        document.querySelectorAll('.btn-export').forEach(el => {
+          el.style.display = perms.showExport ? '' : 'none';
+        });
+        // หมายเหตุราคา tab
+        const priceTab = document.getElementById('tab-pricenote');
+        if(priceTab) priceTab.style.display = perms.showPriceNote ? '' : 'none';
+        // วันฝน tab
+        const freedayTab = document.getElementById('tab-freeday');
+        if(freedayTab) freedayTab.style.display = perms.showFreeday ? '' : 'none';
+        // What If section
+        const whatifSection = document.getElementById('whatif-section');
+        if(whatifSection) whatifSection.style.display = perms.showWhatIf ? '' : 'none';
+
+        // โหลดข้อมูล
+        if (typeof loadAll === 'function') loadAll();
+
+      } else {
+        document.getElementById('loginPage').style.display = 'flex';
+        document.getElementById('mainHeader').style.display = 'none';
+        document.getElementById('mainLayout').style.display = 'none';
+      }
+    });
+
+    // Login function
+    window.doLogin = async function() {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      const errEl = document.getElementById('loginErr');
+      const btn = document.getElementById('loginBtn');
+      
+      if (!email || !password) {
+        errEl.textContent = 'กรุณากรอก Email และ Password';
+        return;
+      }
+      
+      btn.textContent = 'กำลังเข้าสู่ระบบ...';
+      btn.disabled = true;
+      errEl.textContent = '';
+      
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (e) {
+        btn.textContent = 'เข้าสู่ระบบ';
+        btn.disabled = false;
+        errEl.textContent = 'Email หรือ Password ไม่ถูกต้อง';
+      }
+    };
+
+    // Logout function
+    window.doLogout = async function() {
+      await signOut(auth);
+    };
+
+    // Enter key login
+    window.loginKeyPress = function(e) {
+      if (e.key === 'Enter') window.doLogin();
+    };
+  </script>
 </head>
 <body>
 
 <!-- HEADER -->
-<!-- SPLASH SCREEN -->
 <div class="splash" id="splash">
-  <div class="splash-logo" id="splashLogo" style="opacity:0;transform:scale(.85)">
+  <div style="display:flex;align-items:center;opacity:0;transform:scale(.85);transition:all 1s ease;" id="splashLogo">
     <span class="splash-logo-savewan">เซฟวัน</span>
     <span class="splash-logo-go">GO</span>
   </div>
-  <div class="splash-company" id="splashCompany" style="opacity:0">บริษัท เซฟวันโก จำกัด</div>
-  <div class="splash-bar"><div class="splash-bar-fill"></div></div>
+  <div class="splash-company" id="splashCompany">บริษัท เซฟวันโก จำกัด</div>
+  <div class="splash-bar" id="splashBar"><div class="splash-bar-fill" id="splashFill"></div></div>
 </div>
 
-<div class="header">
+<!-- LOGIN PAGE -->
+<div id="loginPage">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="login-logo-text">เซฟวัน</span>
+      <span class="login-logo-go">GO</span>
+    </div>
+    <div class="login-company">บริษัท เซฟวันโก จำกัด</div>
+    <label class="login-label">Email</label>
+    <input class="login-input" id="loginEmail" type="email" placeholder="email@saveone.com" onkeypress="loginKeyPress(event)">
+    <label class="login-label">Password</label>
+    <input class="login-input" id="loginPassword" type="password" placeholder="••••••••" onkeypress="loginKeyPress(event)">
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">เข้าสู่ระบบ</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- APP WRAPPER -->
+
+
+
+<div class="header" id="mainHeader" style="display:none">
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
@@ -300,27 +508,29 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
   </div>
   <div class="header-right">
     <span class="upd" id="updTime">—</span>
+    <span style="font-size:10px;color:var(--ink3)" id="userDisplay"></span>
     <button class="rfbtn" id="sidebarBtn" onclick="toggleSidebar()" title="พับ/แสดง Sidebar">◀</button>
     <button class="rfbtn" id="themeBtn" onclick="toggleTheme()" title="สลับ Light/Dark Mode">🌙 Dark</button>
     <button class="rfbtn" onclick="refreshBranch()">↻ รีเฟรช</button>
+    <button class="rfbtn" onclick="doLogout()" style="color:var(--red)">ออกจากระบบ</button>
   </div>
 </div>
 
-<div class="layout">
+<div class="layout" id="mainLayout" style="display:none">
 <!-- SIDEBAR -->
 <div class="sidebar" id="sidebar">
 
   <div class="sb-sec">
     <div class="sb-lbl">สาขา</div>
-    <div class="branch-item active" onclick="setBranch('SS',this)">
+    <div class="branch-item active" onclick="setBranch('SS',this)" data-branch="SS">
       <div class="branch-dot" style="background:var(--gold)"></div>
       <div><div class="branch-name">ศรีสมาน</div><div class="branch-sub">SS · มีข้อมูล</div></div>
     </div>
-    <div class="branch-item" onclick="setBranch('BG',this)">
+    <div class="branch-item" onclick="setBranch('BG',this)" data-branch="BG">
       <div class="branch-dot" style="background:var(--blue)"></div>
       <div><div class="branch-name">ประตูกรุงเทพ</div><div class="branch-sub">BG · มีข้อมูล</div></div>
     </div>
-    <div class="branch-item" onclick="setBranch('BN',this)">
+    <div class="branch-item" onclick="setBranch('BN',this)" data-branch="BN">
       <div class="branch-dot" style="background:var(--green)"></div>
       <div><div class="branch-name">บางนา</div><div class="branch-sub">BN · มีข้อมูล</div></div>
     </div>
@@ -409,16 +619,16 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
       <div class="dr-divider"></div>
       <span class="dr-count" id="drGroup">ทุกประเภท</span>
       <div style="margin-left:auto">
-        <button onclick="exportCSV()" style="background:var(--surface2);border:1px solid var(--border);color:var(--ink2);padding:4px 14px;border-radius:5px;cursor:pointer;font-size:11px;font-family:'Noto Sans Thai',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--ink2)'">⬇️ Export CSV</button>
+        <button onclick="exportCSV()" class="btn-export" style="background:var(--surface2);border:1px solid var(--border);color:var(--ink2);padding:4px 14px;border-radius:5px;cursor:pointer;font-size:11px;font-family:'Noto Sans Thai',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--ink2)'">⬇️ Export CSV</button>
       </div>
     </div>
 
     <!-- VIEW TABS -->
     <div class="vtabs">
       <button class="vtab active" onclick="setView('overview',this)">📊 ภาพรวม</button>
-      <button class="vtab" onclick="setView('freeday',this)">🌧 วันฝน</button>
+      <button class="vtab" onclick="setView('freeday',this)" id="tab-freeday">🌧 วันฝน</button>
       <button class="vtab" onclick="setView('forecast',this)">🔮 พยากรณ์</button>
-      <button class="vtab" onclick="setView('pricenote',this)">📋 หมายเหตุราคา</button>
+      <button class="vtab" onclick="setView('pricenote',this)" id='tab-pricenote' class='vtab'>📋 หมายเหตุราคา</button>
       <button class="vtab" onclick="setView('rawdata',this)">📄 ข้อมูลดิบ</button>
       <button class="vtab" onclick="setView('compare',this)">📅 เปรียบเทียบเดือน</button>
       <button class="vtab" onclick="setView('heatmap',this)">🗓 ปฏิทินล็อก</button>
@@ -428,37 +638,39 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
     <!-- ===== OVERVIEW ===== -->
     <div id="view-overview">
 
-      <!-- KPI รายรับ -->
-      <div class="kpi-sec-title">💰 รายรับ</div>
-      <div class="kpi-row">
-        <div class="kpi gold">
-          <div class="kpi-lbl">รายรับก่อนหักส่วนลด</div>
-          <div class="kpi-val" id="k-revbefore">—</div>
-          <div class="kpi-sub">บาท (ถ้าไม่มีวันฝน)</div>
+      <!-- KPI รายรับ (admin only) -->
+      <div id="revSection">
+        <div class="kpi-sec-title">💰 รายรับ</div>
+        <div class="kpi-row">
+          <div class="kpi gold">
+            <div class="kpi-lbl">รายรับก่อนหักส่วนลด</div>
+            <div class="kpi-val" id="k-revbefore">—</div>
+            <div class="kpi-sub">บาท (ถ้าไม่มีวันฝน)</div>
+          </div>
+          <div class="kpi red">
+            <div class="kpi-lbl">ส่วนลดวันฝน (FreeDay)</div>
+            <div class="kpi-val" id="k-disc">—</div>
+            <div class="kpi-sub" id="k-disc-sub">บาท</div>
+          </div>
+          <div class="kpi green">
+            <div class="kpi-lbl">รายรับสุทธิ ST</div>
+            <div class="kpi-val" id="k-revst">—</div>
+            <div class="kpi-sub">บาท</div>
+          </div>
+          <div class="kpi blue">
+            <div class="kpi-lbl">รายรับสุทธิรวม (ST+Non)</div>
+            <div class="kpi-val" id="k-revtotal">—</div>
+            <div class="kpi-sub">บาท</div>
+          </div>
+          <div class="kpi orange" id="k-elec-card">
+            <div class="kpi-lbl">ค่าไฟ (L1+L2)</div>
+            <div class="kpi-val" id="k-elec">—</div>
+            <div class="kpi-sub" id="k-elec-sub">บาท</div>
+          </div>
         </div>
-        <div class="kpi red">
-          <div class="kpi-lbl">ส่วนลดวันฝน (FreeDay)</div>
-          <div class="kpi-val" id="k-disc">—</div>
-          <div class="kpi-sub" id="k-disc-sub">บาท</div>
-        </div>
-        <div class="kpi green">
-          <div class="kpi-lbl">รายรับสุทธิ ST</div>
-          <div class="kpi-val" id="k-revst">—</div>
-          <div class="kpi-sub">บาท</div>
-        </div>
-        <div class="kpi blue">
-          <div class="kpi-lbl">รายรับสุทธิรวม (ST+Non)</div>
-          <div class="kpi-val" id="k-revtotal">—</div>
-          <div class="kpi-sub">บาท</div>
-        </div>
-        <div class="kpi orange">
-          <div class="kpi-lbl">ค่าไฟ (L1+L2)</div>
-          <div class="kpi-val" id="k-elec">—</div>
-          <div class="kpi-sub" id="k-elec-sub">บาท</div>
-        </div>
-      </div>
+      </div><!-- /revSection -->
 
-      <!-- TARGET SUMMARY -->
+      <!-- TARGET SUMMARY (ทุก role เห็น) -->
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <div style="font-size:11px;color:var(--ink3)">🎯 เป้าหมาย <strong style="color:var(--gold)" id="targetDisplay">400</strong> ล็อก/วัน</div>
         <div style="font-size:11px;color:var(--ink2)">เฉลี่ยจริง: <strong id="targetActual" style="color:var(--green)">—</strong> ล็อก/วัน</div>
@@ -467,49 +679,50 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
         <div style="font-size:11px;color:var(--ink2)">% วันที่ถึงเป้า: <strong id="targetPct" style="color:var(--purple)">—</strong></div>
       </div>
 
-      <!-- KPI สถิติ -->
-      <div class="kpi-sec-title">📊 สถิติการจอง</div>
-      <div class="kpi-row">
-        <div class="kpi orange">
-          <div class="kpi-lbl">จำนวนวันฝน</div>
-          <div class="kpi-val" id="k-fdays">—</div>
-          <div class="kpi-sub">วัน FreeDay</div>
-        </div>
-        <div class="kpi red">
-          <div class="kpi-lbl">ลา (ล็อก)</div>
-          <div class="kpi-val" id="k-absent">—</div>
-          <div class="kpi-sub">Absent Lock</div>
-        </div>
-        <div class="kpi red">
-          <div class="kpi-lbl">ไม่มา (ล็อก)</div>
-          <div class="kpi-val" id="k-cancel">—</div>
-          <div class="kpi-sub">Cancel Lock</div>
-        </div>
-        <div class="kpi purple">
-          <div class="kpi-lbl">ล็อกเสริม</div>
-          <div class="kpi-val" id="k-extra">—</div>
-          <div class="kpi-sub">Lock</div>
-        </div>
-        <div class="kpi green">
-          <div class="kpi-lbl">จำนวนราย <span style="color:var(--ink3);font-size:9px">/ เฉลี่ย/วัน ↓</span></div>
-          <div class="kpi-val" id="k-rai">—</div>
-          <div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:rgba(30,25,15,.5);border:1px solid rgba(240,122,53,.4);padding:5px 12px;border-radius:8px;">
-            <span style="font-size:11px;color:rgba(255,255,255,.5)">เฉลี่ย/วัน</span>
-            <span id="k-rai-sub" style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#ffb347;">—</span>
-            <span style="font-size:11px;color:rgba(255,255,255,.5)">ราย</span>
+      <!-- KPI สถิติการจอง (ทุก role เห็น — ไม่มีตัวเงิน) -->
+      <div id="statsSection">
+        <div class="kpi-sec-title">📊 สถิติการจอง</div>
+        <div class="kpi-row">
+          <div class="kpi orange">
+            <div class="kpi-lbl">จำนวนวันฝน</div>
+            <div class="kpi-val" id="k-fdays">—</div>
+            <div class="kpi-sub">วัน FreeDay</div>
+          </div>
+          <div class="kpi red">
+            <div class="kpi-lbl">ลา (ล็อก)</div>
+            <div class="kpi-val" id="k-absent">—</div>
+            <div class="kpi-sub">Absent Lock</div>
+          </div>
+          <div class="kpi red">
+            <div class="kpi-lbl">ไม่มา (ล็อก)</div>
+            <div class="kpi-val" id="k-cancel">—</div>
+            <div class="kpi-sub">Cancel Lock</div>
+          </div>
+          <div class="kpi purple">
+            <div class="kpi-lbl">ล็อกเสริม</div>
+            <div class="kpi-val" id="k-extra">—</div>
+            <div class="kpi-sub">Lock</div>
+          </div>
+          <div class="kpi green">
+            <div class="kpi-lbl">จำนวนราย <span style="color:var(--ink3);font-size:9px">/ เฉลี่ย/วัน ↓</span></div>
+            <div class="kpi-val" id="k-rai">—</div>
+            <div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:rgba(30,25,15,.5);border:1px solid rgba(240,122,53,.4);padding:5px 12px;border-radius:8px;">
+              <span style="font-size:11px;color:rgba(255,255,255,.5)">เฉลี่ย/วัน</span>
+              <span id="k-rai-sub" style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#ffb347;">—</span>
+              <span style="font-size:11px;color:rgba(255,255,255,.5)">ราย</span>
+            </div>
+          </div>
+          <div class="kpi gold">
+            <div class="kpi-lbl">จำนวนล็อก <span style="color:var(--ink3);font-size:9px">/ เฉลี่ย/วัน ↓</span></div>
+            <div class="kpi-val" id="k-lock">—</div>
+            <div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:rgba(20,15,0,.5);border:1px solid rgba(240,165,0,.4);padding:5px 12px;border-radius:8px;">
+              <span style="font-size:11px;color:rgba(255,255,255,.5)">เฉลี่ย/วัน</span>
+              <span id="k-lock-sub" style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#ffd166;">—</span>
+              <span style="font-size:11px;color:rgba(255,255,255,.5)">ล็อก</span>
+            </div>
           </div>
         </div>
-        <div class="kpi gold">
-          <div class="kpi-lbl">จำนวนล็อก <span style="color:var(--ink3);font-size:9px">/ เฉลี่ย/วัน ↓</span></div>
-          <div class="kpi-val" id="k-lock">—</div>
-          <div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:rgba(20,15,0,.5);border:1px solid rgba(240,165,0,.4);padding:5px 12px;border-radius:8px;">
-            <span style="font-size:11px;color:rgba(255,255,255,.5)">เฉลี่ย/วัน</span>
-            <span id="k-lock-sub" style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#ffd166;">—</span>
-            <span style="font-size:11px;color:rgba(255,255,255,.5)">ล็อก</span>
-          </div>
-        </div>
-      </div>
-
+      </div><!-- /statsSection -->
       <!-- MAIN CHART: แท่ง=ราย เส้น=ล็อก -->
       <div class="main-chart-card">
         <div class="mc-header">
@@ -579,7 +792,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
       </div>
 
       <!-- WHAT IF -->
-      <div class="fc-panel" style="margin-top:14px">
+      <div class="fc-panel" id="whatif-section" style="margin-top:14px">
         <div style="font-size:13px;font-weight:700;margin-bottom:4px">🎯 What If — จำลองสถานการณ์</div>
         <div style="font-size:11px;color:var(--ink3);margin-bottom:14px">ใส่จำนวนล็อก/วันที่ต้องการ แล้วดูผลลัพธ์</div>
         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
@@ -829,11 +1042,6 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
         <div class="sc"><div class="sc-title">แนวโน้มล็อกรายวัน ทุกสาขา (60 วันล่าสุด)</div><div style="height:200px;position:relative"><canvas id="cBmDaily"></canvas></div></div>
       </div>
     </div>
-
-  </div><!-- /mainContent -->
-</div><!-- /content -->
-</div><!-- /layout -->
-
 <script>
 const PROXIES={
   SS:'https://script.google.com/macros/s/AKfycbwi_fXqPttjmkiNdjdN46Gqx1cM3-9_k2r4AAjR3b6rBTPPGtVLjUHiidad5mx7pieR/exec',
@@ -1714,11 +1922,12 @@ function renderBenchmark(){
       const avgLock=(totalLock/days).toFixed(1);
       const totalRev=d.reduce((s,r)=>s+revST(r)+revNon(r),0);
       const fds=d.filter(r=>r.freeDay).length;
+      const canSeeRev=window.userPerms?.showRevenue;
       return `<div class="mom-card" style="border-color:${BM_COLORS[b]}">
         <div class="mom-month" style="color:${BM_COLORS[b]};font-weight:700">${BM_NAMES[b]}</div>
         <div class="mom-val" style="color:${BM_COLORS[b]}">${fmtN(avgLock,1)}</div>
         <div style="font-size:10px;color:var(--ink3)">ล็อกเฉลี่ย/วัน</div>
-        <div style="font-size:10px;color:var(--ink2);margin-top:4px">รายรับรวม ${fmtN(totalRev)} ฿</div>
+        <div style="font-size:10px;color:var(--ink2);margin-top:4px">รายรับรวม ${canSeeRev ? fmtN(totalRev)+' ฿' : '—'}</div>
         <div style="font-size:10px;color:var(--gold);margin-top:2px">วันฝน ${fds} วัน</div>
       </div>`;
     }).join('');
@@ -1827,22 +2036,23 @@ function exportCSV(){
 
 // ── SPLASH ANIMATION ──
 (function(){
-  // โลโก้ fade in ช้าๆ
   const logo=document.getElementById('splashLogo');
   const company=document.getElementById('splashCompany');
-  if(logo){
-    setTimeout(()=>{
-      logo.style.transition='opacity 1.2s ease, transform 1.2s ease';
-      logo.style.opacity='1';
-      logo.style.transform='scale(1)';
-    },300);
-  }
-  if(company){
-    setTimeout(()=>{
-      company.style.transition='opacity 1s ease';
-      company.style.opacity='1';
-    },1200);
-  }
+  const bar=document.getElementById('splashBar');
+  const fill=document.getElementById('splashFill');
+  // Step 1: โลโก้ fade in
+  setTimeout(()=>{
+    if(logo){logo.style.opacity='1';logo.style.transform='scale(1)';}
+  },300);
+  // Step 2: แสดงชื่อบริษัท
+  setTimeout(()=>{
+    if(company) company.classList.add('show');
+  },1100);
+  // Step 3: progress bar
+  setTimeout(()=>{
+    if(bar) bar.classList.add('show');
+    setTimeout(()=>{if(fill) fill.classList.add('go');},50);
+  },1300);
 })();
 
 // ── SIDEBAR TOGGLE ──
@@ -1951,6 +2161,5 @@ function calcWhatIf(){
   note.innerHTML=`สมมติฐาน: ${wkndDays} วันหยุด (ศ-อา) ${wdDays} วันธรรมดา | สาขา ${activeBranch} | ราคาตามฤดูกาลปัจจุบัน`;
 }
 
-</script>
-</body>
+</script></body>
 </html>
