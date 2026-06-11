@@ -219,9 +219,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 .mc-pill.sel{background:var(--gold);color:#1a1f2e;border-color:var(--gold);font-weight:700;}
 /* HEATMAP */
 .hm-wrap{overflow-x:auto;}
-.hm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;min-width:500px;}
-.hm-day-lbl{text-align:center;font-size:9px;color:var(--ink3);padding:3px 0;font-weight:700;}
-.hm-cell{aspect-ratio:1;border-radius:3px;cursor:default;transition:transform .1s;position:relative;}
+.hm-grid{display:grid;grid-template-columns:repeat(7,32px);gap:3px;}
+.hm-day-lbl{width:32px;text-align:center;font-size:9px;color:var(--ink3);padding:3px 0;font-weight:700;}
+.hm-cell{width:32px;height:32px;border-radius:3px;cursor:default;transition:transform .1s;position:relative;}
 .hm-cell:hover{transform:scale(1.15);z-index:10;}
 .hm-empty{aspect-ratio:1;}
 .hm-month-lbl{font-size:10px;color:var(--ink3);margin:10px 0 5px;font-weight:600;}
@@ -419,7 +419,8 @@ body.manager-mode .admin-only{display:none!important;}
         const whatifSection = document.getElementById('whatif-section');
         if(whatifSection) whatifSection.style.display = perms.showWhatIf ? '' : 'none';
 
-        // โหลดข้อมูล
+        // โหลดข้อมูล — แสดง splash ก่อน
+        if (typeof showSplash === 'function') showSplash();
         if (typeof loadAll === 'function') loadAll();
 
       } else {
@@ -468,7 +469,7 @@ body.manager-mode .admin-only{display:none!important;}
 <body>
 
 <!-- HEADER -->
-<div class="splash" id="splash">
+<div class="splash" id="splash" style="display:none;">
   <div style="display:flex;align-items:center;opacity:0;transform:scale(.85);transition:all 1s ease;" id="splashLogo">
     <span class="splash-logo-savewan">เซฟวัน</span>
     <span class="splash-logo-go">GO</span>
@@ -1101,51 +1102,49 @@ function getNonPrice(date){
   }
   return 30; // SS Non
 }
-function revST(r){
+function revST(r,g='all'){
   // ST ทุกสาขาใช้ราคาเดียวกัน (100/130 Online, 130/160 WalkIn)
-  const{po,pw}=getBranchPrice(r.date); // po=Online, pw=WalkIn/Extra
+  const{po,pw}=getBranchPrice(r.date);
   const fd=r.freeDay;
-  const online=r.onlineLock||0;
-  const walkin=r.walkInLock||0;
-  const extra=r.extraLock||0;
+  // เลือก lock ตาม group
+  const online = (g==='all'||g==='online') ? (r.onlineLock||0) : 0;
+  const walkin = (g==='all'||g==='walkin') ? (r.walkInLock||0) : 0;
+  const extra  = (g==='all'||g==='extra')  ? (r.extraLock||0)  : 0;
+  // cancel/absent อยู่ใน online อยู่แล้ว ไม่นับซ้ำ
 
   if(activeBranch==='SS'){
-    // SS: Online ลด FreeDay | WalkIn/เสริม ราคาเต็มเสมอ
     return online*po*(fd?0.5:1) + walkin*pw + extra*pw;
   } else {
-    // BG/BN: ทุกประเภทลด FreeDay (เข้าระบบหมดแล้ว)
     return online*po*(fd?0.5:1) + walkin*pw*(fd?0.5:1) + extra*pw*(fd?0.5:1);
   }
 }
-function revSTNormal(r){
+function revSTNormal(r,g='all'){
   const{po,pw}=getBranchPrice(r.date);
-  const online=r.onlineLock||0;
-  const walkin=r.walkInLock||0;
-  const extra=r.extraLock||0;
+  const online = (g==='all'||g==='online') ? (r.onlineLock||0) : 0;
+  const walkin = (g==='all'||g==='walkin') ? (r.walkInLock||0) : 0;
+  const extra  = (g==='all'||g==='extra')  ? (r.extraLock||0)  : 0;
   return online*po + walkin*pw + extra*pw;
 }
-function revNon(r){
+function revNon(r,g='all'){
   if(!r||!r.date) return 0;
   const p=getNonPrice(r.date);
   const fd=r.nonFree||r.freeDay||false;
-  const online=r.nonOnlineLock||0;
-  const walkin=r.nonWalkInLock||0;
-  const extra=r.nonExtraLock||0;
+  const online = (g==='all'||g==='online') ? (r.nonOnlineLock||0) : 0;
+  const walkin = (g==='all'||g==='walkin') ? (r.nonWalkInLock||0) : 0;
+  const extra  = (g==='all'||g==='extra')  ? (r.nonExtraLock||0)  : 0;
 
   if(activeBranch==='SS'){
-    // SS Non: WalkIn ราคาเต็ม (ยังไม่เข้าระบบ) | Online/เสริม ลด FreeDay
     return online*p*(fd?0.5:1) + walkin*p + extra*p;
   } else {
-    // BG/BN Car: ทุกประเภทลด FreeDay
     return (online+walkin+extra)*p*(fd?0.5:1);
   }
 }
-function revNonNormal(r){
+function revNonNormal(r,g='all'){
   if(!r||!r.date) return 0;
   const p=getNonPrice(r.date);
-  const online=r.nonOnlineLock||0;
-  const walkin=r.nonWalkInLock||0;
-  const extra=r.nonExtraLock||0;
+  const online = (g==='all'||g==='online') ? (r.nonOnlineLock||0) : 0;
+  const walkin = (g==='all'||g==='walkin') ? (r.nonWalkInLock||0) : 0;
+  const extra  = (g==='all'||g==='extra')  ? (r.nonExtraLock||0)  : 0;
   return (online+walkin+extra)*p;
 }
 
@@ -1174,30 +1173,34 @@ function calcDiscount(r){
 const discST=r=>calcDiscount(r);
 
 function getLock(r,g){
-  // ล็อกรวม = Online + WalkIn + Extra (ไม่หัก Absent/Cancel เพราะอยู่ในกลุ่มนี้อยู่แล้ว)
   const stOnline=r.onlineLock||0;
   const stWalkIn=r.walkInLock||0;
   const stExtra=r.extraLock||0;
   const stAbsent=r.absentLock||0;
   const stCancel=r.cancelLock||0;
-  const nonTotal=r.nonLock||0; // nonLock = online+walkin+extra ของ Non
+  const nOnline=r.nonOnlineLock||0;
+  const nWalkIn=r.nonWalkInLock||0;
+  const nExtra=r.nonExtraLock||0;
+  const nCancel=r.nonCancelLock||0;
+  const nAbsent=r.nonAbsentLock||0;
 
-  if(g==='online') return stOnline; // Online ทั้งหมด รวมลา/ไม่มา
-  if(g==='walkin') return stWalkIn+nonTotal;
-  if(g==='extra') return stExtra+(r.nonExtraLock||0);
-  if(g==='cancel') return stCancel+stAbsent+(r.nonCancelLock||0)+(r.nonAbsentLock||0);
-  // all = Online + WalkIn + Extra (ST + Non)
-  return stOnline+stWalkIn+stExtra+nonTotal;
+  if(g==='online') return stOnline+nOnline;
+  if(g==='walkin') return stWalkIn+nWalkIn;
+  if(g==='extra')  return stExtra+nExtra;
+  if(g==='cancel') return stCancel+stAbsent+nCancel+nAbsent;
+  // all
+  return stOnline+stWalkIn+stExtra+nOnline+nWalkIn+nExtra;
 }
 function getRai(r,g){
   const stOnlineRai=r.onlineRai||0;
   const stWalkInRai=r.walkInRai||0;
-  const nonRai=r.nonRai||0; // nonRai = onlineRai+walkInRai ของ Non
-  if(g==='online') return stOnlineRai;
-  if(g==='walkin') return stWalkInRai+nonRai;
-  if(g==='extra') return 0;
+  const nOnlineRai=r.nonOnlineRai||0;
+  const nWalkInRai=r.nonWalkInRai||0;
+  if(g==='online') return stOnlineRai+nOnlineRai;
+  if(g==='walkin') return stWalkInRai+nWalkInRai;
+  if(g==='extra')  return 0;
   if(g==='cancel') return 0;
-  return stOnlineRai+stWalkInRai+nonRai;
+  return stOnlineRai+stWalkInRai+nOnlineRai+nWalkInRai;
 }
 
 const mapST=r=>{
@@ -1287,7 +1290,7 @@ async function loadAll(){
     document.getElementById('mainContent').style.display='block';
     // ซ่อน splash screen
     const splash=document.getElementById('splash');
-    if(splash){splash.classList.add('hide');setTimeout(()=>splash.remove(),500);}
+    if(splash){splash.classList.add('hide');setTimeout(()=>{splash.classList.remove('hide');splash.style.display='none';},600);}
   }catch(e){
     document.getElementById('loadingState').innerHTML=`<div style="text-align:center;color:var(--red)">❌ โหลดไม่ได้: ${e.message}<br><br><button class="rfbtn" onclick="loadAll()">ลองใหม่</button></div>`;
   }
@@ -1334,7 +1337,8 @@ function mergeBranch(stArr, nonArr){
       // Non fields เริ่มที่ 0
       nonLock:0, nonRai:0, l1n:0, l2n:0, nonFree:false,
       nonOnlineLock:0, nonWalkInLock:0, nonExtraLock:0,
-      nonCancelLock:0, nonAbsentLock:0
+      nonCancelLock:0, nonAbsentLock:0,
+      nonOnlineRai:0, nonWalkInRai:0
     };
   });
   // merge Non เข้าไป โดยใช้ getDateKey เพื่อให้ format ตรงกัน
@@ -1345,10 +1349,14 @@ function mergeBranch(stArr, nonArr){
     const nWalkIn=r.walkInLock||0;
     const nExtra=r.extraLock||0;
     const nLock=nOnline+nWalkIn+nExtra;
-    const nRai=(r.onlineRai||0)+(r.walkInRai||0);
+    const nOnlineRai=r.onlineRai||0;
+    const nWalkInRai=r.walkInRai||0;
+    const nRai=nOnlineRai+nWalkInRai;
     if(map[key]){
       map[key].nonLock=nLock;
       map[key].nonRai=nRai;
+      map[key].nonOnlineRai=nOnlineRai;
+      map[key].nonWalkInRai=nWalkInRai;
       map[key].nonOnlineLock=nOnline;
       map[key].nonWalkInLock=nWalkIn;
       map[key].nonExtraLock=nExtra;
@@ -1368,6 +1376,7 @@ function mergeBranch(stArr, nonArr){
         nonLock:nLock, nonRai:nRai,
         nonOnlineLock:nOnline, nonWalkInLock:nWalkIn, nonExtraLock:nExtra,
         nonCancelLock:r.cancelLock||0, nonAbsentLock:r.absentLock||0,
+        nonOnlineRai:nOnlineRai, nonWalkInRai:nWalkInRai,
         l1n:r.l1||0, l2n:r.l2||0, nonFree:r.freeDay
       };
     }
@@ -1451,23 +1460,14 @@ function getFiltered(){
   if(selMonth) d=d.filter(r=>mKey(r.date)===selMonth);
   else if(period>0){const cut=new Date();cut.setDate(cut.getDate()-period);d=d.filter(r=>r.date>=cut);}
   if(zone==='st'){
-    // ดูแค่ ST — ซ่อน Non
+    // ซ่อน Non fields ทั้งหมด
     d=d.map(r=>({...r,nonLock:0,nonRai:0,l1n:0,l2n:0,
-      nonOnlineLock:0,nonWalkInLock:0,nonExtraLock:0,nonCancelLock:0,nonAbsentLock:0}));
+      nonOnlineLock:0,nonWalkInLock:0,nonExtraLock:0,nonCancelLock:0,nonAbsentLock:0,nonFree:false}));
   } else if(zone==='non'){
-    // ดูแค่ Non — ย้าย Non fields มาที่ ST fields เพื่อให้ KPI/กราฟแสดงถูก
+    // ซ่อน ST fields ทั้งหมด — rev functions คำนวณจาก non fields โดยตรง
     d=d.map(r=>({...r,
-      onlineLock:r.nonOnlineLock||0,
-      onlineRai:0,
-      walkInLock:r.nonWalkInLock||0,
-      walkInRai:r.nonRai||0,
-      extraLock:r.nonExtraLock||0,
-      cancelLock:r.nonCancelLock||0,
-      absentLock:r.nonAbsentLock||0,
-      l1:r.l1n||0, l2:r.l2n||0,
-      freeDay:r.nonFree||r.freeDay,
-      nonLock:0,nonRai:0,l1n:0,l2n:0,
-      nonOnlineLock:0,nonWalkInLock:0,nonExtraLock:0,nonCancelLock:0,nonAbsentLock:0
+      onlineLock:0,onlineRai:0,walkInLock:0,walkInRai:0,extraLock:0,
+      cancelLock:0,absentLock:0,l1:0,l2:0
     }));
   }
   return d;
@@ -1507,13 +1507,12 @@ function applyAll(){
 function renderOverview(d){
   // คำนวณ KPI
   let revSTsum=0,revNonSum=0,revNormal=0,disc=0,l1=0,l2=0;
-  let fdays=0,absent=0,cancel=0,extra=0,rai=0,lock=0;
+  let fdays=0,rai=0,lock=0;
   d.forEach(r=>{
-    revSTsum+=revST(r);revNonSum+=revNon(r);
-    revNormal+=revSTNormal(r)+revNonNormal(r);
+    revSTsum+=revST(r,group);revNonSum+=revNon(r,group);
+    revNormal+=revSTNormal(r,group)+revNonNormal(r,group);
     disc+=calcDiscount(r);l1+=r.l1+(r.l1n||0);l2+=r.l2+(r.l2n||0);
     if(r.freeDay)fdays++;
-    absent+=r.absentLock;cancel+=r.cancelLock;extra+=r.extraLock;
     rai+=getRai(r,group);lock+=getLock(r,group);
   });
   const days=d.length||1;
@@ -1524,9 +1523,16 @@ function renderOverview(d){
   animateNumber(document.getElementById('k-revtotal'),revSTsum+revNonSum);
   animateNumber(document.getElementById('k-elec'),l1+l2);
   document.getElementById('k-elec-sub').textContent=`L1: ${fmtN(l1)} | L2: ${fmtN(l2)} ฿`;
-  const totalAbsent=d.reduce((s,r)=>s+(r.absentLock||0)+(r.nonAbsentLock||0),0);
-  const totalCancel=d.reduce((s,r)=>s+(r.cancelLock||0)+(r.nonCancelLock||0),0);
-  const totalExtra=d.reduce((s,r)=>s+(r.extraLock||0)+(r.nonExtraLock||0),0);
+  // ลา/ไม่มา/เสริม แยกตาม zone
+  const stAbsent=d.reduce((s,r)=>s+(r.absentLock||0),0);
+  const stCancel=d.reduce((s,r)=>s+(r.cancelLock||0),0);
+  const stExtra=d.reduce((s,r)=>s+(r.extraLock||0),0);
+  const nonAbsent=d.reduce((s,r)=>s+(r.nonAbsentLock||0),0);
+  const nonCancel=d.reduce((s,r)=>s+(r.nonCancelLock||0),0);
+  const nonExtra=d.reduce((s,r)=>s+(r.nonExtraLock||0),0);
+  const totalAbsent=zone==='st'?stAbsent:zone==='non'?nonAbsent:stAbsent+nonAbsent;
+  const totalCancel=zone==='st'?stCancel:zone==='non'?nonCancel:stCancel+nonCancel;
+  const totalExtra=zone==='st'?stExtra:zone==='non'?nonExtra:stExtra+nonExtra;
   document.getElementById('k-fdays').textContent=fmtN(fdays);
   document.getElementById('k-absent').textContent=fmtN(totalAbsent);
   document.getElementById('k-cancel').textContent=fmtN(totalCancel);
@@ -1586,9 +1592,10 @@ function renderOverview(d){
   const mon={};
   sorted.forEach(r=>{
     const k=mLbl(r.date);if(!mon[k])mon[k]={o:0,w:0,e:0,n:0,c:0};
-    mon[k].o+=Math.max(0,r.onlineLock-r.absentLock-r.cancelLock);
-    mon[k].w+=r.walkInLock;mon[k].e+=r.extraLock;mon[k].n+=r.nonLock;
-    mon[k].c+=r.cancelLock+r.absentLock;
+    mon[k].o+=Math.max(0,(r.onlineLock||0)-(r.absentLock||0)-(r.cancelLock||0));
+    mon[k].w+=r.walkInLock||0;mon[k].e+=r.extraLock||0;
+    mon[k].n+=(r.nonOnlineLock||0)+(r.nonWalkInLock||0)+(r.nonExtraLock||0);
+    mon[k].c+=(r.cancelLock||0)+(r.absentLock||0);
   });
   const mks=Object.keys(mon);
   dChart('cMonthly');
@@ -1608,11 +1615,11 @@ function renderOverview(d){
   charts.cWeekday=makeChart('cWeekday',{type:'bar',data:{labels:DAYS,datasets:[{data:wa,backgroundColor:wa.map((_,i)=>[0,5,6].includes(i)?'rgba(240,165,0,.8)':'rgba(74,158,255,.7)'),borderRadius:4}]},options:{...cOpts(),plugins:{legend:{display:false}}}});
 
   // Pie
-  const totO=d.reduce((s,r)=>s+Math.max(0,r.onlineLock-r.absentLock-r.cancelLock),0);
-  const totW=d.reduce((s,r)=>s+r.walkInLock,0);
-  const totN=d.reduce((s,r)=>s+r.nonLock,0);
-  const totE=d.reduce((s,r)=>s+r.extraLock,0);
-  const totC=d.reduce((s,r)=>s+r.cancelLock+r.absentLock,0);
+  const totO=d.reduce((s,r)=>s+Math.max(0,(r.onlineLock||0)-(r.absentLock||0)-(r.cancelLock||0)),0);
+  const totW=d.reduce((s,r)=>s+(r.walkInLock||0),0);
+  const totN=d.reduce((s,r)=>s+(r.nonOnlineLock||0)+(r.nonWalkInLock||0)+(r.nonExtraLock||0),0);
+  const totE=d.reduce((s,r)=>s+(r.extraLock||0),0);
+  const totC=d.reduce((s,r)=>s+(r.cancelLock||0)+(r.absentLock||0),0);
   dChart('cPie');
   charts.cPie=makeChart('cPie',{type:'doughnut',data:{labels:['ออนไลน์สุทธิ','วอคอิน ST','Non','เสริม','ยกเลิก/ลา'],datasets:[{data:[totO,totW,totN,totE,totC],backgroundColor:['rgba(74,158,255,.85)','rgba(240,165,0,.85)','rgba(167,139,250,.8)','rgba(61,214,140,.75)','rgba(224,92,92,.65)'],borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom',labels:{color:'#9aa3bc',font:{family:'Noto Sans Thai',size:10},padding:8}}}}});
 
@@ -1655,7 +1662,7 @@ function renderFreeday(d){
 
 // ── FORECAST ──
 function renderForecast(){
-  const sorted=[...getActiveMerged()].sort((a,b)=>a.date-b.date);
+  const sorted=[...getFiltered()].sort((a,b)=>a.date-b.date);
   const mon={};
   sorted.forEach(r=>{const k=mKey(r.date);if(!mon[k])mon[k]={lock:0,rev:0,days:0};mon[k].lock+=getLock(r,'all');mon[k].rev+=revST(r)+revNon(r);mon[k].days++;});
   const mks=Object.keys(mon).sort();
@@ -1778,7 +1785,7 @@ function makeChart(id,config){
   return charts[id];
 }
 
-loadAll();
+// loadAll() ถูกเรียกจาก onAuthStateChanged หลัง login สำเร็จแล้ว
 
 // ── COMPARE ──
 const MONTH_COLORS=['rgba(240,165,0,.85)','rgba(74,158,255,.85)','rgba(61,214,140,.8)','rgba(224,92,92,.8)','rgba(167,139,250,.8)','rgba(240,122,53,.8)','rgba(255,200,60,.8)','rgba(100,200,180,.8)'];
@@ -2065,25 +2072,24 @@ function exportCSV(){
 
 
 // ── SPLASH ANIMATION ──
-(function(){
+function showSplash(){
+  const splash=document.getElementById('splash');
   const logo=document.getElementById('splashLogo');
   const company=document.getElementById('splashCompany');
   const bar=document.getElementById('splashBar');
   const fill=document.getElementById('splashFill');
-  // Step 1: โลโก้ fade in
-  setTimeout(()=>{
-    if(logo){logo.style.opacity='1';logo.style.transform='scale(1)';}
-  },300);
-  // Step 2: แสดงชื่อบริษัท
-  setTimeout(()=>{
-    if(company) company.classList.add('show');
-  },1100);
-  // Step 3: progress bar
-  setTimeout(()=>{
-    if(bar) bar.classList.add('show');
-    setTimeout(()=>{if(fill) fill.classList.add('go');},50);
-  },1300);
-})();
+  if(!splash) return;
+  // reset state
+  if(logo){logo.style.opacity='0';logo.style.transform='scale(.85)';}
+  if(company) company.classList.remove('show');
+  if(bar) bar.classList.remove('show');
+  if(fill) fill.classList.remove('go');
+  splash.style.display='flex';
+  // animate
+  setTimeout(()=>{if(logo){logo.style.opacity='1';logo.style.transform='scale(1)';}},300);
+  setTimeout(()=>{if(company) company.classList.add('show');},1100);
+  setTimeout(()=>{if(bar) bar.classList.add('show');setTimeout(()=>{if(fill) fill.classList.add('go');},50);},1300);
+}
 
 // ── SIDEBAR TOGGLE ──
 let sidebarOpen=true;
