@@ -399,7 +399,7 @@ body.manager-mode .admin-only{display:none!important;}
         // รายรับ (admin only)
         const revSection = document.getElementById('revSection');
         if(revSection) revSection.style.display = perms.showRevenue ? '' : 'none';
-        // สถิติการจอง (ทุก role เห็น — ไม่มีตัวเงิน)
+        // สถิติการจอง (ทุก role เห็น)
         const statsSection = document.getElementById('statsSection');
         if(statsSection) statsSection.style.display = '';
         // ค่าไฟ
@@ -541,7 +541,7 @@ body.manager-mode .admin-only{display:none!important;}
     <div class="pill-list">
       <button class="pill active" id="z-all" onclick="setZone('all',this)"><div class="pill-dot" style="background:var(--ink)"></div>ทั้งหมด</button>
       <button class="pill" id="z-st" onclick="setZone('st',this)"><div class="pill-dot" style="background:var(--blue)"></div>ST · Street Food</button>
-      <button class="pill" id="z-non" onclick="setZone('non',this)"><div class="pill-dot" style="background:var(--purple)"></div>Non · Boot Seller</button>
+      <button class="pill" id="z-non" onclick="setZone('non',this)"><div class="pill-dot" style="background:var(--purple)"></div><span id="zNonLabel">Non · Boot Seller</span></button>
     </div>
   </div>
 
@@ -1140,6 +1140,15 @@ function revNon(r){
     return (online+walkin+extra)*p*(fd?0.5:1);
   }
 }
+function revNonNormal(r){
+  if(!r||!r.date) return 0;
+  const p=getNonPrice(r.date);
+  const online=r.nonOnlineLock||0;
+  const walkin=r.nonWalkInLock||0;
+  const extra=r.nonExtraLock||0;
+  return (online+walkin+extra)*p;
+}
+
 function calcDiscount(r){
   if(!r.freeDay) return 0;
   const{po,pw}=getBranchPrice(r.date);
@@ -1400,10 +1409,17 @@ function toggleMonth(k,btn){
   if(view==='compare') renderCompare();
 }
 
+function updateZoneLabel(){
+  const el=document.getElementById('zNonLabel');
+  if(!el) return;
+  el.textContent=activeBranch==='SS'?'Non · Boot Seller':'Car · Boot Sale';
+}
+
 function setBranch(b,btn){
   document.querySelectorAll('.branch-item').forEach(x=>x.classList.remove('active'));
   btn.classList.add('active');
   activeBranch=b;
+  updateZoneLabel();
   // อัปเดตชื่อสาขาใน header
   const names={SS:'ศรีสมาน',BG:'ประตูกรุงเทพ',BN:'บางนา'};
   const badges={SS:'SS',BG:'BG',BN:'BN'};
@@ -1457,19 +1473,34 @@ function getFiltered(){
   return d;
 }
 
-function updateRange(d){
-  if(!d.length){document.getElementById('rtRange').textContent='ไม่มีข้อมูล';return;}
-  const sorted=[...d].sort((a,b)=>a.date-b.date);
-  document.getElementById('rtRange').textContent=`${fmtD(sorted[0].date)} – ${fmtD(sorted[sorted.length-1].date)}`;
+function updateDateRange(d){
+  const zoneNames={all:'ทุกโซน',st:'ST เท่านั้น',non:'Non/Car เท่านั้น'};
+  const groupNames={all:'ทุกประเภท',online:'ออนไลน์',walkin:'วอคอิน',extra:'ล็อกเสริม',cancel:'ยกเลิก/ลา'};
+  if(!d.length){
+    ['drFrom','drTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='ไม่มีข้อมูล';});
+    const dd=document.getElementById('drDays');if(dd)dd.textContent='0 วัน';
+  } else {
+    const sorted=[...d].sort((a,b)=>a.date-b.date);
+    const elFrom=document.getElementById('drFrom');if(elFrom)elFrom.textContent=fmtD(sorted[0].date);
+    const elTo=document.getElementById('drTo');if(elTo)elTo.textContent=fmtD(sorted[sorted.length-1].date);
+    const elDays=document.getElementById('drDays');if(elDays)elDays.textContent=`${d.length} วัน`;
+  }
+  const elZone=document.getElementById('drZone');if(elZone)elZone.textContent=zoneNames[zone]||zone;
+  const elGroup=document.getElementById('drGroup');if(elGroup)elGroup.textContent=groupNames[group]||group;
 }
+
+function updateRange(d){}
 
 function applyAll(){
   const d=getFiltered();
-  
+  updateDateRange(d);
   if(view==='overview') renderOverview(d);
   else if(view==='freeday') renderFreeday(d);
   else if(view==='forecast') renderForecast();
   else if(view==='rawdata') renderRaw(d);
+  else if(view==='compare') renderCompare();
+  else if(view==='heatmap') renderHeatmap();
+  else if(view==='benchmark') renderBenchmark();
 }
 
 // ── OVERVIEW ──
@@ -1479,8 +1510,8 @@ function renderOverview(d){
   let fdays=0,absent=0,cancel=0,extra=0,rai=0,lock=0;
   d.forEach(r=>{
     revSTsum+=revST(r);revNonSum+=revNon(r);
-    revNormal+=revSTNormal(r)+revNon({...r,nonFree:false,nonFree:false});
-    disc+=discST(r);l1+=r.l1+r.l1n;l2+=r.l2+r.l2n;
+    revNormal+=revSTNormal(r)+revNonNormal(r);
+    disc+=calcDiscount(r);l1+=r.l1+(r.l1n||0);l2+=r.l2+(r.l2n||0);
     if(r.freeDay)fdays++;
     absent+=r.absentLock;cancel+=r.cancelLock;extra+=r.extraLock;
     rai+=getRai(r,group);lock+=getLock(r,group);
@@ -1493,10 +1524,9 @@ function renderOverview(d){
   animateNumber(document.getElementById('k-revtotal'),revSTsum+revNonSum);
   animateNumber(document.getElementById('k-elec'),l1+l2);
   document.getElementById('k-elec-sub').textContent=`L1: ${fmtN(l1)} | L2: ${fmtN(l2)} ฿`;
-  // ดึงตรงจาก raw data ไม่ผ่าน getLock
-  const totalAbsent=d.reduce((s,r)=>s+(r.absentLock||0),0);
-  const totalCancel=d.reduce((s,r)=>s+(r.cancelLock||0),0);
-  const totalExtra=d.reduce((s,r)=>s+(r.extraLock||0),0);
+  const totalAbsent=d.reduce((s,r)=>s+(r.absentLock||0)+(r.nonAbsentLock||0),0);
+  const totalCancel=d.reduce((s,r)=>s+(r.cancelLock||0)+(r.nonCancelLock||0),0);
+  const totalExtra=d.reduce((s,r)=>s+(r.extraLock||0)+(r.nonExtraLock||0),0);
   document.getElementById('k-fdays').textContent=fmtN(fdays);
   document.getElementById('k-absent').textContent=fmtN(totalAbsent);
   document.getElementById('k-cancel').textContent=fmtN(totalCancel);
@@ -1604,7 +1634,7 @@ function renderOverview(d){
 function renderFreeday(d){
   const fds=d.filter(r=>r.freeDay);
   let td=0,tn=0,ta=0;
-  fds.forEach(r=>{td+=discST(r);tn+=revSTNormal(r);ta+=revST(r);});
+  fds.forEach(r=>{td+=calcDiscount(r);tn+=revSTNormal(r)+revNonNormal(r);ta+=revST(r)+revNon(r);});
   document.getElementById('fdKpi').innerHTML=`
     <div class="fd-kpi"><div class="fd-kpi-val">${fds.length}</div><div class="fd-kpi-lbl">จำนวนวันฝน</div></div>
     <div class="fd-kpi"><div class="fd-kpi-val">${fmtN(td)}</div><div class="fd-kpi-lbl">รายได้ที่เสียไป (฿)</div></div>
@@ -1613,12 +1643,12 @@ function renderFreeday(d){
     <div class="fd-kpi"><div class="fd-kpi-val">${tn>0?(td/tn*100).toFixed(1)+'%':'—'}</div><div class="fd-kpi-lbl">% ที่หายไป</div></div>
   `;
   const fdm={};
-  [...d].sort((a,b)=>a.date-b.date).forEach(r=>{const k=mLbl(r.date);if(!fdm[k])fdm[k]={d:0,c:0};if(r.freeDay){fdm[k].d+=discST(r);fdm[k].c++;}});
+  [...d].sort((a,b)=>a.date-b.date).forEach(r=>{const k=mLbl(r.date);if(!fdm[k])fdm[k]={d:0,c:0};if(r.freeDay){fdm[k].d+=calcDiscount(r);fdm[k].c++;}});
   const fmks=Object.keys(fdm);
   dChart('cFDMonth');charts.cFDMonth=makeChart('cFDMonth',{type:'bar',data:{labels:fmks,datasets:[{label:'ส่วนลดวันฝน (฿)',data:fmks.map(k=>fdm[k].d),backgroundColor:'rgba(240,165,0,.7)',borderRadius:3}]},options:cOpts()});
   dChart('cFDCount');charts.cFDCount=makeChart('cFDCount',{type:'bar',data:{labels:fmks,datasets:[{label:'จำนวนวันฝน',data:fmks.map(k=>fdm[k].c),backgroundColor:'rgba(61,214,140,.7)',borderRadius:3}]},options:cOpts()});
   document.getElementById('fdTbl').innerHTML=fds.sort((a,b)=>b.date-a.date).map(r=>{
-    const po=isWknd(r.date)?130:100,dc=discST(r),ac=revST(r),nm=revSTNormal(r);
+    const po=isWknd(r.date)?130:100,dc=calcDiscount(r),ac=revST(r)+revNon(r),nm=revSTNormal(r)+revNonNormal(r);
     return`<tr><td style="color:var(--gold)">${fmtD(r.date)}</td><td>${DAYS[r.date.getDay()]}</td><td class="num">${fmtN(r.onlineLock)}</td><td class="num">${fmtN(r.absentLock)}</td><td class="num">${fmtN(r.cancelLock)}</td><td class="num">${po} → ${po/2} ฿</td><td class="num">${fmtN(nm)}</td><td class="num">${fmtN(ac)}</td><td class="num" style="color:var(--red);font-weight:700">−${fmtN(dc)}</td></tr>`;
   }).join('');
 }
