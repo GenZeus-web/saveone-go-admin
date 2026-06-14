@@ -1161,8 +1161,8 @@ function calcDiscount(r){
     // SS Non: WalkIn ไม่ลด
     nonDisc=(r.nonOnlineLock||0)*np*0.5;
   } else {
-    // BG/BN ST: ทุกประเภทลด
-    stDisc=((r.onlineLock||0)+(r.walkInLock||0)+(r.extraLock||0))*po*0.5;
+    // BG/BN ST: ทุกประเภทลด (Online ใช้ po, WalkIn/Extra ใช้ pw)
+    stDisc=(r.onlineLock||0)*po*0.5 + ((r.walkInLock||0)+(r.extraLock||0))*pw*0.5;
     // BG/BN Car: ทุกประเภทลด
     if(nonFd){
       nonDisc=((r.nonOnlineLock||0)+(r.nonWalkInLock||0)+(r.nonExtraLock||0))*np*0.5;
@@ -2194,7 +2194,8 @@ function calcWhatIf(){
     <div class="fc-card" style="background:rgba(63,185,80,.1);border-color:rgba(63,185,80,.3)"><div class="fc-val" style="color:var(--green)">${fmtN(revPerDayRound)}</div><div class="fc-lbl">รายรับเฉลี่ย/วัน (฿)</div></div>
     <div class="fc-card" style="background:rgba(63,185,80,.1);border-color:rgba(63,185,80,.3)"><div class="fc-val" style="color:var(--green)">${fmtN(totalRev)}</div><div class="fc-lbl">รายรับรวม ${days} วัน (฿)</div></div>
   `;
-  note.innerHTML=`สมมติฐาน: ${wkndDays} วันหยุด (ศ-อา) ${wdDays} วันธรรมดา | สาขา ${activeBranch} | ราคาตามฤดูกาลปัจจุบัน`;
+  const zoneLbl=activeBranch==='SS'?'ST · Street Food (70% Online/30% WalkIn)':'Car/Non · Boot Sale';
+  note.innerHTML=`สมมติฐาน: ${wkndDays} วันหยุด (ศ-อา) ${wdDays} วันธรรมดา | สาขา ${activeBranch} | โซน ${zoneLbl} | ราคาตามฤดูกาลปัจจุบัน`;
 }
 
 </script></body>
