@@ -26,6 +26,9 @@ body.light-mode .brand-name{color:#1a1f2e!important;}
 body.light-mode .splash-logo-savewan{color:#1a1f2e!important;}
 body.light-mode .login-logo-text{color:#1a1f2e!important;}
 body.light-mode .splash{background:#f5f6fa!important;}
+body.light-mode .splash-company{color:rgba(26,31,46,.55)!important;}
+body.no-rev .col-rev{display:none!important;}
+body.no-elec .col-elec{display:none!important;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-serif;font-size:13px;line-height:1.5;display:flex;flex-direction:column;height:100vh;overflow:hidden;}#appWrapper_removed{display:flex;flex-direction:column;height:100%;}
 
@@ -419,6 +422,10 @@ body.manager-mode .admin-only{display:none!important;}
         const whatifSection = document.getElementById('whatif-section');
         if(whatifSection) whatifSection.style.display = perms.showWhatIf ? '' : 'none';
 
+        // ซ่อนคอลัมน์รายรับ/ค่าไฟ ในตาราง (ข้อมูลดิบ ฯลฯ) ตามสิทธิ์
+        document.body.classList.toggle('no-rev', !perms.showRevenue);
+        document.body.classList.toggle('no-elec', !perms.showElec);
+
         // โหลดข้อมูล — แสดง splash ก่อน
         if (typeof showSplash === 'function') showSplash();
         if (typeof loadAll === 'function') loadAll();
@@ -503,7 +510,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก</div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.3</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -968,8 +975,8 @@ body.manager-mode .admin-only{display:none!important;}
               <th>วันที่</th><th>วัน</th>
               <th>ออนไลน์สุทธิ</th><th>วอคอิน ST</th><th>เสริม</th><th>Non ล็อก</th>
               <th>ยกเลิก</th><th>ลา</th>
-              <th>ราคา/ล็อก</th><th>รายรับรวม</th>
-              <th>ค่าไฟ L1</th><th>ค่าไฟ L2</th>
+              <th class="col-rev">ราคา/ล็อก</th><th class="col-rev">รายรับรวม</th>
+              <th class="col-elec">ค่าไฟ L1</th><th class="col-elec">ค่าไฟ L2</th>
               <th>สถานะ</th>
             </tr></thead>
             <tbody id="rawTbl"></tbody>
@@ -993,8 +1000,8 @@ body.manager-mode .admin-only{display:none!important;}
           <div class="mom-grid" id="momGrid"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="sc"><div class="sc-title">ล็อกรวมต่อเดือน</div><div style="height:180px;position:relative"><canvas id="cMonthTotal"></canvas></div></div>
-          <div class="sc"><div class="sc-title">รายรับต่อเดือน (บาท)</div><div style="height:180px;position:relative"><canvas id="cMonthRev"></canvas></div></div>
+          <div class="sc" id="cMonthTotalCard"><div class="sc-title">ล็อกรวมต่อเดือน</div><div style="height:180px;position:relative"><canvas id="cMonthTotal"></canvas></div></div>
+          <div class="sc" id="cMonthRevCard"><div class="sc-title">รายรับต่อเดือน (บาท)</div><div style="height:180px;position:relative"><canvas id="cMonthRev"></canvas></div></div>
         </div>
       </div>
     </div>
@@ -1558,8 +1565,13 @@ function renderOverview(d){
   const daily=sorted.slice(-90);
     dChart('cMain');
   // คำนวณ max ของ ราย และ ล็อก เพื่อปรับ scale
+  const isAllGroup=(group==='all');
   const maxRai=Math.max(...daily.map(r=>getRai(r,group)),1);
-  const maxLock=Math.max(...daily.map(r=>getLock(r,group)),targetLock,1);
+  // เป้าหมายมีไว้สำหรับ "ทั้งหมด" เท่านั้น — ตอน filter กลุ่มย่อย (online/walkin/extra)
+  // ไม่เอา targetLock มา clamp แกน Y เพราะค่ากลุ่มย่อยมักน้อยกว่าเป้ามาก ทำให้แท่งเตี้ยมองไม่เห็น
+  const maxLock=isAllGroup
+    ? Math.max(...daily.map(r=>getLock(r,group)),targetLock,1)
+    : Math.max(...daily.map(r=>getLock(r,group)),1);
   // ทำให้เส้นล็อกอยู่สูงกว่าแท่งราย โดยปรับ max ของแต่ละแกน
   const raiMax=maxRai*3.5; // เพิ่ม max ทำให้แท่งเขียวดูเล็กลง มีช่องว่างด้านบน
   const lockMax=maxLock*1.05;
@@ -1570,7 +1582,7 @@ function renderOverview(d){
       datasets:[
         {type:'bar',label:'จำนวนราย',data:daily.map(r=>getRai(r,group)),backgroundColor:daily.map(r=>r.freeDay?'rgba(240,165,0,.7)':'rgba(61,214,140,.6)'),yAxisID:'y',order:3},
         {type:'line',label:'จำนวนล็อก',data:daily.map(r=>getLock(r,group)),borderColor:'rgba(240,122,53,1)',backgroundColor:'rgba(240,122,53,.05)',borderWidth:2,pointRadius:1.5,fill:false,tension:.3,yAxisID:'y',order:1},
-        {type:'line',label:`เป้าหมาย (${fmtN(targetLock)} ล็อก)`,data:daily.map(()=>targetLock),borderColor:'rgba(167,139,250,.9)',borderWidth:2,borderDash:[6,3],pointRadius:0,fill:false,yAxisID:'y',order:2},
+        ...(isAllGroup?[{type:'line',label:`เป้าหมาย (${fmtN(targetLock)} ล็อก)`,data:daily.map(()=>targetLock),borderColor:'rgba(167,139,250,.9)',borderWidth:2,borderDash:[6,3],pointRadius:0,fill:false,yAxisID:'y',order:2}]:[]),
       ]
     },
     options:{
@@ -1670,11 +1682,12 @@ function renderForecast(){
   const avgLock=last3.reduce((s,k)=>s+mon[k].lock/mon[k].days,0)/last3.length;
   const avgRev=last3.reduce((s,k)=>s+mon[k].rev/mon[k].days,0)/last3.length;
   const fcLock=Math.round(avgLock*30),fcRev=Math.round(avgRev*30);
+  const _fcRev=window.userPerms?window.userPerms.showRevenue:true;
   document.getElementById('fcCards').innerHTML=`
     <div class="fc-card"><div class="fc-val">${fmtN(avgLock,1)}</div><div class="fc-lbl">ล็อกเฉลี่ย/วัน (3 เดือน)</div></div>
     <div class="fc-card"><div class="fc-val">${fmtN(fcLock)}</div><div class="fc-lbl">ล็อกพยากรณ์ (30 วัน)</div></div>
-    <div class="fc-card"><div class="fc-val">${fmtN(avgRev)}</div><div class="fc-lbl">รายรับเฉลี่ย/วัน (฿)</div></div>
-    <div class="fc-card"><div class="fc-val">${fmtN(fcRev)}</div><div class="fc-lbl">รายรับพยากรณ์ (฿)</div></div>
+    ${_fcRev?`<div class="fc-card"><div class="fc-val">${fmtN(avgRev)}</div><div class="fc-lbl">รายรับเฉลี่ย/วัน (฿)</div></div>
+    <div class="fc-card"><div class="fc-val">${fmtN(fcRev)}</div><div class="fc-lbl">รายรับพยากรณ์ (฿)</div></div>`:''}
   `;
   document.getElementById('fcNote').innerHTML=`คำนวณจากค่าเฉลี่ยต่อวันของ <strong>${last3.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));}).join(', ')}</strong> → ฉาย 30 วันข้างหน้า | เป็นการพยากรณ์จากสถิติย้อนหลังเท่านั้น`;
   // ตั้งค่า default ล็อก/วัน จากพยากรณ์
@@ -1707,10 +1720,10 @@ function renderRaw(d){
       <td class="num" style="color:var(--purple)">${r.nonLock||'—'}</td>
       <td class="num" style="color:var(--red)">${r.cancelLock||'—'}</td>
       <td class="num" style="color:var(--red)">${r.absentLock||'—'}</td>
-      <td class="num" style="color:var(--ink3);font-size:10px">${fd?`${po/2}/${pw}`:`${po}/${pw}`}</td>
-      <td class="num" style="font-weight:700;color:var(--green)">${fmtN(rv)}</td>
-      <td class="num">${r.l1+r.l1n>0?fmtN(r.l1+r.l1n):'—'}</td>
-      <td class="num">${r.l2+r.l2n>0?fmtN(r.l2+r.l2n):'—'}</td>
+      <td class="num col-rev" style="color:var(--ink3);font-size:10px">${fd?`${po/2}/${activeBranch==='SS'?pw:pw/2}`:`${po}/${pw}`}</td>
+      <td class="num col-rev" style="font-weight:700;color:var(--green)">${fmtN(rv)}</td>
+      <td class="num col-elec">${r.l1+r.l1n>0?fmtN(r.l1+r.l1n):'—'}</td>
+      <td class="num col-elec">${r.l2+r.l2n>0?fmtN(r.l2+r.l2n):'—'}</td>
       <td>${fd?'<span class="tag tag-free">วันฝน</span>':wk?'<span class="tag tag-wknd">ศ–อา</span>':'<span class="tag tag-ok">ปกติ</span>'}</td>
     </tr>`;
   }).join('');
@@ -1841,7 +1854,14 @@ function renderCompare(){
   dChart('cMonthTotal');
   charts.cMonthTotal=makeChart('cMonthTotal',{type:'bar',data:{labels:mkLabels,datasets:[{label:'ล็อกรวม',data:mks.map(k=>totals[k]),backgroundColor:mks.map((_,i)=>MONTH_COLORS[i%MONTH_COLORS.length]),borderRadius:4}]},options:cOpts()});
   dChart('cMonthRev');
-  charts.cMonthRev=makeChart('cMonthRev',{type:'bar',data:{labels:mkLabels,datasets:[{label:'รายรับ (บาท)',data:mks.map(k=>revs[k]),backgroundColor:mks.map((_,i)=>MONTH_COLORS[i%MONTH_COLORS.length]),borderRadius:4}]},options:cOpts()});
+  const _canRev=window.userPerms?window.userPerms.showRevenue:true;
+  const _revCard=document.getElementById('cMonthRevCard');
+  if(_canRev){
+    if(_revCard) _revCard.style.display='';
+    charts.cMonthRev=makeChart('cMonthRev',{type:'bar',data:{labels:mkLabels,datasets:[{label:'รายรับ (บาท)',data:mks.map(k=>revs[k]),backgroundColor:mks.map((_,i)=>MONTH_COLORS[i%MONTH_COLORS.length]),borderRadius:4}]},options:cOpts()});
+  } else {
+    if(_revCard) _revCard.style.display='none';
+  }
 
   // MoM cards
   const allMks=[...new Set(merged.map(r=>mKey(r.date)))].sort();
