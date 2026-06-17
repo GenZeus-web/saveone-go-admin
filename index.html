@@ -515,7 +515,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.3</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.4</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -1496,23 +1496,24 @@ function setView(v,btn){
   applyAll();
 }
 
-function getFiltered(){
-  let d=getActiveMerged();
-  if(selMonth) d=d.filter(r=>mKey(r.date)===selMonth);
-  else if(customFrom&&customTo) d=d.filter(r=>r.date>=customFrom&&r.date<=customTo);
-  else if(period>0){const cut=new Date();cut.setDate(cut.getDate()-period);d=d.filter(r=>r.date>=cut);}
+function applyZone(d){
   if(zone==='st'){
-    // ซ่อน Non fields ทั้งหมด
-    d=d.map(r=>({...r,nonLock:0,nonRai:0,l1n:0,l2n:0,
+    return d.map(r=>({...r,nonLock:0,nonRai:0,l1n:0,l2n:0,
       nonOnlineLock:0,nonWalkInLock:0,nonExtraLock:0,nonCancelLock:0,nonAbsentLock:0,nonFree:false}));
   } else if(zone==='non'){
-    // ซ่อน ST fields ทั้งหมด — rev functions คำนวณจาก non fields โดยตรง
-    d=d.map(r=>({...r,
+    return d.map(r=>({...r,
       onlineLock:0,onlineRai:0,walkInLock:0,walkInRai:0,extraLock:0,
       cancelLock:0,absentLock:0,l1:0,l2:0
     }));
   }
   return d;
+}
+function getFiltered(){
+  let d=getActiveMerged();
+  if(selMonth) d=d.filter(r=>mKey(r.date)===selMonth);
+  else if(customFrom&&customTo) d=d.filter(r=>r.date>=customFrom&&r.date<=customTo);
+  else if(period>0){const cut=new Date();cut.setDate(cut.getDate()-period);d=d.filter(r=>r.date>=cut);}
+  return applyZone(d);
 }
 
 function updateDateRange(d){
@@ -1851,7 +1852,7 @@ function renderCompare(){
     const days=new Date(y,m,0).getDate();
     monData[k]=Array(days).fill(null);
   });
-  getActiveMerged().forEach(r=>{
+  applyZone(getActiveMerged()).forEach(r=>{
     const k=mKey(r.date);
     if(monData[k]){
       const day=r.date.getDate()-1;
@@ -1881,7 +1882,7 @@ function renderCompare(){
   // รวมต่อเดือน + รายรับ
   const totals={},revs={};
   mks.forEach(k=>{totals[k]=0;revs[k]=0;});
-  getActiveMerged().forEach(r=>{
+  applyZone(getActiveMerged()).forEach(r=>{
     const k=mKey(r.date);
     if(totals[k]!==undefined){totals[k]+=getLock(r,group);revs[k]+=revST(r)+revNon(r);}
   });
