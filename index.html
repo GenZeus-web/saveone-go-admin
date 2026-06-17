@@ -222,9 +222,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 .mc-pill.sel{background:var(--gold);color:#1a1f2e;border-color:var(--gold);font-weight:700;}
 /* HEATMAP */
 .hm-wrap{overflow-x:auto;}
-.hm-grid{display:grid;grid-template-columns:repeat(7,32px);gap:3px;}
-.hm-day-lbl{width:32px;text-align:center;font-size:9px;color:var(--ink3);padding:3px 0;font-weight:700;}
-.hm-cell{width:32px;height:32px;border-radius:3px;cursor:default;transition:transform .1s;position:relative;}
+.hm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;max-width:340px;}
+.hm-day-lbl{text-align:center;font-size:9px;color:var(--ink3);padding:3px 0;font-weight:700;}
+.hm-cell{aspect-ratio:1;border-radius:3px;cursor:default;transition:transform .1s;position:relative;}
 .hm-cell:hover{transform:scale(1.15);z-index:10;}
 .hm-empty{aspect-ratio:1;}
 .hm-month-lbl{font-size:10px;color:var(--ink3);margin:10px 0 5px;font-weight:600;}
@@ -285,8 +285,10 @@ body.manager-mode .admin-only{display:none!important;}
 
 /* RESPONSIVE MOBILE */
 @media(max-width:768px){
-  .layout{flex-direction:column;}
-  .sidebar{width:100%!important;height:auto;position:relative;top:0;display:flex;flex-wrap:wrap;gap:0;padding:8px;}
+  body{height:auto;overflow-y:auto;}
+  .layout{flex-direction:column;overflow:visible;min-height:0;}
+  .content{overflow:visible;}
+  .sidebar{width:100%!important;height:auto;position:relative;top:0;display:flex;flex-wrap:wrap;gap:0;padding:8px;overflow:visible;}
   .sb-sec{padding:8px;border:none;flex:1;min-width:140px;}
   .content{padding:12px;}
   .kpi-row{grid-template-columns:repeat(2,1fr);}
@@ -299,6 +301,9 @@ body.manager-mode .admin-only{display:none!important;}
   .brand-name{font-size:13px;}
   .vtabs{flex-wrap:wrap;}
   .vtab{font-size:11px;padding:5px 10px;}
+  .ch-main{height:320px;}
+  .ch-sm{height:240px;}
+  .ch-md{height:260px;}
   .splash-sg{font-size:52px!important;}
   .splash-logo-savewan,.splash-logo-go{font-size:38px!important;}
 }
@@ -571,6 +576,13 @@ body.manager-mode .admin-only{display:none!important;}
       <button class="pbtn" id="p30" onclick="setPeriod(30,this)">30 วัน</button>
       <button class="pbtn active" id="p90" onclick="setPeriod(90,this)">3 เดือน</button>
       <button class="pbtn" id="p0" onclick="setPeriod(0,this)">ทั้งหมด</button>
+      <button class="pbtn" id="pCustom" onclick="toggleCustomDate(this)" style="grid-column:1/-1">กำหนดเอง</button>
+    </div>
+    <div id="customDateWrap" style="display:none;margin-top:6px">
+      <div style="font-size:10px;color:var(--ink3);margin-bottom:3px">วันเริ่ม</div>
+      <input type="date" id="dateFrom" class="ddsel" style="margin-bottom:6px" onchange="applyCustomDate()">
+      <div style="font-size:10px;color:var(--ink3);margin-bottom:3px">วันสิ้นสุด</div>
+      <input type="date" id="dateTo" class="ddsel" style="margin-bottom:6px" onchange="applyCustomDate()">
     </div>
   </div>
 
@@ -1029,6 +1041,14 @@ body.manager-mode .admin-only{display:none!important;}
             <span style="font-size:10px;color:var(--ink3)">ไม่มีข้อมูล</span>
           </div>
         </div>
+        <div style="margin-bottom:10px">
+          <select class="ddsel" id="hmMonths" onchange="renderHeatmap()" style="width:auto;display:inline-block">
+            <option value="3">3 เดือนล่าสุด</option>
+            <option value="6">6 เดือนล่าสุด</option>
+            <option value="12">12 เดือนล่าสุด</option>
+            <option value="0">ทั้งหมด</option>
+          </select>
+        </div>
         <div id="hmWrap"></div>
       </div>
     </div>
@@ -1063,6 +1083,7 @@ let stData=[],nonData=[],merged=[];
 let bgStData=[],bgCarData=[],bgMerged=[];
 let bnStData=[],bnCarData=[],bnMerged=[];
 let period=90,selMonth='',zone='all',group='all',view='overview';
+let customFrom=null,customTo=null;
 let activeBranch='SS'; // SS, BG, BN
 let targetLock=400; // เป้าล็อกต่อวัน
 
@@ -1449,8 +1470,21 @@ function setBranch(b,btn){
 }
 function setZone(z,btn){zone=z;document.querySelectorAll('[id^="z-"]').forEach(x=>x.classList.remove('active'));btn.classList.add('active');applyAll();}
 function setGroup(v){group=v;applyAll();}
-function setPeriod(d,btn){period=d;selMonth='';document.getElementById('monthSel').value='';document.querySelectorAll('[id^="p"]').forEach(x=>x.classList.remove('active'));btn.classList.add('active');applyAll();}
-function setMonth(v){selMonth=v;period=0;document.querySelectorAll('[id^="p"]').forEach(x=>x.classList.remove('active'));applyAll();}
+function setPeriod(d,btn){period=d;selMonth='';customFrom=null;customTo=null;document.getElementById('monthSel').value='';document.getElementById('customDateWrap').style.display='none';document.querySelectorAll('[id^="p"]').forEach(x=>x.classList.remove('active'));btn.classList.add('active');applyAll();}
+function setMonth(v){selMonth=v;period=0;customFrom=null;customTo=null;document.getElementById('customDateWrap').style.display='none';document.querySelectorAll('[id^="p"]').forEach(x=>x.classList.remove('active'));applyAll();}
+function toggleCustomDate(btn){
+  const wrap=document.getElementById('customDateWrap');
+  const isOpen=wrap.style.display!=='none';
+  if(isOpen){wrap.style.display='none';setPeriod(90,document.getElementById('p90'));}
+  else{wrap.style.display='block';period=0;selMonth='';document.getElementById('monthSel').value='';document.querySelectorAll('[id^="p"]').forEach(x=>x.classList.remove('active'));btn.classList.add('active');}
+}
+function applyCustomDate(){
+  const f=document.getElementById('dateFrom').value;
+  const t=document.getElementById('dateTo').value;
+  if(!f||!t) return;
+  customFrom=new Date(f);customTo=new Date(t);customTo.setHours(23,59,59);
+  period=0;selMonth='';applyAll();
+}
 function setView(v,btn){
   view=v;
   document.querySelectorAll('.vtab').forEach(x=>x.classList.remove('active'));
@@ -1465,6 +1499,7 @@ function setView(v,btn){
 function getFiltered(){
   let d=getActiveMerged();
   if(selMonth) d=d.filter(r=>mKey(r.date)===selMonth);
+  else if(customFrom&&customTo) d=d.filter(r=>r.date>=customFrom&&r.date<=customTo);
   else if(period>0){const cut=new Date();cut.setDate(cut.getDate()-period);d=d.filter(r=>r.date>=cut);}
   if(zone==='st'){
     // ซ่อน Non fields ทั้งหมด
@@ -1904,7 +1939,9 @@ function renderHeatmap(){
     return;
   }
   
-  const allMks=[...new Set(allData.map(r=>mKey(r.date)))].sort();
+  let allMks=[...new Set(allData.map(r=>mKey(r.date)))].sort();
+  const nMonths=parseInt(document.getElementById('hmMonths')?.value??'3');
+  if(nMonths>0) allMks=allMks.slice(-nMonths);
   const maxLock=Math.max(...allData.map(r=>getLock(r,group)),1);
   
   let html='';
