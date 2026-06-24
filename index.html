@@ -515,7 +515,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.4.1</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.4.2</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -1226,8 +1226,8 @@ function getRai(r,g){
   const nWalkInRai=r.nonWalkInRai||0;
   if(g==='online') return stOnlineRai+nOnlineRai;
   if(g==='walkin') return stWalkInRai+nWalkInRai;
-  if(g==='extra')  return 0;
-  if(g==='cancel') return 0;
+  if(g==='extra')  return (r.extraRai||0)+(r.nonExtraRai||0);
+  if(g==='cancel') return (r.cancelRai||0)+(r.absentRai||0)+(r.nonCancelRai||0)+(r.nonAbsentRai||0);
   return stOnlineRai+stWalkInRai+nOnlineRai+nWalkInRai;
 }
 
@@ -1237,8 +1237,8 @@ const mapST=r=>{
   const l1=n(r['L1_SS_Street']||r['L1_BG_Street']||r['L1_BN_Street']||0);
   const l2=n(r['L2_SS_Street']||r['L2_BG_Street']||r['L2_BN_Street']||0);
   return{date,dateStr:r['วันที่'],onlineLock:n(r['Online_Lock']),onlineRai:n(r['Online_Rai']),
-    walkInLock:n(r['WalkIn_Lock']),walkInRai:n(r['WalkIn_Rai']),extraLock:n(r['ล็อกเสริม-Lock']),
-    cancelLock:n(r['Cancel_Lock']),absentLock:n(r['Absent_Lock']),
+    walkInLock:n(r['WalkIn_Lock']),walkInRai:n(r['WalkIn_Rai']),extraLock:n(r['ล็อกเสริม-Lock']),extraRai:n(r['ล็อกเสริม_Rai']),
+    cancelLock:n(r['Cancel_Lock']),absentLock:n(r['Absent_Lock']),cancelRai:n(r['Cancel_Rai']),absentRai:n(r['Absent_Rai']),
     freeDay:['1','true','1'].includes(String(r['FreeDay']).trim().toLowerCase())&&String(r['FreeDay']).trim()!=='0'&&String(r['FreeDay']).trim().toLowerCase()!=='n'&&String(r['FreeDay']).trim().toLowerCase()!=='false',
     l1,l2};
 };
@@ -1252,16 +1252,19 @@ const mapNon=r=>{
   const walkInLock=n(r['WalkIn_Lock']);
   const walkInRai=n(r['WalkIn_Rai']);
   const extraLock=n(r['ล็อกเสริม-Lock']);
+  const extraRai=n(r['ล็อกเสริม_Rai']);
   const cancelLock=n(r['Cancel_Lock']);
   const absentLock=n(r['Absent_Lock']);
+  const cancelRai=n(r['Cancel_Rai']);
+  const absentRai=n(r['Absent_Rai']);
   const cutLock=n(r['ตัดไม่มาทำการค้า_Lock']);
   const fd_raw=String(r['FreeDay']||'').trim().toLowerCase();const freeDay=fd_raw==='1'||fd_raw==='true';
   // รวม lock ทั้งหมดสำหรับโซน Non/Car
   const totalLock=onlineLock+walkInLock+extraLock;
   const totalRai=onlineRai+walkInRai;
   return{date,dateStr:r['วันที่'],
-    onlineLock,onlineRai,walkInLock,walkInRai,extraLock,
-    cancelLock,absentLock,cutLock,
+    onlineLock,onlineRai,walkInLock,walkInRai,extraLock,extraRai,
+    cancelLock,absentLock,cancelRai,absentRai,cutLock,
     freeDay,l1,l2,
     // เก็บไว้ backward compat
     totalLock,totalRai};
@@ -1358,15 +1361,17 @@ function mergeBranch(stArr, nonArr){
       date:r.date, dateStr:r.dateStr,
       onlineLock:r.onlineLock||0, onlineRai:r.onlineRai||0,
       walkInLock:r.walkInLock||0, walkInRai:r.walkInRai||0,
-      extraLock:r.extraLock||0,
+      extraLock:r.extraLock||0, extraRai:r.extraRai||0,
       cancelLock:r.cancelLock||0, absentLock:r.absentLock||0,
+      cancelRai:r.cancelRai||0, absentRai:r.absentRai||0,
       freeDay:r.freeDay,
       l1:r.l1||0, l2:r.l2||0,
       // Non fields เริ่มที่ 0
       nonLock:0, nonRai:0, l1n:0, l2n:0, nonFree:false,
       nonOnlineLock:0, nonWalkInLock:0, nonExtraLock:0,
       nonCancelLock:0, nonAbsentLock:0,
-      nonOnlineRai:0, nonWalkInRai:0
+      nonOnlineRai:0, nonWalkInRai:0,
+      nonExtraRai:0, nonCancelRai:0, nonAbsentRai:0
     };
   });
   // merge Non เข้าไป โดยใช้ getDateKey เพื่อให้ format ตรงกัน
@@ -1390,6 +1395,9 @@ function mergeBranch(stArr, nonArr){
       map[key].nonExtraLock=nExtra;
       map[key].nonCancelLock=r.cancelLock||0;
       map[key].nonAbsentLock=r.absentLock||0;
+      map[key].nonExtraRai=r.extraRai||0;
+      map[key].nonCancelRai=r.cancelRai||0;
+      map[key].nonAbsentRai=r.absentRai||0;
       map[key].l1n=r.l1||0;
       map[key].l2n=r.l2||0;
       map[key].nonFree=r.freeDay;
@@ -1400,10 +1408,12 @@ function mergeBranch(stArr, nonArr){
         onlineLock:0, onlineRai:0,
         walkInLock:0, walkInRai:0,
         extraLock:0, cancelLock:0, absentLock:0,
+        extraRai:0, cancelRai:0, absentRai:0,
         freeDay:r.freeDay, l1:0, l2:0,
         nonLock:nLock, nonRai:nRai,
         nonOnlineLock:nOnline, nonWalkInLock:nWalkIn, nonExtraLock:nExtra,
         nonCancelLock:r.cancelLock||0, nonAbsentLock:r.absentLock||0,
+        nonExtraRai:r.extraRai||0, nonCancelRai:r.cancelRai||0, nonAbsentRai:r.absentRai||0,
         nonOnlineRai:nOnlineRai, nonWalkInRai:nWalkInRai,
         l1n:r.l1||0, l2n:r.l2||0, nonFree:r.freeDay
       };
@@ -1499,11 +1509,13 @@ function setView(v,btn){
 function applyZone(d){
   if(zone==='st'){
     return d.map(r=>({...r,nonLock:0,nonRai:0,l1n:0,l2n:0,
-      nonOnlineLock:0,nonWalkInLock:0,nonExtraLock:0,nonCancelLock:0,nonAbsentLock:0,nonFree:false}));
+      nonOnlineLock:0,nonWalkInLock:0,nonExtraLock:0,nonCancelLock:0,nonAbsentLock:0,
+      nonOnlineRai:0,nonWalkInRai:0,
+      nonExtraRai:0,nonCancelRai:0,nonAbsentRai:0,nonFree:false}));
   } else if(zone==='non'){
     return d.map(r=>({...r,
       onlineLock:0,onlineRai:0,walkInLock:0,walkInRai:0,extraLock:0,
-      cancelLock:0,absentLock:0,l1:0,l2:0
+      cancelLock:0,absentLock:0,extraRai:0,cancelRai:0,absentRai:0,l1:0,l2:0
     }));
   }
   return d;
@@ -1747,6 +1759,8 @@ function renderRaw(d){
     const net=Math.max(0,r.onlineLock-r.absentLock-r.cancelLock);
     const po=wk?130:100,pw=wk?160:130;
     const rv=revST(r)+revNon(r);
+    const cancelShow = zone==='st' ? r.cancelLock : zone==='non' ? (r.nonCancelLock||0) : (r.cancelLock||0)+(r.nonCancelLock||0);
+    const absentShow = zone==='st' ? r.absentLock : zone==='non' ? (r.nonAbsentLock||0) : (r.absentLock||0)+(r.nonAbsentLock||0);
     return`<tr>
       <td style="color:${fd?'var(--gold)':wk?'var(--green)':'var(--ink)'}">${fmtD(r.date)}</td>
       <td style="color:${wk?'var(--gold)':'var(--ink2)'}">${DAYS[r.date.getDay()]}</td>
@@ -1754,8 +1768,8 @@ function renderRaw(d){
       <td class="num">${fmtN(r.walkInLock)}</td>
       <td class="num">${r.extraLock||'—'}</td>
       <td class="num" style="color:var(--purple)">${r.nonLock||'—'}</td>
-      <td class="num" style="color:var(--red)">${r.cancelLock||'—'}</td>
-      <td class="num" style="color:var(--red)">${r.absentLock||'—'}</td>
+      <td class="num" style="color:var(--red)">${cancelShow||'—'}</td>
+      <td class="num" style="color:var(--red)">${absentShow||'—'}</td>
       <td class="num col-rev" style="color:var(--ink3);font-size:10px">${fd?`${po/2}/${activeBranch==='SS'?pw:pw/2}`:`${po}/${pw}`}</td>
       <td class="num col-rev" style="font-weight:700;color:var(--green)">${fmtN(rv)}</td>
       <td class="num col-elec">${r.l1+r.l1n>0?fmtN(r.l1+r.l1n):'—'}</td>
