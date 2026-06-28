@@ -515,7 +515,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.4.2</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.4.3</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -1164,7 +1164,8 @@ function revNon(r,g='all'){
   if(activeBranch==='SS'){
     return online*p*(fd?0.5:1) + walkin*p + extra*p;
   } else {
-    return (online+walkin+extra)*p*(fd?0.5:1);
+    const pw=p+50; // Car: Walk-in/ล็อกเสริม = ราคาออนไลน์ +50 (ทุก season)
+    return (online*p + (walkin+extra)*pw)*(fd?0.5:1);
   }
 }
 function revNonNormal(r,g='all'){
@@ -1173,7 +1174,8 @@ function revNonNormal(r,g='all'){
   const online = (g==='all'||g==='online') ? (r.nonOnlineLock||0) : 0;
   const walkin = (g==='all'||g==='walkin') ? (r.nonWalkInLock||0) : 0;
   const extra  = (g==='all'||g==='extra')  ? (r.nonExtraLock||0)  : 0;
-  return (online+walkin+extra)*p;
+  const pw=(activeBranch==='SS')?p:p+50; // SS Non ไม่บวก / Car +50
+  return online*p + (walkin+extra)*pw;
 }
 
 function calcDiscount(r){
@@ -1193,7 +1195,8 @@ function calcDiscount(r){
     stDisc=(r.onlineLock||0)*po*0.5 + ((r.walkInLock||0)+(r.extraLock||0))*pw*0.5;
     // BG/BN Car: ทุกประเภทลด
     if(nonFd){
-      nonDisc=((r.nonOnlineLock||0)+(r.nonWalkInLock||0)+(r.nonExtraLock||0))*np*0.5;
+      const npw=np+50; // Walk-in/ล็อกเสริม รถ +50
+      nonDisc=((r.nonOnlineLock||0)*np + ((r.nonWalkInLock||0)+(r.nonExtraLock||0))*npw)*0.5;
     }
   }
   return stDisc+nonDisc;
@@ -1757,7 +1760,11 @@ function renderRaw(d){
   document.getElementById('rawTbl').innerHTML=d.slice(0,200).map(r=>{
     const wk=isWknd(r.date),fd=r.freeDay;
     const net=Math.max(0,r.onlineLock-r.absentLock-r.cancelLock);
-    const po=wk?130:100,pw=wk?160:130;
+    let po=wk?130:100,pw=wk?160:130; // ST default (และ zone=all)
+    if(zone==='non'){
+      const base=getNonPrice(r.date);
+      po=base; pw=(activeBranch==='SS')?base:base+50; // Car: WalkIn +50 (SS Non=30 ไม่บวก)
+    }
     const rv=revST(r)+revNon(r);
     const cancelShow = zone==='st' ? r.cancelLock : zone==='non' ? (r.nonCancelLock||0) : (r.cancelLock||0)+(r.nonCancelLock||0);
     const absentShow = zone==='st' ? r.absentLock : zone==='non' ? (r.nonAbsentLock||0) : (r.absentLock||0)+(r.nonAbsentLock||0);
