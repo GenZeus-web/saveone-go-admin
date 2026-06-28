@@ -505,8 +505,9 @@ body.manager-mode .admin-only{display:none!important;}
     };
 
     // ดึง ID token ของ user ปัจจุบัน (ไว้แนบไป Apps Script)
+    // ใส่ true = บังคับ refresh ถ้า token ใกล้/หมดอายุ (กัน Unauthorized ตอน auto-refresh)
     window.getIdToken = function() {
-      return auth.currentUser ? auth.currentUser.getIdToken() : Promise.resolve(null);
+      return auth.currentUser ? auth.currentUser.getIdToken(true) : Promise.resolve(null);
     };
 
     // Enter key login
@@ -1323,6 +1324,11 @@ async function fetchCSV(url){
     });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const text=await r.text();
+    // Apps Script ตอบ "Unauthorized" เป็น HTTP 200 ตอน token ไม่ผ่าน → ต้องจับเองไม่งั้น parse เป็น CSV ว่าง
+    const head=text.trim().slice(0,80).toLowerCase();
+    if(head.startsWith('unauthorized')||head.startsWith('sheet not found')){
+      throw new Error(text.trim().slice(0,60));
+    }
     const parsed=Papa.parse(text,{header:true,skipEmptyLines:true,dynamicTyping:false});
     console.log('Fetched:',url.slice(-30),'rows:',parsed.data.length);
     return parsed.data;
@@ -1342,21 +1348,24 @@ async function loadAll(){
     // โหลดทุกสาขาพร้อมกันครั้งแรก
     document.getElementById('spinTxt').textContent='กำลังโหลดข้อมูลทุกสาขา...';
     document.getElementById('spinTxt').textContent='กำลังโหลด SS...';
-    stData=(await fetchCSV(`${PROXIES.SS}?sheet=ST&t=${ts}`)).map(mapST).filter(Boolean);
-    nonData=(await fetchCSV(`${PROXIES.SS}?sheet=NON&t=${ts}`)).map(mapNon).filter(Boolean);
-    mergeData(); dataLoaded.SS=true;
+    const ss_st=(await fetchCSV(`${PROXIES.SS}?sheet=ST&t=${ts}`)).map(mapST).filter(Boolean);
+    const ss_non=(await fetchCSV(`${PROXIES.SS}?sheet=NON&t=${ts}`)).map(mapNon).filter(Boolean);
+    if(ss_st.length===0 && ss_non.length===0){console.warn('SS โหลดแรกได้ข้อมูลว่าง');}
+    else{stData=ss_st;nonData=ss_non;mergeData();dataLoaded.SS=true;}
     console.log('SS ST:',stData.length,'Non:',nonData.length,'Merged:',merged.length);
 
     document.getElementById('spinTxt').textContent='กำลังโหลด BG...';
-    bgStData=(await fetchCSV(`${PROXIES.BG}?sheet=BG_ST&t=${ts}`)).map(mapST).filter(Boolean);
-    bgCarData=(await fetchCSV(`${PROXIES.BG}?sheet=BG_CAR&t=${ts}`)).map(mapNon).filter(Boolean);
-    mergeBG(); dataLoaded.BG=true;
+    const bg_st=(await fetchCSV(`${PROXIES.BG}?sheet=BG_ST&t=${ts}`)).map(mapST).filter(Boolean);
+    const bg_car=(await fetchCSV(`${PROXIES.BG}?sheet=BG_CAR&t=${ts}`)).map(mapNon).filter(Boolean);
+    if(bg_st.length===0 && bg_car.length===0){console.warn('BG โหลดแรกได้ข้อมูลว่าง');}
+    else{bgStData=bg_st;bgCarData=bg_car;mergeBG();dataLoaded.BG=true;}
     console.log('BG ST:',bgStData.length,'Car:',bgCarData.length,'Merged:',bgMerged.length);
 
     document.getElementById('spinTxt').textContent='กำลังโหลด BN...';
-    bnStData=(await fetchCSV(`${PROXIES.BN}?sheet=BN_ST&t=${ts}`)).map(mapST).filter(Boolean);
-    bnCarData=(await fetchCSV(`${PROXIES.BN}?sheet=BN_CAR&t=${ts}`)).map(mapNon).filter(Boolean);
-    mergeBN(); dataLoaded.BN=true;
+    const bn_st=(await fetchCSV(`${PROXIES.BN}?sheet=BN_ST&t=${ts}`)).map(mapST).filter(Boolean);
+    const bn_car=(await fetchCSV(`${PROXIES.BN}?sheet=BN_CAR&t=${ts}`)).map(mapNon).filter(Boolean);
+    if(bn_st.length===0 && bn_car.length===0){console.warn('BN โหลดแรกได้ข้อมูลว่าง');}
+    else{bnStData=bn_st;bnCarData=bn_car;mergeBN();dataLoaded.BN=true;}
     console.log('BN ST:',bnStData.length,'Car:',bnCarData.length,'Merged:',bnMerged.length);
 
     buildMonths();applyAll();
@@ -1377,17 +1386,24 @@ async function refreshBranch(){
   try{
     if(activeBranch==='SS'){
       const [r1,r2]=await Promise.all([fetchCSV(`${PROXIES.SS}?sheet=ST&t=${ts}`),fetchCSV(`${PROXIES.SS}?sheet=NON&t=${ts}`)]);
-      stData=r1.map(mapST).filter(Boolean);nonData=r2.map(mapNon).filter(Boolean);mergeData();
+      const st=r1.map(mapST).filter(Boolean), non=r2.map(mapNon).filter(Boolean);
+      // กันข้อมูลหาย: ถ้า fetch คืนว่าง (timeout/Unauthorized) ห้ามทับของเดิม
+      if(st.length===0 && non.length===0){console.warn('SS refresh: ข้อมูลว่าง ข้ามการอัปเดต (คงข้อมูลเดิม)');return;}
+      stData=st;nonData=non;mergeData();
     } else if(activeBranch==='BG'){
       const [r1,r2]=await Promise.all([fetchCSV(`${PROXIES.BG}?sheet=BG_ST&t=${ts}`),fetchCSV(`${PROXIES.BG}?sheet=BG_CAR&t=${ts}`)]);
-      bgStData=r1.map(mapST).filter(Boolean);bgCarData=r2.map(mapNon).filter(Boolean);mergeBG();
+      const st=r1.map(mapST).filter(Boolean), car=r2.map(mapNon).filter(Boolean);
+      if(st.length===0 && car.length===0){console.warn('BG refresh: ข้อมูลว่าง ข้ามการอัปเดต (คงข้อมูลเดิม)');return;}
+      bgStData=st;bgCarData=car;mergeBG();
     } else if(activeBranch==='BN'){
       const [r1,r2]=await Promise.all([fetchCSV(`${PROXIES.BN}?sheet=BN_ST&t=${ts}`),fetchCSV(`${PROXIES.BN}?sheet=BN_CAR&t=${ts}`)]);
-      bnStData=r1.map(mapST).filter(Boolean);bnCarData=r2.map(mapNon).filter(Boolean);mergeBN();
+      const st=r1.map(mapST).filter(Boolean), car=r2.map(mapNon).filter(Boolean);
+      if(st.length===0 && car.length===0){console.warn('BN refresh: ข้อมูลว่าง ข้ามการอัปเดต (คงข้อมูลเดิม)');return;}
+      bnStData=st;bnCarData=car;mergeBN();
     }
     buildMonths();applyAll();
     document.getElementById('updTime').textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH');
-  }catch(e){alert('รีเฟรชไม่ได้: '+e.message);}
+  }catch(e){console.error('รีเฟรชไม่ได้:',e.message);}
 }
 
 function getDateKey(date){
