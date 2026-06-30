@@ -1905,6 +1905,9 @@ function cOpts(){
 function dChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 function makeChart(id,config){
   dChart(id);
+  // กัน crash: ถ้าหา canvas ไม่เจอ (tab/section ยังไม่ขึ้น DOM) ให้ข้ามการวาด ไม่ไป new Chart กับ null
+  const el=document.getElementById(id);
+  if(!el){console.warn('makeChart: ไม่พบ canvas #'+id+' — ข้ามการวาด');return null;}
   // ตรวจว่าเป็น bar หรือ line
   const hasLine=config.data?.datasets?.some(d=>d.type==='line'||config.type==='line');
   const hasBar=config.data?.datasets?.some(d=>d.type==='bar'||config.type==='bar');
@@ -1925,7 +1928,7 @@ function makeChart(id,config){
   }
   // Mixed (แท่ง+เส้น) — ใช้ reveal
 
-  charts[id]=new Chart(document.getElementById(id),config);
+  charts[id]=new Chart(el,config);
 
   // กราฟเส้นหรือ mixed ใช้ reveal plugin
   if(isLineOnly||isMixed) animateChartReveal(charts[id],1200);
