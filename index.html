@@ -55,10 +55,14 @@ body.light-mode {
   --shadow:0 2px 8px rgba(0,0,0,.1);
 }
 body.light-mode .brand-name{color:#1a1f2e!important;}
-body.light-mode .splash-logo-savewan{color:#1a1f2e!important;}
+/* ล็อกเฉพาะหน้าโหลด (splash) ให้พื้นมืดเสมอ ไม่ตามโหมดสว่าง */
+body.light-mode .splash{
+  --bg:#1a1f2e; --surface:#242938; --surface2:#2d3347; --surface3:#363d55;
+  --border:#3a4260; --ink:#e8ecf5; --ink2:#9aa3bc; --ink3:#5c6480;
+  background:#0a0a0a!important;
+}
+/* หน้า login ตามโหมดปกติ */
 body.light-mode .login-logo-text{color:#1a1f2e!important;}
-body.light-mode .splash{background:#f5f6fa!important;}
-body.light-mode .splash-company{color:rgba(26,31,46,.55)!important;}
 body.no-rev .col-rev{display:none!important;}
 body.no-elec .col-elec{display:none!important;}
 *{margin:0;padding:0;box-sizing:border-box;}
