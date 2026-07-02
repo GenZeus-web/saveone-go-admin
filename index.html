@@ -297,13 +297,17 @@ body.manager-mode .admin-only{display:none!important;}
 .splash-sg.shrink{font-size:52px;color:#fff;letter-spacing:-1px;}
 .splash-full{display:flex;align-items:center;gap:0;overflow:hidden;max-width:0;opacity:0;transition:max-width .9s cubic-bezier(.4,0,.2,1),opacity .5s ease;}
 .splash-full.show{max-width:600px;opacity:1;}
-.splash-logo-savewan{font-size:52px;font-weight:900;color:#fff;font-family:'Noto Sans Thai',sans-serif;white-space:nowrap;}
-.splash-logo-go{background:#3dd68c;color:#0a0a0a;padding:2px 14px;border-radius:6px;margin-left:8px;font-size:52px;font-weight:900;font-family:'Noto Sans Thai',sans-serif;white-space:nowrap;}
+.splash-img{width:min(380px,64vw);height:auto;opacity:0;transform:scale(.82);transition:opacity 1s ease,transform 1s cubic-bezier(.34,1.4,.6,1);}
+.splash-img.show{opacity:1;transform:scale(1);}
+.splash-wordmark{display:flex;align-items:center;justify-content:center;gap:2px;margin-top:6px;opacity:0;transform:translateY(12px);transition:opacity .7s ease,transform .7s cubic-bezier(.34,1.2,.6,1);}
+.splash-wordmark.show{opacity:1;transform:translateY(0);}
+.splash-logo-savewan{font-size:80px;font-weight:900;color:#fff;font-family:'Noto Sans Thai',sans-serif;white-space:nowrap;}
+.splash-logo-go{background:#84e62d;color:#0a0a0a;padding:2px 18px;border-radius:8px;margin-left:10px;font-size:80px;font-weight:900;font-family:'Noto Sans Thai',sans-serif;white-space:nowrap;}
 .splash-company{font-size:13px;color:rgba(255,255,255,.45);margin-top:12px;letter-spacing:1.5px;font-family:'Noto Sans Thai',sans-serif;opacity:0;transition:opacity .6s ease;}
 .splash-company.show{opacity:1;}
 .splash-bar{width:220px;height:3px;background:rgba(255,255,255,.1);border-radius:3px;margin-top:24px;overflow:hidden;opacity:0;transition:opacity .3s ease;}
 .splash-bar.show{opacity:1;}
-.splash-bar-fill{height:100%;background:#3dd68c;border-radius:3px;width:0;transition:width 2.5s ease;}
+.splash-bar-fill{height:100%;background:#84e62d;border-radius:3px;width:0;transition:width 2.5s ease;}
 .splash-bar-fill.go{width:100%;}
 @keyframes splashOut{to{opacity:0;pointer-events:none;}}
 .splash.hide{animation:splashOut .6s ease forwards;}
@@ -337,7 +341,7 @@ body.manager-mode .admin-only{display:none!important;}
   .ch-sm{height:240px;}
   .ch-md{height:260px;}
   .splash-sg{font-size:52px!important;}
-  .splash-logo-savewan,.splash-logo-go{font-size:38px!important;}
+  .splash-logo-savewan,.splash-logo-go{font-size:52px!important;}
 }
 
 </style>
@@ -521,7 +525,8 @@ body.manager-mode .admin-only{display:none!important;}
 
 <!-- HEADER -->
 <div class="splash" id="splash" style="display:none;">
-  <div style="display:flex;align-items:center;opacity:0;transform:scale(.85);transition:all 1s ease;" id="splashLogo">
+  <img src="logo.png" alt="ตลาดเซฟวัน GO" class="splash-img" id="splashLogo">
+  <div class="splash-wordmark" id="splashWordmark">
     <span class="splash-logo-savewan">เซฟวัน</span>
     <span class="splash-logo-go">GO</span>
   </div>
@@ -554,7 +559,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.5.2</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.5.3</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -2235,20 +2240,23 @@ function exportCSV(){
 function showSplash(){
   const splash=document.getElementById('splash');
   const logo=document.getElementById('splashLogo');
+  const wordmark=document.getElementById('splashWordmark');
   const company=document.getElementById('splashCompany');
   const bar=document.getElementById('splashBar');
   const fill=document.getElementById('splashFill');
   if(!splash) return;
   // reset state
-  if(logo){logo.style.opacity='0';logo.style.transform='scale(.85)';}
+  if(logo) logo.classList.remove('show');
+  if(wordmark) wordmark.classList.remove('show');
   if(company) company.classList.remove('show');
   if(bar) bar.classList.remove('show');
   if(fill) fill.classList.remove('go');
   splash.style.display='flex';
   // animate
-  setTimeout(()=>{if(logo){logo.style.opacity='1';logo.style.transform='scale(1)';}},300);
-  setTimeout(()=>{if(company) company.classList.add('show');},1100);
-  setTimeout(()=>{if(bar) bar.classList.add('show');setTimeout(()=>{if(fill) fill.classList.add('go');},50);},1300);
+  setTimeout(()=>{if(logo) logo.classList.add('show');},300);
+  setTimeout(()=>{if(wordmark) wordmark.classList.add('show');},900);
+  setTimeout(()=>{if(company) company.classList.add('show');},1300);
+  setTimeout(()=>{if(bar) bar.classList.add('show');setTimeout(()=>{if(fill) fill.classList.add('go');},50);},1500);
 }
 
 // ── SIDEBAR TOGGLE ──
