@@ -33,6 +33,18 @@
    - ดึง token ครั้งเดียวแล้วใช้ซ้ำทุกท่อ (ตอนนี้ getIdToken ทุก fetch)
 
   -----------------------------------------------------------------------
+  v2.5.5 (ก.ค. 2569) — ปุ่ม "ทั้งหมด" เลือกทุกเดือนทีเดียว
+   - เพิ่มปุ่ม "ทั้งหมด" หน้าปุ่มเดือน (กด = เลือกครบ, กดซ้ำ = ล้าง)
+  -----------------------------------------------------------------------
+  v2.5.4 (ก.ค. 2569) — หน้าเปรียบเทียบเดือน + สีกราฟโหมดสว่าง
+   1) กราฟ tick/legend/เส้นกริด อ่านสีจาก chartClr() ปรับตาม light/dark
+      ทุกหน้า -> โหมดสว่างเส้นกริด/ตัวหนังสือไม่จมหายอีก
+   2) ย้ายแท็บ "เปรียบเทียบเดือน" มาเป็นอันที่ 2 ติด "ภาพรวม"
+   3) เลย์เอาต์ใหม่: กราฟแท่งล็อกรวมรายเดือนเป็นกราฟหลัก (บน) + ตัวเลข
+      บนแท่ง + ป้าย "(ยังไม่จบเดือน)" เดือนล่าสุด, การ์ด MoM ใหญ่ขึ้น,
+      เพิ่มกล่อง "สรุปตัวเลขสำคัญ" + เฉลี่ยรายรับ/วัน, ย้ายกราฟเส้น
+      รายวันลงล่างสุด
+  -----------------------------------------------------------------------
   v2.5.3 (ก.ค. 2569) — 🎨 แก้โลโก้/หน้าโหลด (splash) โหมดสว่าง
    1) ล็อกหน้าโหลด (.splash) ให้พื้นมืดเสมอ ไม่เปลี่ยนตาม light mode
       → โลโก้รถสีขาวจะได้ไม่จมหาย (หน้า login ยังตามโหมดปกติ)
@@ -265,6 +277,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 .mc-pill{padding:5px 12px;border-radius:20px;border:1px solid var(--border);font-size:11px;cursor:pointer;font-family:"Noto Sans Thai",sans-serif;color:var(--ink2);background:var(--bg);transition:all .15s;}
 .mc-pill:hover{border-color:var(--gold);color:var(--gold);}
 .mc-pill.sel{background:var(--gold);color:#1a1f2e;border-color:var(--gold);font-weight:700;}
+.mc-pill-all{border-color:var(--gold);color:var(--gold);font-weight:700;}
+.mc-pill-all.sel{background:var(--gold);color:#1a1f2e;}
 /* HEATMAP */
 .hm-wrap{overflow-x:auto;}
 .hm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;max-width:340px;}
@@ -274,11 +288,11 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 .hm-empty{aspect-ratio:1;}
 .hm-month-lbl{font-size:10px;color:var(--ink3);margin:10px 0 5px;font-weight:600;}
 /* MOM */
-.mom-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px;}
-.mom-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
-.mom-month{font-size:11px;color:var(--ink3);margin-bottom:4px;}
-.mom-val{font-size:18px;font-weight:700;font-family:"JetBrains Mono",monospace;}
-.mom-chg{font-size:11px;margin-top:3px;display:flex;align-items:center;gap:4px;}
+.mom-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px;}
+.mom-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px 18px;}
+.mom-month{font-size:13px;color:var(--ink3);margin-bottom:6px;font-weight:600;}
+.mom-val{font-size:26px;font-weight:700;font-family:"JetBrains Mono",monospace;}
+.mom-chg{font-size:12px;margin-top:5px;display:flex;align-items:center;gap:4px;}
 .chg-up{color:var(--green);} .chg-dn{color:var(--red);} .chg-eq{color:var(--ink3);}
 /* BENCHMARK */
 .bm-note{background:rgba(74,158,255,.06);border:1px solid rgba(74,158,255,.2);border-radius:8px;padding:14px;text-align:center;color:var(--ink2);font-size:12px;}
@@ -572,7 +586,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.5.3</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.5.5</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -703,11 +717,11 @@ body.manager-mode .admin-only{display:none!important;}
     <!-- VIEW TABS -->
     <div class="vtabs">
       <button class="vtab active" onclick="setView('overview',this)">📊 ภาพรวม</button>
+      <button class="vtab" onclick="setView('compare',this)">📅 เปรียบเทียบเดือน</button>
       <button class="vtab" onclick="setView('freeday',this)" id="tab-freeday">🌧 วันฝน</button>
       <button class="vtab" onclick="setView('forecast',this)">🔮 พยากรณ์</button>
       <button class="vtab" onclick="setView('pricenote',this)" id='tab-pricenote' class='vtab'>📋 หมายเหตุราคา</button>
       <button class="vtab" onclick="setView('rawdata',this)">📄 ข้อมูลดิบ</button>
-      <button class="vtab" onclick="setView('compare',this)">📅 เปรียบเทียบเดือน</button>
       <button class="vtab" onclick="setView('heatmap',this)">🗓 ปฏิทินล็อก</button>
       <button class="vtab" onclick="setView('benchmark',this)">⚖️ Benchmark</button>
     </div>
@@ -1057,20 +1071,24 @@ body.manager-mode .admin-only{display:none!important;}
     <!-- ===== COMPARE ===== -->
     <div id="view-compare" style="display:none">
       <div class="mc-panel">
-        <div style="font-size:13px;font-weight:700;margin-bottom:4px">&#128197; เปรียบเทียบหลายเดือน</div>
-        <div style="font-size:11px;color:var(--ink3);margin-bottom:12px">กดเลือกเดือนได้หลายเดือนพร้อมกัน ไม่จำกัด</div>
+        <div style="font-size:15px;font-weight:700;margin-bottom:4px">&#128197; เปรียบเทียบหลายเดือน</div>
+        <div style="font-size:12px;color:var(--ink3);margin-bottom:12px">กดเลือกเดือนได้หลายเดือนพร้อมกัน ไม่จำกัด (ตั้งแต่เดือนแรก ถึง เดือนปัจจุบัน)</div>
         <div class="mc-month-pills" id="mcPills"></div>
-        <div class="sc" style="margin-bottom:12px">
-          <div class="sc-title">จำนวนล็อกรายวัน — เทียบแต่ละเดือนบนแกนเดียวกัน</div>
-          <div style="height:260px;position:relative"><canvas id="cCompare"></canvas></div>
+        <div class="sc" style="margin-bottom:14px">
+          <div class="sc-title" style="font-size:14px">&#128202; ล็อกรวมรายเดือน — กราฟหลัก</div>
+          <div style="height:300px;position:relative"><canvas id="cMonthTotal"></canvas></div>
         </div>
-        <div class="sc" style="margin-bottom:12px">
-          <div class="sc-title">Month-over-Month — % เปลี่ยนแปลงเทียบเดือนก่อน</div>
+        <div class="sc" style="margin-bottom:14px">
+          <div class="sc-title" style="font-size:14px">Month-over-Month — % เปลี่ยนแปลงเทียบเดือนก่อน</div>
           <div class="mom-grid" id="momGrid"></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="sc" id="cMonthTotalCard"><div class="sc-title">ล็อกรวมต่อเดือน</div><div style="height:180px;position:relative"><canvas id="cMonthTotal"></canvas></div></div>
-          <div class="sc" id="cMonthRevCard"><div class="sc-title">รายรับต่อเดือน (บาท)</div><div style="height:180px;position:relative"><canvas id="cMonthRev"></canvas></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div class="sc" id="cMonthRevCard"><div class="sc-title">รายรับต่อเดือน (บาท)</div><div style="height:190px;position:relative"><canvas id="cMonthRev"></canvas></div></div>
+          <div class="sc" id="cmpSummaryCard"><div class="sc-title">&#129518; สรุปตัวเลขสำคัญ</div><div id="cmpSummary" style="font-size:12px"></div></div>
+        </div>
+        <div class="sc">
+          <div class="sc-title">&#128200; จำนวนล็อกรายวัน — เทียบแต่ละเดือนบนแกนเดียวกัน (รายละเอียดรายวัน)</div>
+          <div style="height:240px;position:relative"><canvas id="cCompare"></canvas></div>
         </div>
       </div>
     </div>
@@ -1544,13 +1562,33 @@ function buildMonths(){
     // เลือก 3 เดือนล่าสุดเป็น default
     const recent=ks.slice(0,3);
     recent.forEach(k=>selMonths.add(k));
-    pills.innerHTML=ks.map(k=>{const[y,m]=k.split('-');return `<button class="mc-pill${selMonths.has(k)?' sel':''}" onclick="toggleMonth('${k}',this)">${mLbl(new Date(y,m-1,1))}</button>`;}).join('');
+    const _allSel=ks.length&&ks.every(k=>selMonths.has(k));
+    const _allBtn=`<button class="mc-pill mc-pill-all${_allSel?' sel':''}" onclick="toggleAllMonths(this)">${_allSel?'ล้างทั้งหมด':'ทั้งหมด'}</button>`;
+    pills.innerHTML=_allBtn+ks.map(k=>{const[y,m]=k.split('-');return `<button class="mc-pill${selMonths.has(k)?' sel':''}" data-mk="${k}" onclick="toggleMonth('${k}',this)">${mLbl(new Date(y,m-1,1))}</button>`;}).join('');
   }
 }
 
+function _syncAllMonthBtn(){
+  const a=document.querySelector('.mc-pill-all');
+  if(!a) return;
+  const ks=[...new Set(getActiveMerged().map(r=>mKey(r.date)))];
+  const allSel=ks.length&&ks.every(k=>selMonths.has(k));
+  a.classList.toggle('sel',allSel);
+  a.textContent=allSel?'ล้างทั้งหมด':'ทั้งหมด';
+}
 function toggleMonth(k,btn){
   if(selMonths.has(k)){selMonths.delete(k);btn.classList.remove('sel');}
   else{selMonths.add(k);btn.classList.add('sel');}
+  _syncAllMonthBtn();
+  if(view==='compare') renderCompare();
+}
+function toggleAllMonths(btn){
+  const ks=[...new Set(getActiveMerged().map(r=>mKey(r.date)))];
+  const allSel=ks.length&&ks.every(k=>selMonths.has(k));
+  if(allSel) selMonths.clear();
+  else ks.forEach(k=>selMonths.add(k));
+  document.querySelectorAll('#mcPills .mc-pill[data-mk]').forEach(b=>b.classList.toggle('sel',selMonths.has(b.dataset.mk)));
+  _syncAllMonthBtn();
   if(view==='compare') renderCompare();
 }
 
@@ -1736,12 +1774,12 @@ function renderOverview(d){
       animation:false,
       interaction:{mode:'index',intersect:false},
       plugins:{
-        legend:{labels:{color:'#9aa3bc',font:{family:'Noto Sans Thai',size:11}}},
+        legend:{labels:{color:chartClr().lbl,font:{family:'Noto Sans Thai',size:11}}},
         tooltip:{callbacks:{title:items=>`${items[0].label} (${DAYS[new Date(daily[items[0].dataIndex]?.date).getDay()]})`}}
       },
       scales:{
-        x:{ticks:{color:'#5c6480',font:{family:'Noto Sans Thai',size:9},maxTicksLimit:15,maxRotation:0},grid:{color:'rgba(255,255,255,.04)'}},
-        y:{position:'left',min:0,max:lockMax,title:{display:true,text:'ราย / ล็อก',color:'#9aa3bc',font:{size:10}},ticks:{color:'#9aa3bc',font:{family:'JetBrains Mono',size:9}},grid:{color:'rgba(255,255,255,.04)'}},
+        x:{ticks:{color:chartClr().tick,font:{family:'Noto Sans Thai',size:9},maxTicksLimit:15,maxRotation:0},grid:{color:chartClr().grid}},
+        y:{position:'left',min:0,max:lockMax,title:{display:true,text:'ราย / ล็อก',color:chartClr().lbl,font:{size:10}},ticks:{color:chartClr().lbl,font:{family:'JetBrains Mono',size:9}},grid:{color:chartClr().grid}},
       }
     }
   });
@@ -1779,7 +1817,7 @@ function renderOverview(d){
   const totE=d.reduce((s,r)=>s+(r.extraLock||0),0);
   const totC=d.reduce((s,r)=>s+(r.cancelLock||0)+(r.absentLock||0),0);
   dChart('cPie');
-  charts.cPie=makeChart('cPie',{type:'doughnut',data:{labels:['ออนไลน์สุทธิ','วอคอิน ST','Non','เสริม','ยกเลิก/ลา'],datasets:[{data:[totO,totW,totN,totE,totC],backgroundColor:['rgba(74,158,255,.85)','rgba(240,165,0,.85)','rgba(167,139,250,.8)','rgba(61,214,140,.75)','rgba(224,92,92,.65)'],borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom',labels:{color:'#9aa3bc',font:{family:'Noto Sans Thai',size:10},padding:8}}}}});
+  charts.cPie=makeChart('cPie',{type:'doughnut',data:{labels:['ออนไลน์สุทธิ','วอคอิน ST','Non','เสริม','ยกเลิก/ลา'],datasets:[{data:[totO,totW,totN,totE,totC],backgroundColor:['rgba(74,158,255,.85)','rgba(240,165,0,.85)','rgba(167,139,250,.8)','rgba(61,214,140,.75)','rgba(224,92,92,.65)'],borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom',labels:{color:chartClr().lbl,font:{family:'Noto Sans Thai',size:10},padding:8}}}}});
 
   // Top/Bottom
   const s2=[...d].filter(r=>getLock(r,group)>0).sort((a,b)=>getLock(b,group)-getLock(a,group));
@@ -1913,11 +1951,17 @@ function animateChartReveal(chart,duration=1200){
   requestAnimationFrame(step);
 }
 
+// สีของกราฟ (tick/legend/เส้นกริด) ปรับตามธีม — โหมดสว่างจะไม่จมหาย
+function chartClr(){
+  return document.body.classList.contains('light-mode')
+    ? {tick:'#5a6486', lbl:'#3a4260', grid:'rgba(20,30,60,.12)'}
+    : {tick:'#5c6480', lbl:'#9aa3bc', grid:'rgba(255,255,255,.04)'};
+}
 function cOpts(){
   return{responsive:true,maintainAspectRatio:false,
     animation:false, // ปิด animation ของ Chart.js ใช้ plugin แทน
-    plugins:{legend:{labels:{color:'#9aa3bc',font:{family:'Noto Sans Thai',size:11}}}},
-    scales:{x:{ticks:{color:'#5c6480',font:{family:'Noto Sans Thai',size:10},maxTicksLimit:12,maxRotation:0},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#5c6480',font:{family:'JetBrains Mono',size:10}},grid:{color:'rgba(255,255,255,.04)'}}}
+    plugins:{legend:{labels:{color:chartClr().lbl,font:{family:'Noto Sans Thai',size:11}}}},
+    scales:{x:{ticks:{color:chartClr().tick,font:{family:'Noto Sans Thai',size:10},maxTicksLimit:12,maxRotation:0},grid:{color:chartClr().grid}},y:{ticks:{color:chartClr().tick,font:{family:'JetBrains Mono',size:10}},grid:{color:chartClr().grid}}}
   };
 }
 function dChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
@@ -1993,8 +2037,8 @@ function renderCompare(){
       })
     },
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:'#9aa3bc',font:{family:'Noto Sans Thai',size:11}}}},
-      scales:{x:{ticks:{color:'#5c6480',font:{size:9},maxTicksLimit:16},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#5c6480',font:{family:'JetBrains Mono',size:10}},grid:{color:'rgba(255,255,255,.04)'}}}
+      plugins:{legend:{labels:{color:chartClr().lbl,font:{family:'Noto Sans Thai',size:11}}}},
+      scales:{x:{ticks:{color:chartClr().tick,font:{size:9},maxTicksLimit:16},grid:{color:chartClr().grid}},y:{ticks:{color:chartClr().tick,font:{family:'JetBrains Mono',size:10}},grid:{color:chartClr().grid}}}
     }
   });
 
@@ -2007,7 +2051,9 @@ function renderCompare(){
   });
   const mkLabels=mks.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));});
   dChart('cMonthTotal');
-  charts.cMonthTotal=makeChart('cMonthTotal',{type:'bar',data:{labels:mkLabels,datasets:[{label:'ล็อกรวม',data:mks.map(k=>totals[k]),backgroundColor:mks.map((_,i)=>MONTH_COLORS[i%MONTH_COLORS.length]),borderRadius:4}]},options:cOpts()});
+  const _curMK=mKey(new Date());
+  const _totLabels={id:'totLabels',afterDatasetsDraw(chart){const{ctx}=chart;const meta=chart.getDatasetMeta(0);if(!meta)return;ctx.save();ctx.textAlign='center';meta.data.forEach((bar,i)=>{const v=totals[mks[i]]||0;ctx.fillStyle=chartClr().lbl;ctx.font='600 12px JetBrains Mono';ctx.fillText(fmtN(v),bar.x,bar.y-6);if(mks[i]===_curMK){ctx.fillStyle=chartClr().tick;ctx.font='400 10px Noto Sans Thai';ctx.fillText('(ยังไม่จบเดือน)',bar.x,bar.y-22);}});ctx.restore();}};
+  charts.cMonthTotal=makeChart('cMonthTotal',{type:'bar',data:{labels:mkLabels,datasets:[{label:'ล็อกรวม',data:mks.map(k=>totals[k]),backgroundColor:mks.map((_,i)=>MONTH_COLORS[i%MONTH_COLORS.length]),borderRadius:6,maxBarThickness:90}]},options:{...cOpts(),layout:{padding:{top:30}}},plugins:[_totLabels]});
   dChart('cMonthRev');
   const _canRev=window.userPerms?window.userPerms.showRevenue:true;
   const _revCard=document.getElementById('cMonthRevCard');
@@ -2042,10 +2088,27 @@ function renderCompare(){
     return`<div class="mom-card">
       <div class="mom-month" style="color:${MONTH_COLORS[i%MONTH_COLORS.length]}">${lbl}</div>
       <div class="mom-val">${fmtN(total)}</div>
-      <div style="font-size:10px;color:var(--ink3)">เฉลี่ย ${avg} ล็อก/วัน</div>
+      <div style="font-size:12px;color:var(--ink3)">เฉลี่ย ${avg} ล็อก/วัน</div>
       ${chgHtml}
     </div>`;
   }).join('');
+
+  // สรุปตัวเลขสำคัญ (ครบวงจร)
+  const _sumEl=document.getElementById('cmpSummary');
+  if(_sumEl){
+    let _daysSum=0,_lockSum=0,_revSum=0;
+    mks.forEach(k=>{_daysSum+=(days_in[k]||0);_lockSum+=(allTotals[k]||0);_revSum+=(revs[k]||0);});
+    const _avg=_daysSum?_lockSum/_daysSum:0;
+    let _best=null,_worst=null;
+    mks.forEach(k=>{const a=(allTotals[k]||0)/((days_in[k]||1));if(_best===null||a>_best.a)_best={k,a};if(_worst===null||a<_worst.a)_worst={k,a};});
+    const _tgt=parseInt(document.getElementById('targetInput')?.value||'400')||400;
+    const _pct=_tgt?(_avg/_tgt*100):0;
+    const _canRev=window.userPerms?window.userPerms.showRevenue:true;
+    const _bl=(x)=>{if(!x)return '-';const p=x.split('-');return mLbl(new Date(p[0],p[1]-1,1));};
+    let _rows=[['รวมล็อก ('+mks.length+' เดือน)',fmtN(_lockSum)+' ล็อก'],['เฉลี่ยรวม',_avg.toFixed(1)+' ล็อก/วัน'],['% เทียบเป้า ('+_tgt+'/วัน)',_pct.toFixed(0)+'%'],['เดือนสูงสุด',_bl(_best&&_best.k)+' · '+(_best?_best.a.toFixed(0):0)+'/วัน'],['เดือนต่ำสุด',_bl(_worst&&_worst.k)+' · '+(_worst?_worst.a.toFixed(0):0)+'/วัน']];
+    if(_canRev){_rows.push(['รวมรายรับ',fmtN(_revSum)+' ฿']);_rows.push(['เฉลี่ยรายรับ',(_daysSum?(_revSum/_daysSum):0).toFixed(0)+' ฿/วัน']);}
+    _sumEl.innerHTML=_rows.map(r=>'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="color:var(--ink3)">'+r[0]+'</span><span style="font-weight:700">'+r[1]+'</span></div>').join('');
+  }
 }
 
 // ── HEATMAP ──
@@ -2213,7 +2276,7 @@ function renderBenchmark(){
         borderWidth:1.5,pointRadius:1.5,tension:.3,spanGaps:false
       }))
     },
-    options:{...cOpts(),plugins:{legend:{labels:{color:'#9aa3bc',font:{family:'Noto Sans Thai',size:11}}}}}
+    options:{...cOpts(),plugins:{legend:{labels:{color:chartClr().lbl,font:{family:'Noto Sans Thai',size:11}}}}}
   });
 }
 
