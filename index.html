@@ -33,6 +33,21 @@
    - ดึง token ครั้งเดียวแล้วใช้ซ้ำทุกท่อ (ตอนนี้ getIdToken ทุก fetch)
 
   -----------------------------------------------------------------------
+  v2.5.6 (ก.ค. 2569) — แก้บั๊ก 4 จุด + จัดหน้าพยากรณ์ใหม่
+   1) กำหนดเองเลือกวันที่: parse เป็นเวลา local (เดิม new Date("YYYY-MM-DD")
+      เป็น UTC ทำให้วันแรกหลุด ข้อมูลเลื่อน +1 วัน)
+   2) สรุปตัวเลขสำคัญ (หน้าเปรียบเทียบ): "เฉลี่ยรายรับ" ใช้ fmtN ใส่ลูกน้ำ
+      (เดิม toFixed(0) ไม่มี comma)
+   3) ปฏิทินล็อก heatmap: แต่ละเดือนห่อ .hm-month + #hmWrap เป็น flex-wrap
+      เรียงแนวนอนไหลไปทางขวาแล้ววนลงบรรทัดใหม่ (เดิมเรียงแนวตั้ง),
+      .hm-grid ใช้ width:340px คงที่ cell ขนาดเท่าเดิม
+   4) พยากรณ์: แยกเดือนปัจจุบันที่ยังไม่จบออกจากค่าเฉลี่ย 3 เดือน แล้ว
+      จัดหน้าใหม่เป็น 2 กลุ่มชัดเจน:
+      • "📅 เดือนนี้ (กำลังดำเนินอยู่)" = ล็อกสะสม / เพซเฉลี่ย/วันตอนนี้
+        (มีลูกศร ▲▼ เทียบค่าเฉลี่ย 3 เดือน เขียว=เร็วกว่า แดง=ช้ากว่า) /
+        คาดทั้งเดือน + แถบความคืบหน้า + ป้ายเตือน "ยังไม่จบเดือน"
+      • "🔮 พยากรณ์เดือนหน้า" = เฉลี่ย 3 เดือนเต็ม / พยากรณ์ 30 วัน / รายรับ
+  -----------------------------------------------------------------------
   v2.5.5 (ก.ค. 2569) — ปุ่ม "ทั้งหมด" เลือกทุกเดือนทีเดียว
    - เพิ่มปุ่ม "ทั้งหมด" หน้าปุ่มเดือน (กด = เลือกครบ, กดซ้ำ = ล้าง)
   -----------------------------------------------------------------------
@@ -281,12 +296,14 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 .mc-pill-all.sel{background:var(--gold);color:#1a1f2e;}
 /* HEATMAP */
 .hm-wrap{overflow-x:auto;}
-.hm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;max-width:340px;}
+.hm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;width:340px;}
 .hm-day-lbl{text-align:center;font-size:9px;color:var(--ink3);padding:3px 0;font-weight:700;}
 .hm-cell{aspect-ratio:1;border-radius:3px;cursor:default;transition:transform .1s;position:relative;}
 .hm-cell:hover{transform:scale(1.15);z-index:10;}
 .hm-empty{aspect-ratio:1;}
-.hm-month-lbl{font-size:10px;color:var(--ink3);margin:10px 0 5px;font-weight:600;}
+.hm-month-lbl{font-size:10px;color:var(--ink3);margin:0 0 5px;font-weight:600;}
+#hmWrap{display:flex;flex-wrap:wrap;gap:16px 22px;align-items:flex-start;}
+.hm-month{flex:0 0 auto;width:340px;}
 /* MOM */
 .mom-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px;}
 .mom-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px 18px;}
@@ -586,7 +603,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.5.5</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.5.6</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -1628,7 +1645,7 @@ function applyCustomDate(){
   const f=document.getElementById('dateFrom').value;
   const t=document.getElementById('dateTo').value;
   if(!f||!t) return;
-  customFrom=new Date(f);customTo=new Date(t);customTo.setHours(23,59,59);
+  customFrom=new Date(f+'T00:00:00');customTo=new Date(t+'T23:59:59');
   period=0;selMonth='';applyAll();
 }
 function setView(v,btn){
@@ -1862,18 +1879,50 @@ function renderForecast(){
   const mon={};
   sorted.forEach(r=>{const k=mKey(r.date);if(!mon[k])mon[k]={lock:0,rev:0,days:0};mon[k].lock+=getLock(r,'all');mon[k].rev+=revST(r)+revNon(r);mon[k].days++;});
   const mks=Object.keys(mon).sort();
-  const last3=mks.slice(-3);
+  // v2.5.6: แยกเดือนปัจจุบันที่ยังไม่จบออกจากฐานค่าเฉลี่ย + การ์ด Month-to-Date
+  const _now=new Date();
+  const _curMK=mKey(_now);
+  const _daysInCur=new Date(_now.getFullYear(),_now.getMonth()+1,0).getDate();
+  const _daysElapsed=_now.getDate();
+  const _curIncomplete=!!mon[_curMK] && _daysElapsed<_daysInCur;
+  const _baseMks=(function(){const c=mks.filter(k=>!(k===_curMK&&_curIncomplete));return c.length?c:mks;})();
+  const last3=_baseMks.slice(-3);
   const avgLock=last3.reduce((s,k)=>s+mon[k].lock/mon[k].days,0)/last3.length;
   const avgRev=last3.reduce((s,k)=>s+mon[k].rev/mon[k].days,0)/last3.length;
   const fcLock=Math.round(avgLock*30),fcRev=Math.round(avgRev*30);
   const _fcRev=window.userPerms?window.userPerms.showRevenue:true;
+  // pace เทียบค่าเฉลี่ยฐาน (แสดงว่าเร็ว/ช้ากว่าปกติ)
+  const _pace=(cur)=>{if(!avgLock)return '';const p=Math.round((cur-avgLock)/avgLock*100);const up=p>=0;return `<div style="font-size:10px;margin-top:3px;color:${up?'var(--green)':'var(--red)'}">${up?'▲':'▼'} ${Math.abs(p)}% เทียบเฉลี่ย 3 ด.</div>`;};
+  let _thisMonthSec='';
+  if(_curIncomplete){
+    const _mtdLock=mon[_curMK].lock,_mtdDays=mon[_curMK].days;
+    const _mtdAvg=_mtdDays?_mtdLock/_mtdDays:0;
+    const _projLock=Math.round(_mtdAvg*_daysInCur);
+    const _pct=Math.round(_daysElapsed/_daysInCur*100);
+    const _curLbl=(function(){const p=_curMK.split('-');return mLbl(new Date(p[0],p[1]-1,1));})();
+    _thisMonthSec=`
+    <div style="grid-column:1/-1;background:rgba(240,165,0,.12);border:1px solid rgba(240,165,0,.35);border-radius:7px;padding:8px 12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gold);margin-bottom:2px">⚠️ เดือน ${_curLbl} ยังไม่จบ — ผ่านไป ${_daysElapsed}/${_daysInCur} วัน (${_pct}%) · ตัวเลขด้านล่างยังไม่ครบเดือน</div>
+    <div style="grid-column:1/-1;font-size:12px;font-weight:700;color:var(--ink2);margin:4px 0 0">📅 เดือนนี้ (กำลังดำเนินอยู่)</div>
+    <div style="grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
+      <div class="fc-card"><div class="fc-val">${fmtN(_mtdLock)}</div><div class="fc-lbl">ล็อกสะสม (ถึงวันที่ ${_daysElapsed})</div></div>
+      <div class="fc-card"><div class="fc-val">${fmtN(_mtdAvg,1)}</div><div class="fc-lbl">เพซเฉลี่ย/วัน ตอนนี้</div>${_pace(_mtdAvg)}</div>
+      <div class="fc-card" style="background:rgba(74,158,255,.08);border-color:rgba(74,158,255,.28)"><div class="fc-val" style="color:var(--blue)">${fmtN(_projLock)}</div><div class="fc-lbl">คาดทั้งเดือน (ถ้าคงเพซนี้)</div></div>
+    </div>
+    <div style="grid-column:1/-1;margin:8px 0 2px"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink3);margin-bottom:4px"><span>ความคืบหน้าเดือน ${_curLbl}</span><span>${_daysElapsed}/${_daysInCur} วัน</span></div><div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden"><div style="width:${_pct}%;height:100%;background:var(--gold)"></div></div></div>`;
+  }
+  const _revCards=_fcRev?`
+      <div class="fc-card"><div class="fc-val">${fmtN(avgRev)}</div><div class="fc-lbl">รายรับเฉลี่ย/วัน (฿)</div></div>
+      <div class="fc-card"><div class="fc-val">${fmtN(fcRev)}</div><div class="fc-lbl">รายรับพยากรณ์ 30 วัน (฿)</div></div>`:'';
   document.getElementById('fcCards').innerHTML=`
-    <div class="fc-card"><div class="fc-val">${fmtN(avgLock,1)}</div><div class="fc-lbl">ล็อกเฉลี่ย/วัน (3 เดือน)</div></div>
-    <div class="fc-card"><div class="fc-val">${fmtN(fcLock)}</div><div class="fc-lbl">ล็อกพยากรณ์ (30 วัน)</div></div>
-    ${_fcRev?`<div class="fc-card"><div class="fc-val">${fmtN(avgRev)}</div><div class="fc-lbl">รายรับเฉลี่ย/วัน (฿)</div></div>
-    <div class="fc-card"><div class="fc-val">${fmtN(fcRev)}</div><div class="fc-lbl">รายรับพยากรณ์ (฿)</div></div>`:''}
+    ${_thisMonthSec}
+    <div style="grid-column:1/-1;font-size:12px;font-weight:700;color:var(--ink2);margin:10px 0 0">🔮 พยากรณ์เดือนหน้า (ฉาย 30 วันข้างหน้า)</div>
+    <div style="grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
+      <div class="fc-card"><div class="fc-val">${fmtN(avgLock,1)}</div><div class="fc-lbl">ล็อกเฉลี่ย/วัน (${last3.length} เดือนเต็ม)</div></div>
+      <div class="fc-card" style="background:rgba(61,214,140,.08);border-color:rgba(61,214,140,.28)"><div class="fc-val" style="color:var(--green)">${fmtN(fcLock)}</div><div class="fc-lbl">ล็อกพยากรณ์ 30 วัน</div></div>
+      ${_revCards}
+    </div>
   `;
-  document.getElementById('fcNote').innerHTML=`คำนวณจากค่าเฉลี่ยต่อวันของ <strong>${last3.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));}).join(', ')}</strong> → ฉาย 30 วันข้างหน้า | เป็นการพยากรณ์จากสถิติย้อนหลังเท่านั้น`;
+  document.getElementById('fcNote').innerHTML=`ฐานพยากรณ์: ค่าเฉลี่ยต่อวันของ <strong>${last3.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));}).join(', ')}</strong>${_curIncomplete?' (ไม่รวมเดือนปัจจุบันที่ยังไม่จบ)':''} → ฉาย 30 วันข้างหน้า | เป็นการพยากรณ์จากสถิติย้อนหลังเท่านั้น`;
   // ตั้งค่า default ล็อก/วัน จากพยากรณ์
   const wiInput=document.getElementById('wiLock');
   if(wiInput&&!wiInput.value) wiInput.value=Math.round(avgLock);
@@ -2106,7 +2155,7 @@ function renderCompare(){
     const _canRev=window.userPerms?window.userPerms.showRevenue:true;
     const _bl=(x)=>{if(!x)return '-';const p=x.split('-');return mLbl(new Date(p[0],p[1]-1,1));};
     let _rows=[['รวมล็อก ('+mks.length+' เดือน)',fmtN(_lockSum)+' ล็อก'],['เฉลี่ยรวม',_avg.toFixed(1)+' ล็อก/วัน'],['% เทียบเป้า ('+_tgt+'/วัน)',_pct.toFixed(0)+'%'],['เดือนสูงสุด',_bl(_best&&_best.k)+' · '+(_best?_best.a.toFixed(0):0)+'/วัน'],['เดือนต่ำสุด',_bl(_worst&&_worst.k)+' · '+(_worst?_worst.a.toFixed(0):0)+'/วัน']];
-    if(_canRev){_rows.push(['รวมรายรับ',fmtN(_revSum)+' ฿']);_rows.push(['เฉลี่ยรายรับ',(_daysSum?(_revSum/_daysSum):0).toFixed(0)+' ฿/วัน']);}
+    if(_canRev){_rows.push(['รวมรายรับ',fmtN(_revSum)+' ฿']);_rows.push(['เฉลี่ยรายรับ',fmtN(_daysSum?(_revSum/_daysSum):0)+' ฿/วัน']);}
     _sumEl.innerHTML=_rows.map(r=>'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="color:var(--ink3)">'+r[0]+'</span><span style="font-weight:700">'+r[1]+'</span></div>').join('');
   }
 }
@@ -2141,7 +2190,7 @@ function renderHeatmap(){
       dayMap[r.date.getDate()]={lock:getLock(r,group),free:r.freeDay};
     });
     
-    html+=`<div class="hm-month-lbl">${label}</div><div class="hm-grid">`;
+    html+=`<div class="hm-month"><div class="hm-month-lbl">${label}</div><div class="hm-grid">`;
     ['อา','จ','อ','พ','พฤ','ศ','ส'].forEach(d=>html+=`<div class="hm-day-lbl">${d}</div>`);
     for(let i=0;i<firstDay;i++) html+='<div class="hm-empty"></div>';
     for(let d=1;d<=daysInMonth;d++){
@@ -2163,7 +2212,7 @@ function renderHeatmap(){
         <span style="font-size:8px;color:rgba(255,255,255,.6);position:absolute;top:1px;left:2px;line-height:1">${d}</span>
       </div>`;
     }
-    html+='</div>';
+    html+='</div></div>';
   });
   wrap.innerHTML=html;
 }
