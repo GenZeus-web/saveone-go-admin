@@ -34,6 +34,19 @@
    - Apps Script: verifyToken cache ผลด้วย CacheService (เก็บ 5 นาที)
 
   -----------------------------------------------------------------------
+  v2.6.4 (28 ก.ค. 2569) — จัดหน้าภาพรวมใหม่ กราฟไม่โดนดันตกจอ
+   UI-04) บล็อกเป้า (แบนเนอร์เตือน + กล่องเป้าเดือน + แถบสรุปเป้า ~375px)
+      ถูกวางคั่นกลางระหว่าง KPI "รายรับ" กับ KPI "สถิติการจอง"
+      ผล: การ์ด KPI 2 ชุดขาดจากกัน + หัวข้อกราฟรายวันถูกดันไปอยู่ขอบล่างจอ
+          ต้องเลื่อนทุกครั้งถึงจะเห็นกราฟ
+      แก้: (1) ย้ายทั้งบล็อกลงไปไว้ใต้ statsSection (ก่อนกราฟ) การ์ดต่อกันแล้ว
+           (2) ห่อด้วย <details id="targetPanel"> พับเก็บได้ เหลือแถบ 1 บรรทัด
+           (3) renderTargetStatus เขียนสรุปลง #targetSummaryText
+               = streak + เฉลี่ย/เป้า + % เป้าเดือน (ค่าเดิมทั้งหมด ไม่คิดใหม่)
+      เกณฑ์สีคงเดิม: แดง >= 3 วันติด / ส้ม 1-2 วัน / เขียววันล่าสุดถึงเป้า
+      ยังซ่อนทั้งก้อนเมื่อ group !== 'all' ตามข้อจำกัดที่ตั้งใจไว้ใน ENH-05
+
+  -----------------------------------------------------------------------
   v2.6.3 (28 ก.ค. 2569) — เปิดเว็บเห็นข้อมูลทันที ไม่ต้องรอ Apps Script อีก
    CACHE-01) ปัญหาที่แก้จริง: ทุกวิธีก่อนหน้า (retry / timeout / คุมจำนวนท่อ) ยัง
       "ให้ผู้ใช้นั่งรอ Apps Script" อยู่ ต่างกันแค่รอยังไง. Apps Script Web App
@@ -265,6 +278,11 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 
 /* KPI SECTION */
 .kpi-section{margin-bottom:16px;}
+#targetSummary::-webkit-details-marker{display:none;}
+#targetSummary::marker{content:'';}
+#targetPanel .tgt-less{display:none;}
+#targetPanel[open] .tgt-less{display:inline;}
+#targetPanel[open] .tgt-more{display:none;}
 .kpi-sec-title{font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;font-weight:700;}
 .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:10px;}
 .kpi{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:13px 15px;transition:transform .15s;}
@@ -695,7 +713,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.6.3</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.6.4</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -880,37 +898,6 @@ body.manager-mode .admin-only{display:none!important;}
         </div>
       </div><!-- /revSection -->
 
-      <!-- ENH-05: แบนเนอร์เตือนหลุดเป้า -->
-      <div id="targetAlert" style="display:none;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;line-height:1.6"></div>
-
-      <!-- ENH-05: เป้าเดือนนี้ (pace) -->
-      <div id="targetMonthBox" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:8px">
-          <div style="font-size:12px;font-weight:700">🎯 เป้าเดือนนี้ · <span id="tmMonth">—</span></div>
-          <div style="font-size:11px;color:var(--ink2)"><strong id="tmActual">—</strong> / <span id="tmGoal">—</span> ล็อก</div>
-        </div>
-        <div style="height:10px;background:var(--bg);border-radius:5px;position:relative;overflow:visible">
-          <div id="tmBar" style="width:0%;height:100%;border-radius:5px;background:var(--green);transition:width .4s"></div>
-          <div id="tmPace" style="position:absolute;left:0%;top:-3px;bottom:-3px;width:2px;background:var(--ink)"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink3);margin-top:6px;flex-wrap:wrap;gap:6px">
-          <span>ทำได้ <strong id="tmPct">—</strong></span>
-          <span>เพซที่ควรเป็นวันนี้ <strong id="tmPacePct">—</strong> (วันที่ <span id="tmDay">—</span>)</span>
-        </div>
-        <div id="tmNote" style="font-size:11px;margin-top:8px;color:var(--ink2)">—</div>
-        <div style="font-size:11px;color:var(--ink3);margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">5 วันล่าสุด</div>
-        <div id="tmDayList" style="margin-top:4px"></div>
-      </div>
-
-      <!-- TARGET SUMMARY (ทุก role เห็น) -->
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-        <div style="font-size:11px;color:var(--ink3)">🎯 เป้าหมาย <strong style="color:var(--gold)" id="targetDisplay">400</strong> ล็อก/วัน</div>
-        <div style="font-size:11px;color:var(--ink2)">เฉลี่ยจริง: <strong id="targetActual" style="color:var(--green)">—</strong> ล็อก/วัน</div>
-        <div style="font-size:11px;color:var(--ink2)">ถึงเป้า: <strong id="targetHit" style="color:var(--green)">—</strong> วัน</div>
-        <div style="font-size:11px;color:var(--ink2)">ไม่ถึงเป้า: <strong id="targetMiss" style="color:var(--red)">—</strong> วัน</div>
-        <div style="font-size:11px;color:var(--ink2)">% วันที่ถึงเป้า: <strong id="targetPct" style="color:var(--purple)">—</strong></div>
-      </div>
-
       <!-- KPI สถิติการจอง (ทุก role เห็น — ไม่มีตัวเงิน) -->
       <div id="statsSection">
         <div class="kpi-sec-title">📊 สถิติการจอง</div>
@@ -955,6 +942,43 @@ body.manager-mode .admin-only{display:none!important;}
           </div>
         </div>
       </div><!-- /statsSection -->
+
+      <!-- ENH-05 · v2.6.4 UI-04: บล็อกเป้า ย้ายลงมาใต้ KPI (เดิมคั่นกลาง 2 บล็อก) + พับเก็บได้ -->
+      <details id="targetPanel" style="display:none;margin-bottom:14px">
+        <summary id="targetSummary" style="list-style:none;cursor:pointer;border-radius:8px;padding:9px 14px;font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <span id="targetSummaryText">—</span>
+          <span style="font-size:11px;color:var(--ink3);white-space:nowrap"><span class="tgt-more">รายละเอียด ▾</span><span class="tgt-less">ย่อ ▴</span></span>
+        </summary>
+
+        <!-- ENH-05: เป้าเดือนนี้ (pace) -->
+        <div id="targetMonthBox" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-top:8px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+            <div style="font-size:12px;font-weight:700">🎯 เป้าเดือนนี้ · <span id="tmMonth">—</span></div>
+            <div style="font-size:11px;color:var(--ink2)"><strong id="tmActual">—</strong> / <span id="tmGoal">—</span> ล็อก</div>
+          </div>
+          <div style="height:10px;background:var(--bg);border-radius:5px;position:relative;overflow:visible">
+            <div id="tmBar" style="width:0%;height:100%;border-radius:5px;background:var(--green);transition:width .4s"></div>
+            <div id="tmPace" style="position:absolute;left:0%;top:-3px;bottom:-3px;width:2px;background:var(--ink)"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink3);margin-top:6px;flex-wrap:wrap;gap:6px">
+            <span>ทำได้ <strong id="tmPct">—</strong></span>
+            <span>เพซที่ควรเป็นวันนี้ <strong id="tmPacePct">—</strong> (วันที่ <span id="tmDay">—</span>)</span>
+          </div>
+          <div id="tmNote" style="font-size:11px;margin-top:8px;color:var(--ink2)">—</div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">5 วันล่าสุด</div>
+          <div id="tmDayList" style="margin-top:4px"></div>
+        </div>
+
+        <!-- TARGET SUMMARY (ทุก role เห็น) -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-top:8px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="font-size:11px;color:var(--ink3)">🎯 เป้าหมาย <strong style="color:var(--gold)" id="targetDisplay">400</strong> ล็อก/วัน</div>
+          <div style="font-size:11px;color:var(--ink2)">เฉลี่ยจริง: <strong id="targetActual" style="color:var(--green)">—</strong> ล็อก/วัน</div>
+          <div style="font-size:11px;color:var(--ink2)">ถึงเป้า: <strong id="targetHit" style="color:var(--green)">—</strong> วัน</div>
+          <div style="font-size:11px;color:var(--ink2)">ไม่ถึงเป้า: <strong id="targetMiss" style="color:var(--red)">—</strong> วัน</div>
+          <div style="font-size:11px;color:var(--ink2)">% วันที่ถึงเป้า: <strong id="targetPct" style="color:var(--purple)">—</strong></div>
+        </div>
+      </details>
+
       <!-- MAIN CHART: แท่ง=ราย เส้น=ล็อก -->
       <div class="main-chart-card">
         <div class="mc-header">
@@ -2132,12 +2156,16 @@ function applyAll(){
 
 // ── ENH-05: แบนเนอร์เตือนหลุดเป้า + เป้าเดือนนี้ (pace) ──
 function renderTargetStatus(d){
-  const alertEl=document.getElementById('targetAlert');
+  // v2.6.4 UI-04: แบนเนอร์เดิม (#targetAlert) ถูกยุบเป็นแถบ summary ของ <details id="targetPanel">
+  const panelEl=document.getElementById('targetPanel');
+  const sumEl=document.getElementById('targetSummary');
+  const txtEl=document.getElementById('targetSummaryText');
   const boxEl=document.getElementById('targetMonthBox');
-  if(!alertEl||!boxEl) return;
+  if(!panelEl||!sumEl||!txtEl||!boxEl) return;
   const tgt=currentTarget();
   // เป้าเทียบได้เฉพาะตอนดู "ทุกกลุ่ม" และต้องตั้งเป้าไว้ก่อน
-  if(group!=='all'||tgt<=0||!d.length){alertEl.style.display='none';boxEl.style.display='none';return;}
+  if(group!=='all'||tgt<=0||!d.length){panelEl.style.display='none';boxEl.style.display='none';return;}
+  panelEl.style.display='block';
 
   // 1) หลุดเป้ากี่วันติด (นับจากวันล่าสุดถอยหลัง)
   const asc=[...d].sort((a,b)=>a.date-b.date);
@@ -2148,28 +2176,31 @@ function renderTargetStatus(d){
   }
   const zn=zone==='st'?'ST':zone==='non'?(activeBranch==='SS'?'Non':'Car'):'ทุกโซน';
   const names={SS:'ศรีสมาน',BG:'ประตูกรุงเทพ',BN:'บางนา'};
+  // v2.6.4 UI-04: เกณฑ์สี/ข้อความเดิม แต่บีบเหลือบรรทัดเดียวไว้บนแถบพับ
+  let sumTxt='',sumCol='var(--ink)';
   if(streak>=TGT_MISS_STREAK){
     const avg=streakSum/streak;
     const diff=((tgt-avg)/tgt*100).toFixed(1);
-    alertEl.style.display='block';
-    alertEl.style.background='rgba(239,68,68,.12)';
-    alertEl.style.borderLeft='3px solid var(--red)';
-    alertEl.innerHTML=`<div style="font-weight:700;color:var(--red)">⚠️ หลุดเป้า ${streak} วันติด · ${names[activeBranch]||activeBranch} (${zn})</div>`+
-      `<div style="color:var(--ink2)">เฉลี่ย ${streak} วันล่าสุด ${fmtN(avg,1)} ล็อก/วัน (เป้า ${fmtN(tgt)}) ต่ำกว่าเป้า ${diff}%</div>`;
+    sumCol='var(--red)';
+    sumEl.style.background='rgba(239,68,68,.12)';
+    sumEl.style.borderLeft='3px solid var(--red)';
+    sumTxt=`⚠️ หลุดเป้า ${streak} วันติด · ${names[activeBranch]||activeBranch} (${zn}) · เฉลี่ย ${fmtN(avg,1)}/${fmtN(tgt)} ล็อก/วัน ต่ำกว่าเป้า ${diff}%`;
   } else if(streak===0){
     const last=asc[asc.length-1];
-    alertEl.style.display='block';
-    alertEl.style.background='rgba(34,197,94,.12)';
-    alertEl.style.borderLeft='3px solid var(--green)';
-    alertEl.innerHTML=`<div style="font-weight:700;color:var(--green)">✅ วันล่าสุด (${fmtD(last.date)}) ถึงเป้า</div>`+
-      `<div style="color:var(--ink2)">ทำได้ ${fmtN(getLock(last,group))} ล็อก (เป้า ${fmtN(tgt)})</div>`;
+    sumCol='var(--green)';
+    sumEl.style.background='rgba(34,197,94,.12)';
+    sumEl.style.borderLeft='3px solid var(--green)';
+    sumTxt=`✅ วันล่าสุด (${fmtD(last.date)}) ถึงเป้า · ทำได้ ${fmtN(getLock(last,group))}/${fmtN(tgt)} ล็อก`;
   } else {
-    alertEl.style.display='block';
-    alertEl.style.background='rgba(251,146,60,.12)';
-    alertEl.style.borderLeft='3px solid var(--orange,#fb923c)';
-    alertEl.innerHTML=`<div style="font-weight:700;color:var(--ink)">⚡ หลุดเป้า ${streak} วันติด · ${names[activeBranch]||activeBranch} (${zn})</div>`+
-      `<div style="color:var(--ink2)">เตือนเมื่อหลุดครบ ${TGT_MISS_STREAK} วันติด</div>`;
+    sumCol='var(--ink)';
+    sumEl.style.background='rgba(251,146,60,.12)';
+    sumEl.style.borderLeft='3px solid var(--orange,#fb923c)';
+    sumTxt=`⚡ หลุดเป้า ${streak} วันติด · ${names[activeBranch]||activeBranch} (${zn}) · เตือนเมื่อครบ ${TGT_MISS_STREAK} วันติด`;
   }
+  sumEl.style.borderRadius='0';
+  txtEl.style.color=sumCol;
+  txtEl.style.fontWeight='700';
+  txtEl.textContent=sumTxt;
 
   // 2) เป้าเดือนนี้ — ใช้เดือนล่าสุดที่มีข้อมูล (ไม่สนช่วงเวลาที่ filter)
   const all=applyZone(getActiveMerged());
@@ -2185,6 +2216,8 @@ function renderTargetStatus(d){
   const pacePct=daysInMonth>0?dataDays/daysInMonth*100:0;
   const projected=dataDays>0?sum/dataDays*daysInMonth:0;
   const gap=projected-goal;
+  // v2.6.4 UI-04: ต่อ % เป้าเดือนเข้าท้ายแถบพับ ให้เห็นสถานะครบโดยไม่ต้องกาง
+  txtEl.textContent=sumTxt+` · เป้าเดือนนี้ ${pct.toFixed(1)}%`;
   boxEl.style.display='block';
   document.getElementById('tmMonth').textContent=mLbl(latest);
   document.getElementById('tmActual').textContent=fmtN(sum);
