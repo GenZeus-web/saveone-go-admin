@@ -34,53 +34,61 @@
    - Apps Script: verifyToken cache ผลด้วย CacheService (เก็บ 5 นาที)
 
   -----------------------------------------------------------------------
-  v2.6.3 (28 ก.ค. 2569) — คุมจำนวนท่อที่ยิงพร้อมกัน (โหลด 71.7 วิ -> ~10 วิ)
-   PERF-03) วัดด้วย PERF-01 แล้วได้ตัวเลขจริง:
-      - ท่อที่สำเร็จใช้เวลาแค่ 2.3-3.0 วิ (งานจริงเบามาก)
-      - แต่ยิง 6 ท่อพร้อมกัน คลื่นแรกพังเกือบหมด หลังรอ 18-25 วิ บ้าง timeout 45 วิ บ้าง
-        แล้ว retry ทีหลัง (กระจายตัวแล้ว) ผ่านหมดใน 2-3 วิ
-      - รวม 71.7 วิ โดยเกือบทั้งหมดเป็น retry + backoff ไม่ใช่งานจริง
-      - "ใครพัง" เป็นเรื่องสุ่ม รอบที่วัด SS ผ่านฉลุย BG/BN พังแทน
-        -> เป็นลิมิต concurrency รวมฝั่ง Google ไม่ใช่ปัญหาของสาขาใดสาขาหนึ่ง
-      แก้: เพิ่ม fetchPool() ยิงพร้อมกันไม่เกิน FETCH_CONCURRENCY (=2) ท่อ
-      + เรียงงานสลับสาขา (ST 3 สาขาก่อน แล้วค่อย NON/CAR) ให้ 2 ท่อที่วิ่งพร้อมกัน
+  v2.6.3 (28 ก.ค. 2569) — เปิดเว็บเห็นข้อมูลทันที ไม่ต้องรอ Apps Script อีก
+   CACHE-01) ปัญหาที่แก้จริง: ทุกวิธีก่อนหน้า (retry / timeout / คุมจำนวนท่อ) ยัง
+      "ให้ผู้ใช้นั่งรอ Apps Script" อยู่ ต่างกันแค่รอยังไง. Apps Script Web App
+      เป็นบริการฟรีที่สุ่มค้าง 20-45 วิ เป็นระยะ - ปรับพารามิเตอร์ไม่เปลี่ยนข้อนี้
+      แก้: เก็บ CSV ดิบ 6 ก้อนไว้ใน localStorage (~300 KB = 6% ของโควตา)
+        เปิดเว็บ -> โชว์ข้อมูลรอบก่อน "ทันที 0 วินาที" + ป้าย [ข้อมูล HH:MM - กำลังอัปเดต...]
+        -> ดึงของใหม่เบื้องหลัง -> สำเร็จ: อัปเดตเงียบๆ ป้ายเป็น [อัปเดต HH:MM]
+                                -> ล้มเหลว: ใช้ของเก่าต่อ ป้ายเป็น [- อัปเดตไม่สำเร็จ]
+      * บันทึก cache เฉพาะตอนได้ครบทั้ง 6 ท่อ (ไม่ cache ข้อมูลไม่ครบไว้หลอกตัวเอง)
+      * cache เก่าเกิน 7 วันไม่ใช้
+      * ถ้าโชว์ cache อยู่แล้ว error จะไม่เอาหน้า "โหลดไม่ได้" ไปทับ - ใช้งานต่อได้
+      * แยก applyRowsBundle() ให้ทั้ง "โหลดสด" กับ "อ่าน cache" ใช้ทางเดียวกัน
+   * ยังไม่ได้แก้ที่ราก - Apps Script ยังสุ่มค้างเหมือนเดิม แค่ไม่มีใครต้องรอมันแล้ว
+     งานถัดไปที่แก้ราก: ย้ายไป Firestore (Apps Script ทำงานตาม time trigger แทน)
+  -----------------------------------------------------------------------
+  v2.6.2 (28 ก.ค. 2569) — ความทนทาน + ความเร็วตอนโหลด (โหลด 71.7 วิ -> 9.3 วิ)
+   [รวมงานทั้งวันของ 28 ก.ค. ไว้เป็นเวอร์ชันเดียว]
+
+   ปัญหาที่แก้: เปิดเว็บแล้วรอนาน 1-2 นาที บางสาขาได้ 0 แถว แต่หน้าจอไม่บอกอะไร
+   โชว์เลข 0 เหมือนเป็นยอดจริง (อันตรายกว่าเว็บพัง)
+
+   -- สาเหตุจริง (พิสูจน์ด้วยตัวเลขจาก PERF-01) --
+   ยิง 6 ท่อพร้อมกันเกินลิมิต concurrency ฝั่ง Google -> คลื่นแรกพังเกือบหมด
+   หลังรอ 18-45 วิ (404 / Unauthorized / timeout) แล้ว retry ทีหลังผ่านหมดใน 2-3 วิ
+   เวลา 71.7 วิ เกือบทั้งหมดเป็น retry + backoff ไม่ใช่งานจริง
+   "ใครพัง" เป็นเรื่องสุ่ม - ไม่ใช่ปัญหาของสาขาใดสาขาหนึ่ง
+   ต้นตอย้อนไปถึง v2.5.2 (SEC-05) ที่เปลี่ยนจากยิงทีละท่อเป็น Promise.all 6 ท่อ
+   v2.6.0 ไม่ได้แตะโค้ดเครือข่ายเลย - แค่อาการหนักพอจนสังเกตเห็น
+
+   PERF-03) fetchPool() คุมให้ยิงพร้อมกันไม่เกิน FETCH_CONCURRENCY (=2) ท่อ
+      + เรียงงานสลับสาขา (ST 3 สาขาก่อน แล้ว NON/CAR) ให้ 2 ท่อที่วิ่งพร้อมกัน
         เป็นคนละ Apps Script เสมอ
       + refreshBranch (2 ท่อเข้า script เดียวกัน) บังคับ limit=1 ยิงทีละท่อ
-   * ต้นตอย้อนไปถึง v2.5.2 (SEC-05) ที่เปลี่ยนจากยิงทีละท่อเป็น Promise.all 6 ท่อ
-     ตอนนั้นเร็วขึ้นจริงแต่เริ่มมี SS=0 (Fix Log เขียนเองว่าใส่ retry "กัน SS=0 ตอน cold start")
-     พอข้อมูลโตขึ้น execution นานขึ้น การทับซ้อนก็หนักขึ้นจนพังบ่อย
-     v2.6.0 ไม่ได้แตะโค้ดเครือข่ายเลย - แค่อาการหนักพอจนสังเกตเห็น
-  -----------------------------------------------------------------------
-  v2.6.2 (28 ก.ค. 2569) — โหลดเร็วขึ้น + วัดเวลาได้จริง
-   PERF-02) ถอน NET-02 (v2.6.1) กลับเป็นยิง 6 ท่อขนานเหมือนเดิม
-      NET-02 ใส่ไปเพราะเชื่อว่า ST+NON ชนกันคือต้นเหตุที่ SS พลาด -> พิสูจน์แล้ว
-      ว่าไม่ใช่ (แก้เสร็จ ST ยังพลาดตั้งแต่ท่อแรกที่ยิงเดี่ยว) แต่ผลข้างเคียงคือ
-      ทุกสาขาต้องรอ ST เสร็จก่อนยิง NON = เวลารวมคูณสองทุกครั้ง
-      เคสชนกันตอนนี้มี SEC-07 (Apps Script retry + cache 50 นาที) รับแทนแล้ว
-      * (v2.6.3 แทนที่ด้วย fetchPool คุม concurrency แทนแล้ว)
-   PERF-01) เพิ่มตัววัดเวลา: fetchCSV บอก "X.X วิ" ต่อท่อ + logLoadTimes() สรุป
-      ท้ายรอบ (เรียงช้า->เร็ว, เวลาอุ่น token, เวลารวม, ท่อที่ช้าสุด) และเตือน
-      ถ้าเวลารวม > ท่อช้าสุด x1.8 = ท่อไม่ได้ขนานกันจริง
-  -----------------------------------------------------------------------
-  v2.6.1 (28 ก.ค. 2569) — ความทนทานตอนโหลด (SS ข้อมูลหาย/ช้า 1-2 นาที)
-   อาการ: SS ตอบ Unauthorized + HTTP 404 (script.googleusercontent.com/macros/echo)
-     -> SS ST = 0 แถว แต่หน้าจอไม่บอกอะไร โชว์เลข 0 เหมือนไม่มีลูกค้าจริง
-     ต้นเหตุ: ท่อ ST กับ NON ของสาขาเดียวกันยิงพร้อมกัน -> verifyToken ฝั่ง
-     Apps Script cache miss ทั้งคู่ -> ถาม Firebase ซ้อนกัน -> execution ตาย
+   PERF-04) FETCH_TIMEOUT 45 -> 12 วิ, FETCH_BACKOFF 2 -> 1 วิ
+      ท่อที่สำเร็จใช้ 2.2-7.5 วิ ไม่มีเกิน 8 วิ -> เกิน 12 วิ แทบไม่มีทางสำเร็จ
+      ตัดแล้ว retry เร็วๆ คุ้มกว่ารอ (ท่อค้าง: ~48 วิ -> ~15 วิ)
+   PERF-01) ตัววัดเวลา: fetchCSV log "X.X วิ" ต่อท่อ + logLoadTimes() สรุปท้ายรอบ
+      (เวลาอุ่น token, ทุกท่อเรียงช้า->เร็ว, จำนวน retry, เวลารวม, ท่อช้าสุด)
+   PERF-05) เกณฑ์เตือนใน logLoadTimes เทียบกับ "ผลรวมทุกท่อ / FETCH_CONCURRENCY"
+      (ของเดิมเทียบกับท่อช้าสุด x1.8 ซึ่งใช้ได้เฉพาะตอนยิงขนานทั้งหมด -> เตือนผิดทุกครั้ง)
+
    NET-01) fetchCSV ไม่มี timeout -> ถ้า Apps Script ค้าง Promise.all ไม่ settle
-      ตลอดกาล splash ค้างไม่มีวันหาย. ใส่ AbortController timeout 45 วิ/ท่อ
-      + retry 2 ครั้งแบบ backoff (2 วิ -> 4 วิ) แทนของเดิม 1 ครั้ง 600ms
-   NET-02) loadAll/refreshBranch: 3 สาขายังยิงขนานกัน แต่ "ในสาขาเดียวกัน"
-      เปลี่ยนเป็นยิงทีละท่อ (fetchBranchPair) -> ท่อแรกอุ่น cache ให้ท่อสอง
-   NET-03) เพิ่มแบนเนอร์แดง #dataHealth (renderDataHealth) เตือนเมื่อสาขาไหน
-      โหลดไม่ครบ -- เดิมเขียนแค่ console.warn ผู้ใช้ไม่มีทางรู้ว่าเลขไม่ครบ
+      ตลอดกาล splash ค้างไม่มีวันหาย. ใส่ AbortController + retry 2 ครั้ง backoff
+   NET-03) แบนเนอร์แดง #dataHealth (renderDataHealth) เตือนเมื่อสาขาไหนโหลดไม่ครบ
+      เดิมเขียนแค่ console.warn ผู้ใช้ไม่มีทางรู้ว่าเลขไม่ครบ
    NET-04) catch ใน loadAll ไม่ได้ซ่อน splash -> error ถูก splash (z-index 9999)
       บังหมด เห็นเป็นหน้าโหลดค้าง. แยก hideSplash() เรียกทั้ง 2 ทาง
    CHT-01) Uncaught TypeError getContext ตอนข้อมูลว่าง 0 แถว -> guard เดิมเช็ค
       แค่ "มี element ไหม" เพิ่มเช็ค getContext + isConnected + ห่อ new Chart
       และ destroy ด้วย try/catch ไม่ให้กราฟตัวเดียวล้มทั้งหน้า
-   SEC-07) [ต้อง deploy Apps Script ใหม่ 3 สาขา] verifyToken: retry 2 ครั้งเมื่อ
+   SEC-07) [Apps Script ทั้ง 3 สาขา - deploy แล้ว] verifyToken: retry 2 ครั้งเมื่อ
       Firebase ตอบ != 200 + ยืด cache 300 -> 3000 วิ (เดิมชนกับ auto-refresh 5 นาที)
+
+   * เคยลอง "ยิงทีละท่อในสาขาเดียวกัน" (NET-02) เพราะเชื่อว่า ST+NON ชนกันคือต้นเหตุ
+     -> พิสูจน์แล้วว่าไม่ใช่ + ทำให้เวลาโหลดคูณสอง จึงถอนออก แทนด้วย PERF-03
   -----------------------------------------------------------------------
   v2.6.0 (ก.ค. 2569) — ENH-05 เทียบเป้า vs ยอดจริง + เตือนเมื่อหลุดเป้า
    1) เป้าแยกสาขา x โซน (ST / Car-Non) เก็บใน localStorage
@@ -795,7 +803,7 @@ body.manager-mode .admin-only{display:none!important;}
 
   <div id="mainContent" style="display:none">
 
-    <!-- v2.6.1 NET-03: แบนเนอร์เตือนข้อมูลโหลดไม่ครบ (ว่างไว้ renderDataHealth เติมเอง) -->
+    <!-- v2.6.2 NET-03: แบนเนอร์เตือนข้อมูลโหลดไม่ครบ (ว่างไว้ renderDataHealth เติมเอง) -->
     <div id="dataHealth" style="display:none"></div>
 
     <!-- REPORT TITLE -->
@@ -1539,18 +1547,21 @@ async function refreshToken(){
   return cachedToken;
 }
 
-// ── v2.6.1 NET-01/NET-02: timeout + retry แบบ backoff ──
+// ── v2.6.2 NET-01: timeout + retry แบบ backoff ──
 // เดิม fetch ไม่มี timeout → ถ้า Apps Script ค้าง Promise.all ไม่ settle ตลอดกาล (splash ค้าง)
 // เดิม retry 1 ครั้งหน่วง 600ms → เร็วเกิน cache ฝั่ง Apps Script ยังไม่ทัน warm ก็พลาดซ้ำ
-const FETCH_TIMEOUT=45000;  // ms ต่อ 1 ท่อ
+// PERF-04: วัดจริงแล้วท่อที่สำเร็จใช้ 2.2-7.5 วิ ไม่มีตัวไหนเกิน 8 วิ
+//   -> อะไรที่เกิน ~12 วิ แทบไม่มีทางสำเร็จ รอต่อไปคือรอเปล่า (เคยเจอค้าง 34 วิ แล้วตอบ 404)
+//   ตัดที่ 12 วิแล้ว retry เร็วๆ คุ้มกว่ารอ 45 วิ (ท่อค้าง: ~48 วิ -> ~15 วิ)
+const FETCH_TIMEOUT=12000;  // ms ต่อ 1 ท่อ (headroom 1.6 เท่าของท่อที่ช้าสุดที่เคยสำเร็จ)
 const FETCH_RETRY=2;        // จำนวนครั้งที่ลองซ้ำ (ไม่นับครั้งแรก)
-const FETCH_BACKOFF=2000;   // ms ครั้งที่ 1 (ครั้งถัดไปคูณ 2)
+const FETCH_BACKOFF=1000;   // ms ครั้งที่ 1 (ครั้งถัดไปคูณ 2 = 1 วิ -> 2 วิ)
 // เก็บว่าท่อไหนพลาดบ้างในรอบล่าสุด — ใช้ทำแบนเนอร์เตือน (NET-03)
 let loadErrors=[];
 // v2.6.2 PERF-01: เก็บเวลาต่อท่อ ไว้สรุปท้ายรอบ (ดูใน console ว่าช้าที่ไหน)
 let fetchTimes=[];
 
-async function fetchCSV(url, _attempt){
+async function fetchCSV(url, _attempt, key){
   const att=_attempt||0;
   const tag=url.slice(-30);
   const _t0=Date.now();
@@ -1578,6 +1589,7 @@ async function fetchCSV(url, _attempt){
       throw new Error(text.trim().slice(0,60));
     }
     const parsed=Papa.parse(text,{header:true,skipEmptyLines:true,dynamicTyping:false});
+    if(key) rawCSV[key]=text;  // v2.6.3 CACHE-01: เก็บ CSV ดิบไว้ทำ cache (เล็กกว่าเก็บ object ที่ parse แล้วมาก)
     // v2.6.2 PERF-01: บอกเวลาต่อท่อ จะได้รู้ว่าช้าที่ท่อไหน ไม่ต้องเดา
     const _ms=Date.now()-_t0;
     fetchTimes.push({url:tag,ms:_ms,rows:parsed.data.length,tries:att+1});
@@ -1591,14 +1603,14 @@ async function fetchCSV(url, _attempt){
       console.warn(`retry ${att+1}/${FETCH_RETRY} ใน ${wait/1000} วิ:`,tag);
       await refreshToken();
       await new Promise(res=>setTimeout(res,wait));
-      return fetchCSV(url, att+1);
+      return fetchCSV(url, att+1, key);
     }
     loadErrors.push({url:tag,msg});
     return [];
   }
 }
 
-// ── v2.6.3 PERF-03: จำกัดจำนวนท่อที่ยิงพร้อมกัน ──
+// ── v2.6.2 PERF-03: จำกัดจำนวนท่อที่ยิงพร้อมกัน ──
 // วัดจริงด้วย PERF-01 (28 ก.ค.) พบว่า:
 //   - ท่อที่ "สำเร็จ" ใช้เวลาแค่ 2.3-3.0 วิ  (งานจริงเบามาก)
 //   - แต่ยิง 6 ท่อพร้อมกัน -> คลื่นแรกพังเกือบหมด หลังรอ 18-25 วิ แล้วค่อย retry ผ่าน
@@ -1618,7 +1630,7 @@ async function fetchPool(tasks, limit){
   async function worker(){
     while(next<tasks.length){
       const t=tasks[next++];
-      out[t.key]=await fetchCSV(t.url);
+      out[t.key]=await fetchCSV(t.url, 0, t.key);
     }
   }
   const n=Math.min(limit||FETCH_CONCURRENCY, tasks.length);
@@ -1628,10 +1640,111 @@ async function fetchPool(tasks, limit){
 
 let dataLoaded={SS:false,BG:false,BN:false};
 
+// ══ v2.6.3 CACHE-01: เก็บข้อมูลไว้ในเครื่อง แล้วโชว์ทันทีตอนเปิดเว็บ ══
+// ปัญหาที่แก้: Apps Script อยู่ในเส้นทางที่ผู้ใช้ต้องรอ ปรับ retry/timeout/จำนวนท่อ
+//   ยังไงก็ยังต้องรอ. cache ทำให้ "การรอ" หายไปเลย — เปิดปุ๊บเห็นข้อมูลรอบก่อนทันที
+//   แล้วค่อยดึงของใหม่เบื้องหลัง ได้ก็อัปเดต ไม่ได้ก็ใช้ของเก่าต่อ (มีป้ายบอกเวลาเสมอ)
+// เก็บเป็น "CSV ดิบ" ไม่ใช่ object ที่ parse แล้ว — เล็กกว่ามาก (~260 KB) และไม่มีปัญหา Date
+const CACHE_KEY='saveone_data_v1';
+const CACHE_MAX_AGE=7*24*60*60*1000;  // เก่าเกิน 7 วันไม่ใช้ (กันเอาข้อมูลค้างนานมาโชว์)
+let rawCSV={};      // {ss_st:'csv...', ss_non:'...', bg_st:..., bg_car:..., bn_st:..., bn_car:...}
+let cacheShownAt=0; // เวลาของข้อมูลที่โชว์อยู่ตอนนี้ (0 = ยังไม่มี)
+
+function saveCache(){
+  try{
+    const keys=['ss_st','ss_non','bg_st','bg_car','bn_st','bn_car'];
+    // เก็บเฉพาะตอนที่ได้ครบทุกท่อ — ไม่งั้นจะ cache ข้อมูลไม่ครบไว้หลอกตัวเองรอบหน้า
+    if(!keys.every(k=>rawCSV[k])) { console.warn('cache: ข้อมูลไม่ครบ ไม่บันทึก'); return; }
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ts:Date.now(), csv:rawCSV}));
+    console.log('💾 บันทึก cache แล้ว');
+  }catch(e){ console.warn('cache: บันทึกไม่ได้ (พื้นที่เต็ม?)', e.message); }
+}
+
+function loadCache(){
+  try{
+    const raw=localStorage.getItem(CACHE_KEY);
+    if(!raw) return null;
+    const o=JSON.parse(raw);
+    if(!o || !o.csv || !o.ts) return null;
+    if(Date.now()-o.ts > CACHE_MAX_AGE){ console.warn('cache: เก่าเกิน 7 วัน ไม่ใช้'); return null; }
+    return o;
+  }catch(e){ console.warn('cache: อ่านไม่ได้', e.message); return null; }
+}
+
+// แปลง CSV ดิบ 6 ก้อน -> เข้าตัวแปรข้อมูลของระบบ (ใช้ทางเดียวกับตอนโหลดสด)
+function applyCsvBundle(csv){
+  const P=t=>t?Papa.parse(t,{header:true,skipEmptyLines:true,dynamicTyping:false}).data:[];
+  return applyRowsBundle({
+    ss_st:P(csv.ss_st), ss_non:P(csv.ss_non),
+    bg_st:P(csv.bg_st), bg_car:P(csv.bg_car),
+    bn_st:P(csv.bn_st), bn_car:P(csv.bn_car)
+  }, true);
+}
+
+// map + merge ทั้ง 3 สาขา — แยกออกมาเพื่อให้ทั้ง "โหลดสด" และ "อ่าน cache" ใช้ตัวเดียวกัน
+function applyRowsBundle(R, quiet){
+  const ss_st=(R.ss_st||[]).map(mapST).filter(Boolean), ss_non=(R.ss_non||[]).map(mapNon).filter(Boolean);
+  if(ss_st.length===0 && ss_non.length===0){ if(!quiet) console.warn('SS โหลดแรกได้ข้อมูลว่าง'); }
+  else{ stData=ss_st; nonData=ss_non; mergeData(); dataLoaded.SS=true; }
+
+  const bg_st=(R.bg_st||[]).map(mapST).filter(Boolean), bg_car=(R.bg_car||[]).map(mapNon).filter(Boolean);
+  if(bg_st.length===0 && bg_car.length===0){ if(!quiet) console.warn('BG โหลดแรกได้ข้อมูลว่าง'); }
+  else{ bgStData=bg_st; bgCarData=bg_car; mergeBG(); dataLoaded.BG=true; }
+
+  const bn_st=(R.bn_st||[]).map(mapST).filter(Boolean), bn_car=(R.bn_car||[]).map(mapNon).filter(Boolean);
+  if(bn_st.length===0 && bn_car.length===0){ if(!quiet) console.warn('BN โหลดแรกได้ข้อมูลว่าง'); }
+  else{ bnStData=bn_st; bnCarData=bn_car; mergeBN(); dataLoaded.BN=true; }
+
+  console.log(`${quiet?'💾 จาก cache':'🌐 โหลดสด'} — SS ${stData.length}/${nonData.length} · BG ${bgStData.length}/${bgCarData.length} · BN ${bnStData.length}/${bnCarData.length}`);
+}
+
+// ป้ายบอกอายุข้อมูล — ผู้ใช้ต้องรู้เสมอว่ากำลังดูข้อมูลของเมื่อไหร่
+// state: 'loading' = กำลังดึงของใหม่ · 'fresh' = เพิ่งอัปเดต · 'stale' = ดึงไม่สำเร็จ ใช้ของเก่า
+function setDataAge(ts, state){
+  cacheShownAt=ts||cacheShownAt;
+  const el=document.getElementById('updTime');
+  if(!el) return;
+  const t=cacheShownAt?new Date(cacheShownAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}):'—';
+  const d=cacheShownAt?new Date(cacheShownAt):null;
+  const sameDay=d && d.toDateString()===new Date().toDateString();
+  const when=sameDay?t:(d?d.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit'})+' '+t:'—');
+  if(state==='loading'){
+    el.innerHTML=`ข้อมูล ${when} <span style="color:var(--ink3)">· กำลังอัปเดต…</span>`;
+  }else if(state==='stale'){
+    el.innerHTML=`ข้อมูล ${when} <span style="color:var(--red);font-weight:700">· อัปเดตไม่สำเร็จ</span>`;
+  }else{
+    el.innerHTML=`อัปเดต ${when}`;
+  }
+}
+
 async function loadAll(){
-  document.getElementById('loadingState').style.display='flex';
-  document.getElementById('mainContent').style.display='none';
   const ts=Date.now();
+
+  // ── v2.6.3 CACHE-01: ขั้นที่ 1 — มี cache ไหม? มีก็โชว์ทันที ไม่ต้องรอ Apps Script ──
+  let shownFromCache=false;
+  const cached=loadCache();
+  if(cached){
+    try{
+      rawCSV={...cached.csv};
+      applyCsvBundle(cached.csv);
+      syncTargetUI(); buildMonths(); applyAll();
+      document.getElementById('loadingState').style.display='none';
+      document.getElementById('mainContent').style.display='block';
+      hideSplash();
+      setDataAge(cached.ts,'loading');
+      shownFromCache=true;
+      console.log('⚡ โชว์จาก cache ทันที — กำลังดึงของใหม่เบื้องหลัง');
+    }catch(e){
+      console.warn('cache: ใช้ไม่ได้ ข้ามไปโหลดสด', e.message);
+      shownFromCache=false;
+    }
+  }
+
+  // ── ขั้นที่ 2 — ดึงของใหม่ (ถ้าโชว์ cache อยู่แล้ว ทำเงียบๆ เบื้องหลัง ไม่บังหน้าจอ) ──
+  if(!shownFromCache){
+    document.getElementById('loadingState').style.display='flex';
+    document.getElementById('mainContent').style.display='none';
+  }
   try{
     document.getElementById('spinTxt').textContent='กำลังโหลดข้อมูลทุกสาขา...';
     loadErrors=[]; fetchTimes=[];
@@ -1639,7 +1752,7 @@ async function loadAll(){
     const _tTok=Date.now();
     await refreshToken(); // อุ่น token ครั้งเดียวก่อนยิงทุกท่อ (ท่อแรกจะได้ไม่พลาดเพราะ token ยังไม่พร้อม)
     const _msTok=Date.now()-_tTok;
-    // v2.6.3 PERF-03: ยิงทีละ FETCH_CONCURRENCY ท่อ แทนที่จะปล่อย 6 ท่อพร้อมกัน
+    // v2.6.2 PERF-03: ยิงทีละ FETCH_CONCURRENCY ท่อ แทนที่จะปล่อย 6 ท่อพร้อมกัน
     // เรียงสลับสาขา (ST ทั้ง 3 สาขาก่อน แล้วค่อย NON/CAR) เพื่อให้ 2 ท่อที่วิ่งพร้อมกัน
     // เป็นคนละ Apps Script เสมอ — ไม่มีจังหวะที่ script เดียวกันโดนยิงซ้อน
     const R=await fetchPool([
@@ -1654,35 +1767,38 @@ async function loadAll(){
     const r_bg_st=R.bg_st, r_bg_car=R.bg_car;
     const r_bn_st=R.bn_st, r_bn_car=R.bn_car;
 
-    const ss_st=r_ss_st.map(mapST).filter(Boolean), ss_non=r_ss_non.map(mapNon).filter(Boolean);
-    if(ss_st.length===0 && ss_non.length===0){console.warn('SS โหลดแรกได้ข้อมูลว่าง');}
-    else{stData=ss_st;nonData=ss_non;mergeData();dataLoaded.SS=true;}
-    console.log('SS ST:',stData.length,'Non:',nonData.length,'Merged:',merged.length);
-
-    const bg_st=r_bg_st.map(mapST).filter(Boolean), bg_car=r_bg_car.map(mapNon).filter(Boolean);
-    if(bg_st.length===0 && bg_car.length===0){console.warn('BG โหลดแรกได้ข้อมูลว่าง');}
-    else{bgStData=bg_st;bgCarData=bg_car;mergeBG();dataLoaded.BG=true;}
-    console.log('BG ST:',bgStData.length,'Car:',bgCarData.length,'Merged:',bgMerged.length);
-
-    const bn_st=r_bn_st.map(mapST).filter(Boolean), bn_car=r_bn_car.map(mapNon).filter(Boolean);
-    if(bn_st.length===0 && bn_car.length===0){console.warn('BN โหลดแรกได้ข้อมูลว่าง');}
-    else{bnStData=bn_st;bnCarData=bn_car;mergeBN();dataLoaded.BN=true;}
-    console.log('BN ST:',bnStData.length,'Car:',bnCarData.length,'Merged:',bnMerged.length);
+    applyRowsBundle({
+      ss_st:r_ss_st, ss_non:r_ss_non,
+      bg_st:r_bg_st, bg_car:r_bg_car,
+      bn_st:r_bn_st, bn_car:r_bn_car
+    });
 
     // v2.6.2 PERF-01: สรุปเวลาให้อ่านง่ายใน console — ท่อไหนช้า เสียเวลาไปกับอะไร
     logLoadTimes(_msTok, Date.now()-_tAll);
 
     syncTargetUI();buildMonths();applyAll();
-    renderDataHealth(); // v2.6.1 NET-03: เตือนถ้าสาขาไหนโหลดไม่ครบ
-    document.getElementById('updTime').textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH');
+    renderDataHealth(); // v2.6.2 NET-03: เตือนถ้าสาขาไหนโหลดไม่ครบ
+
+    // v2.6.3 CACHE-01: ได้ของใหม่แล้ว -> เก็บ cache + อัปป้ายเวลา
+    if(loadErrors.length===0){ saveCache(); setDataAge(Date.now(),'fresh'); }
+    else { setDataAge(cacheShownAt||Date.now(),'stale'); }
+
     document.getElementById('loadingState').style.display='none';
     document.getElementById('mainContent').style.display='block';
     hideSplash();
   }catch(e){
-    // v2.6.1 NET-04: ต้องซ่อน splash ด้วย ไม่งั้น error ถูก splash (z-index 9999) บังหมด เห็นเป็นหน้าโหลดค้าง
+    console.error('loadAll ล้มเหลว:', e.message);
+    // v2.6.2 NET-04: ต้องซ่อน splash ด้วย ไม่งั้น error ถูก splash (z-index 9999) บังหมด เห็นเป็นหน้าโหลดค้าง
     hideSplash();
-    document.getElementById('loadingState').style.display='flex';
-    document.getElementById('loadingState').innerHTML=`<div style="text-align:center;color:var(--red)">❌ โหลดไม่ได้: ${e.message}<br><br><button class="rfbtn" onclick="loadAll()">ลองใหม่</button></div>`;
+    // v2.6.3 CACHE-01: ถ้ามีข้อมูลจาก cache โชว์อยู่แล้ว "ห้าม" เอาหน้า error ไปทับ
+    //   ผู้ใช้ยังทำงานต่อได้ด้วยข้อมูลรอบก่อน แค่เปลี่ยนป้ายบอกว่าอัปเดตไม่สำเร็จ
+    if(shownFromCache){
+      setDataAge(cacheShownAt,'stale');
+      renderDataHealth();
+    }else{
+      document.getElementById('loadingState').style.display='flex';
+      document.getElementById('loadingState').innerHTML=`<div style="text-align:center;color:var(--red)">❌ โหลดไม่ได้: ${e.message}<br><br><button class="rfbtn" onclick="loadAll()">ลองใหม่</button></div>`;
+    }
   }
 }
 
@@ -1697,15 +1813,23 @@ function logLoadTimes(msToken, msTotal){
     console.log(`   ${(f.ms/1000).toFixed(1).padStart(5)} วิ  ${f.url}  (${f.rows} แถว${f.tries>1?` · ลอง ${f.tries} ครั้ง`:''})`);
   });
   if(loadErrors.length) console.log(`   ❌ พลาด ${loadErrors.length} ท่อ: ${loadErrors.map(e=>e.url).join(', ')}`);
-  console.log(`   ── รวมทั้งหมด   : ${(msTotal/1000).toFixed(1)} วิ`);
+  // PERF-05: เกณฑ์เตือนเดิม (เทียบกับ "ท่อช้าสุด x1.8") ใช้ได้เฉพาะตอนยิงขนานทั้งหมด
+  //   พอมาใช้ pool คุมที่ FETCH_CONCURRENCY เวลารวม "ควรจะ" เป็น ผลรวมทุกท่อ ÷ จำนวน worker อยู่แล้ว
+  //   เกณฑ์เก่าเลยเตือนผิดทุกครั้ง (เตือนหมาป่า) — เปลี่ยนมาเทียบกับค่าที่ควรเป็นจริงๆ
+  const sum=fetchTimes.reduce((a,f)=>a+f.ms,0);
+  const expect=sum/Math.max(1,FETCH_CONCURRENCY);
+  console.log(`   ── รวมทั้งหมด   : ${(msTotal/1000).toFixed(1)} วิ   (ควรได้ ~${(expect/1000).toFixed(1)} วิ = งานรวม ${(sum/1000).toFixed(1)} ÷ ${FETCH_CONCURRENCY} ท่อพร้อมกัน)`);
   if(slow) console.log(`   ท่อที่ช้าสุด    : ${slow.url} (${(slow.ms/1000).toFixed(1)} วิ)`);
-  // ยิงขนานอยู่ -> เวลารวมควรใกล้เคียงท่อที่ช้าสุด ถ้าห่างกันมากแปลว่ามีอะไรมาขวาง
-  if(slow && msTotal > slow.ms*1.8){
-    console.warn(`   ⚠️ เวลารวม (${(msTotal/1000).toFixed(1)} วิ) มากกว่าท่อช้าสุดเกิน 1.8 เท่า — แปลว่าท่อไม่ได้ขนานกันจริง หรือมี retry แทรก`);
+
+  const hadRetry=fetchTimes.some(f=>f.tries>1)||loadErrors.length>0;
+  if(hadRetry){
+    console.warn('   ⚠️ มีท่อที่ต้องลองซ้ำ — เวลารวมจึงสูงกว่าที่ควร ดูรายการข้างบนว่าท่อไหน');
+  }else if(msTotal > expect*1.3+1000){
+    console.warn(`   ⚠️ เวลารวมสูงกว่าที่ควรเกิน 30% — ท่ออาจไม่ได้ขนานกันจริง (ตรวจ fetchPool / FETCH_CONCURRENCY)`);
   }
 }
 
-// v2.6.1 NET-04: แยกเป็นฟังก์ชันเพื่อเรียกได้ทั้งตอนสำเร็จและตอน error
+// v2.6.2 NET-04: แยกเป็นฟังก์ชันเพื่อเรียกได้ทั้งตอนสำเร็จและตอน error
 function hideSplash(){
   const splash=document.getElementById('splash');
   if(splash && splash.style.display!=='none'){
@@ -1714,7 +1838,7 @@ function hideSplash(){
   }
 }
 
-// v2.6.1 NET-03: แบนเนอร์เตือนเมื่อข้อมูลบางสาขาโหลดไม่ครบ
+// v2.6.2 NET-03: แบนเนอร์เตือนเมื่อข้อมูลบางสาขาโหลดไม่ครบ
 // เดิมเขียนแค่ console.warn → ผู้ใช้เห็นเลข 0 แล้วนึกว่าไม่มีลูกค้าจริง (อันตรายกว่าเว็บพัง)
 function renderDataHealth(){
   const el=document.getElementById('dataHealth');
@@ -1744,7 +1868,7 @@ async function refreshBranch(){
   try{
     await refreshToken(); // อุ่น token ก่อน (บังคับ refresh กัน Unauthorized ตอน auto-refresh ทุก 5 นาที)
     loadErrors=[]; fetchTimes=[];
-    // v2.6.3 PERF-03: refresh สาขาเดียว = 2 ท่อยิงเข้า "script ตัวเดียวกัน"
+    // v2.6.2 PERF-03: refresh สาขาเดียว = 2 ท่อยิงเข้า "script ตัวเดียวกัน"
     // จึงบังคับ limit=1 (ยิงทีละท่อ) ไม่ให้ script ตัวเดียวโดนยิงซ้อน — เสียเวลา ~2.5 วิ ยอมรับได้
     const B=(a,b)=>fetchPool([{key:'r1',url:a},{key:'r2',url:b}], 1);
     if(activeBranch==='SS'){
@@ -1766,8 +1890,10 @@ async function refreshBranch(){
     }
     buildMonths();applyAll();
     renderDataHealth();
-    document.getElementById('updTime').textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH');
-  }catch(e){console.error('รีเฟรชไม่ได้:',e.message);}
+    // v2.6.3 CACHE-01: refresh สาขาเดียว -> อัป cache เฉพาะเมื่อไม่มีท่อพลาด
+    if(loadErrors.length===0){ saveCache(); setDataAge(Date.now(),'fresh'); }
+    else { setDataAge(cacheShownAt,'stale'); }
+  }catch(e){console.error('รีเฟรชไม่ได้:',e.message);setDataAge(cacheShownAt,'stale');}
 }
 
 function getDateKey(date){
@@ -2421,7 +2547,7 @@ function cOpts(){
     scales:{x:{ticks:{color:chartClr().tick,font:{family:'Noto Sans Thai',size:10},maxTicksLimit:12,maxRotation:0},grid:{color:chartClr().grid}},y:{ticks:{color:chartClr().tick,font:{family:'JetBrains Mono',size:10}},grid:{color:chartClr().grid}}}
   };
 }
-// v2.6.1 CHT-01: destroy อาจ throw ถ้า canvas หลุด DOM ไปแล้ว → ห่อ try/catch ไม่ให้ล้มทั้งการ render
+// v2.6.2 CHT-01: destroy อาจ throw ถ้า canvas หลุด DOM ไปแล้ว → ห่อ try/catch ไม่ให้ล้มทั้งการ render
 function dChart(id){
   if(charts[id]){
     try{charts[id].destroy();}catch(e){console.warn('dChart: destroy #'+id+' ไม่ได้',e.message);}
@@ -2433,7 +2559,7 @@ function makeChart(id,config){
   // กัน crash: ถ้าหา canvas ไม่เจอ (tab/section ยังไม่ขึ้น DOM) ให้ข้ามการวาด ไม่ไป new Chart กับ null
   const el=document.getElementById(id);
   if(!el){console.warn('makeChart: ไม่พบ canvas #'+id+' — ข้ามการวาด');return null;}
-  // v2.6.1 CHT-01: guard เดิมเช็คแค่ "มี element ไหม" ยังไม่พอ — ตอนข้อมูลว่าง 0 แถว
+  // v2.6.2 CHT-01: guard เดิมเช็คแค่ "มี element ไหม" ยังไม่พอ — ตอนข้อมูลว่าง 0 แถว
   // element อาจไม่ใช่ <canvas> หรือหลุด DOM แล้ว → Chart.js เรียก getContext กับ null
   if(typeof el.getContext!=='function'||!el.isConnected){
     console.warn('makeChart: #'+id+' ไม่ใช่ canvas ที่ใช้ได้ (หลุด DOM?) — ข้ามการวาด');return null;
@@ -2458,7 +2584,7 @@ function makeChart(id,config){
   }
   // Mixed (แท่ง+เส้น) — ใช้ reveal
 
-  // v2.6.1 CHT-01: ถ้ากราฟตัวใดตัวหนึ่งพัง ต้องไม่ทำให้ทั้งหน้าหยุด render
+  // v2.6.2 CHT-01: ถ้ากราฟตัวใดตัวหนึ่งพัง ต้องไม่ทำให้ทั้งหน้าหยุด render
   try{
     charts[id]=new Chart(el,config);
   }catch(e){
