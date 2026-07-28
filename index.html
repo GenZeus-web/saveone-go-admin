@@ -34,6 +34,26 @@
    - Apps Script: verifyToken cache ผลด้วย CacheService (เก็บ 5 นาที)
 
   -----------------------------------------------------------------------
+  v2.6.1 (28 ก.ค. 2569) — ความทนทานตอนโหลด (SS ข้อมูลหาย/ช้า 1-2 นาที)
+   อาการ: SS ตอบ Unauthorized + HTTP 404 (script.googleusercontent.com/macros/echo)
+     -> SS ST = 0 แถว แต่หน้าจอไม่บอกอะไร โชว์เลข 0 เหมือนไม่มีลูกค้าจริง
+     ต้นเหตุ: ท่อ ST กับ NON ของสาขาเดียวกันยิงพร้อมกัน -> verifyToken ฝั่ง
+     Apps Script cache miss ทั้งคู่ -> ถาม Firebase ซ้อนกัน -> execution ตาย
+   NET-01) fetchCSV ไม่มี timeout -> ถ้า Apps Script ค้าง Promise.all ไม่ settle
+      ตลอดกาล splash ค้างไม่มีวันหาย. ใส่ AbortController timeout 45 วิ/ท่อ
+      + retry 2 ครั้งแบบ backoff (2 วิ -> 4 วิ) แทนของเดิม 1 ครั้ง 600ms
+   NET-02) loadAll/refreshBranch: 3 สาขายังยิงขนานกัน แต่ "ในสาขาเดียวกัน"
+      เปลี่ยนเป็นยิงทีละท่อ (fetchBranchPair) -> ท่อแรกอุ่น cache ให้ท่อสอง
+   NET-03) เพิ่มแบนเนอร์แดง #dataHealth (renderDataHealth) เตือนเมื่อสาขาไหน
+      โหลดไม่ครบ -- เดิมเขียนแค่ console.warn ผู้ใช้ไม่มีทางรู้ว่าเลขไม่ครบ
+   NET-04) catch ใน loadAll ไม่ได้ซ่อน splash -> error ถูก splash (z-index 9999)
+      บังหมด เห็นเป็นหน้าโหลดค้าง. แยก hideSplash() เรียกทั้ง 2 ทาง
+   CHT-01) Uncaught TypeError getContext ตอนข้อมูลว่าง 0 แถว -> guard เดิมเช็ค
+      แค่ "มี element ไหม" เพิ่มเช็ค getContext + isConnected + ห่อ new Chart
+      และ destroy ด้วย try/catch ไม่ให้กราฟตัวเดียวล้มทั้งหน้า
+   SEC-07) [ต้อง deploy Apps Script ใหม่ 3 สาขา] verifyToken: retry 2 ครั้งเมื่อ
+      Firebase ตอบ != 200 + ยืด cache 300 -> 3000 วิ (เดิมชนกับ auto-refresh 5 นาที)
+  -----------------------------------------------------------------------
   v2.6.0 (ก.ค. 2569) — ENH-05 เทียบเป้า vs ยอดจริง + เตือนเมื่อหลุดเป้า
    1) เป้าแยกสาขา x โซน (ST / Car-Non) เก็บใน localStorage
       key 'saveone_targets_v1' — sidebar มี 2 ช่อง เปลี่ยนตามสาขาที่เลือก
@@ -639,7 +659,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.6.0</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.6.1</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -746,6 +766,9 @@ body.manager-mode .admin-only{display:none!important;}
   </div>
 
   <div id="mainContent" style="display:none">
+
+    <!-- v2.6.1 NET-03: แบนเนอร์เตือนข้อมูลโหลดไม่ครบ (ว่างไว้ renderDataHealth เติมเอง) -->
+    <div id="dataHealth" style="display:none"></div>
 
     <!-- REPORT TITLE -->
     <div class="report-title">
@@ -1488,17 +1511,34 @@ async function refreshToken(){
   return cachedToken;
 }
 
-async function fetchCSV(url, _retry){
+// ── v2.6.1 NET-01/NET-02: timeout + retry แบบ backoff ──
+// เดิม fetch ไม่มี timeout → ถ้า Apps Script ค้าง Promise.all ไม่ settle ตลอดกาล (splash ค้าง)
+// เดิม retry 1 ครั้งหน่วง 600ms → เร็วเกิน cache ฝั่ง Apps Script ยังไม่ทัน warm ก็พลาดซ้ำ
+const FETCH_TIMEOUT=45000;  // ms ต่อ 1 ท่อ
+const FETCH_RETRY=2;        // จำนวนครั้งที่ลองซ้ำ (ไม่นับครั้งแรก)
+const FETCH_BACKOFF=2000;   // ms ครั้งที่ 1 (ครั้งถัดไปคูณ 2)
+// เก็บว่าท่อไหนพลาดบ้างในรอบล่าสุด — ใช้ทำแบนเนอร์เตือน (NET-03)
+let loadErrors=[];
+
+async function fetchCSV(url, _attempt){
+  const att=_attempt||0;
+  const tag=url.slice(-30);
   try {
     // ใช้ token ที่อุ่นไว้แล้ว (loadAll/refreshBranch เรียก refreshToken มาก่อน) — safety net เผื่อยังไม่อุ่น
-    if(cachedToken===null && !_retry) await refreshToken();
-    const r=await fetch(url,{
-      method:'POST',
-      redirect:'follow',
-      cache:'no-cache',
-      headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:'token='+encodeURIComponent(cachedToken||'')
-    });
+    if(cachedToken===null && att===0) await refreshToken();
+    const ac=new AbortController();
+    const tm=setTimeout(()=>ac.abort(),FETCH_TIMEOUT);
+    let r;
+    try{
+      r=await fetch(url,{
+        method:'POST',
+        redirect:'follow',
+        cache:'no-cache',
+        signal:ac.signal,
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:'token='+encodeURIComponent(cachedToken||'')
+      });
+    }finally{ clearTimeout(tm); }
     if(!r.ok) throw new Error('HTTP '+r.status);
     const text=await r.text();
     // Apps Script ตอบ "Unauthorized" เป็น HTTP 200 ตอน token ไม่ผ่าน → ต้องจับเองไม่งั้น parse เป็น CSV ว่าง
@@ -1507,19 +1547,30 @@ async function fetchCSV(url, _retry){
       throw new Error(text.trim().slice(0,60));
     }
     const parsed=Papa.parse(text,{header:true,skipEmptyLines:true,dynamicTyping:false});
-    console.log('Fetched:',url.slice(-30),'rows:',parsed.data.length);
+    console.log('Fetched:',tag,'rows:',parsed.data.length,att?`(ลองครั้งที่ ${att+1})`:'');
     return parsed.data;
   } catch(e) {
-    console.error('fetchCSV error:',url.slice(-30),e.message);
-    // retry 1 ครั้ง: อุ่น token ใหม่ + หน่วงเล็กน้อย แล้วลองอีกรอบ (กัน cold start / token ยังไม่พร้อมตอน first load)
-    if(!_retry){
-      console.warn('retry:',url.slice(-30));
+    const msg=e.name==='AbortError'?`timeout ${FETCH_TIMEOUT/1000} วิ`:e.message;
+    console.error('fetchCSV error:',tag,msg);
+    if(att<FETCH_RETRY){
+      const wait=FETCH_BACKOFF*Math.pow(2,att);
+      console.warn(`retry ${att+1}/${FETCH_RETRY} ใน ${wait/1000} วิ:`,tag);
       await refreshToken();
-      await new Promise(res=>setTimeout(res,600));
-      return fetchCSV(url, true);
+      await new Promise(res=>setTimeout(res,wait));
+      return fetchCSV(url, att+1);
     }
+    loadErrors.push({url:tag,msg});
     return [];
   }
+}
+
+// ยิงท่อของสาขาเดียวกันแบบ "ลำดับ" — ท่อแรกอุ่น verifyToken cache ฝั่ง Apps Script ให้ท่อสอง
+// (ยิงพร้อมกันแล้วทั้งคู่ cache miss → ถาม Firebase ซ้อนกัน → execution ตาย ได้ Unauthorized/404)
+// สาขาต่างกันคนละ script คนละ cache → ยังยิงขนานกันได้ตามเดิม
+async function fetchBranchPair(urlA, urlB){
+  const a=await fetchCSV(urlA);
+  const b=await fetchCSV(urlB);
+  return [a,b];
 }
 
 let dataLoaded={SS:false,BG:false,BN:false};
@@ -1530,15 +1581,13 @@ async function loadAll(){
   const ts=Date.now();
   try{
     document.getElementById('spinTxt').textContent='กำลังโหลดข้อมูลทุกสาขา...';
+    loadErrors=[];
     await refreshToken(); // อุ่น token ครั้งเดียวก่อนยิงทุกท่อ (ท่อแรกจะได้ไม่พลาดเพราะ token ยังไม่พร้อม)
-    // ยิง 6 ท่อพร้อมกัน (เร็วขึ้นเป็นเท่าตัว แทนการยิงทีละท่อ)
-    const [r_ss_st,r_ss_non,r_bg_st,r_bg_car,r_bn_st,r_bn_car]=await Promise.all([
-      fetchCSV(`${PROXIES.SS}?sheet=ST&t=${ts}`),
-      fetchCSV(`${PROXIES.SS}?sheet=NON&t=${ts}`),
-      fetchCSV(`${PROXIES.BG}?sheet=BG_ST&t=${ts}`),
-      fetchCSV(`${PROXIES.BG}?sheet=BG_CAR&t=${ts}`),
-      fetchCSV(`${PROXIES.BN}?sheet=BN_ST&t=${ts}`),
-      fetchCSV(`${PROXIES.BN}?sheet=BN_CAR&t=${ts}`)
+    // v2.6.1 NET-02: 3 สาขายิงขนานกัน แต่ "ในสาขาเดียวกัน" ยิงทีละท่อ (ท่อแรกอุ่น cache ให้ท่อสอง)
+    const [[r_ss_st,r_ss_non],[r_bg_st,r_bg_car],[r_bn_st,r_bn_car]]=await Promise.all([
+      fetchBranchPair(`${PROXIES.SS}?sheet=ST&t=${ts}`,     `${PROXIES.SS}?sheet=NON&t=${ts}`),
+      fetchBranchPair(`${PROXIES.BG}?sheet=BG_ST&t=${ts}`,  `${PROXIES.BG}?sheet=BG_CAR&t=${ts}`),
+      fetchBranchPair(`${PROXIES.BN}?sheet=BN_ST&t=${ts}`,  `${PROXIES.BN}?sheet=BN_CAR&t=${ts}`)
     ]);
 
     const ss_st=r_ss_st.map(mapST).filter(Boolean), ss_non=r_ss_non.map(mapNon).filter(Boolean);
@@ -1557,15 +1606,50 @@ async function loadAll(){
     console.log('BN ST:',bnStData.length,'Car:',bnCarData.length,'Merged:',bnMerged.length);
 
     syncTargetUI();buildMonths();applyAll();
+    renderDataHealth(); // v2.6.1 NET-03: เตือนถ้าสาขาไหนโหลดไม่ครบ
     document.getElementById('updTime').textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH');
     document.getElementById('loadingState').style.display='none';
     document.getElementById('mainContent').style.display='block';
-    // ซ่อน splash screen
-    const splash=document.getElementById('splash');
-    if(splash){splash.classList.add('hide');setTimeout(()=>{splash.classList.remove('hide');splash.style.display='none';},600);}
+    hideSplash();
   }catch(e){
+    // v2.6.1 NET-04: ต้องซ่อน splash ด้วย ไม่งั้น error ถูก splash (z-index 9999) บังหมด เห็นเป็นหน้าโหลดค้าง
+    hideSplash();
+    document.getElementById('loadingState').style.display='flex';
     document.getElementById('loadingState').innerHTML=`<div style="text-align:center;color:var(--red)">❌ โหลดไม่ได้: ${e.message}<br><br><button class="rfbtn" onclick="loadAll()">ลองใหม่</button></div>`;
   }
+}
+
+// v2.6.1 NET-04: แยกเป็นฟังก์ชันเพื่อเรียกได้ทั้งตอนสำเร็จและตอน error
+function hideSplash(){
+  const splash=document.getElementById('splash');
+  if(splash && splash.style.display!=='none'){
+    splash.classList.add('hide');
+    setTimeout(()=>{splash.classList.remove('hide');splash.style.display='none';},600);
+  }
+}
+
+// v2.6.1 NET-03: แบนเนอร์เตือนเมื่อข้อมูลบางสาขาโหลดไม่ครบ
+// เดิมเขียนแค่ console.warn → ผู้ใช้เห็นเลข 0 แล้วนึกว่าไม่มีลูกค้าจริง (อันตรายกว่าเว็บพัง)
+function renderDataHealth(){
+  const el=document.getElementById('dataHealth');
+  if(!el) return;
+  const bad=[];
+  if(!dataLoaded.SS) bad.push('ศรีสมาน (SS)');
+  if(!dataLoaded.BG) bad.push('ประตูกรุงเทพ (BG)');
+  if(!dataLoaded.BN) bad.push('บางนา (BN)');
+  if(bad.length===0 && loadErrors.length===0){ el.style.display='none'; el.innerHTML=''; return; }
+  const detail=loadErrors.length
+    ? `<div style="font-size:11px;color:var(--ink3);margin-top:6px">รายละเอียด: ${loadErrors.map(x=>`${x.url} — ${x.msg}`).join(' · ')}</div>`
+    : '';
+  const head=bad.length
+    ? `⚠️ ข้อมูลไม่ครบ — โหลดไม่ได้: <strong>${bad.join(', ')}</strong>`
+    : `⚠️ บางท่อโหลดไม่สำเร็จ ข้อมูลอาจไม่ครบ`;
+  el.style.display='block';
+  el.innerHTML=`<div style="background:rgba(255,86,86,.12);border:1px solid var(--red);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+    <div style="color:var(--red);font-weight:700;font-size:13px">${head}</div>
+    <div style="font-size:12px;color:var(--ink2);margin-top:4px">ตัวเลขบนหน้านี้ <strong>ยังไม่ใช่ยอดจริง</strong> อย่าเพิ่งเอาไปใช้ตัดสินใจ — กด "รีเฟรช" อีกครั้ง หรือรอสักครู่แล้วลองใหม่</div>
+    ${detail}
+  </div>`;
 }
 
 async function refreshBranch(){
@@ -1573,24 +1657,27 @@ async function refreshBranch(){
   const ts=Date.now();
   try{
     await refreshToken(); // อุ่น token ก่อน (บังคับ refresh กัน Unauthorized ตอน auto-refresh ทุก 5 นาที)
+    loadErrors=[];
+    // v2.6.1 NET-02: ยิงทีละท่อเหมือน loadAll (ท่อแรกอุ่น cache ให้ท่อสอง)
     if(activeBranch==='SS'){
-      const [r1,r2]=await Promise.all([fetchCSV(`${PROXIES.SS}?sheet=ST&t=${ts}`),fetchCSV(`${PROXIES.SS}?sheet=NON&t=${ts}`)]);
+      const [r1,r2]=await fetchBranchPair(`${PROXIES.SS}?sheet=ST&t=${ts}`,`${PROXIES.SS}?sheet=NON&t=${ts}`);
       const st=r1.map(mapST).filter(Boolean), non=r2.map(mapNon).filter(Boolean);
       // กันข้อมูลหาย: ถ้า fetch คืนว่าง (timeout/Unauthorized) ห้ามทับของเดิม
-      if(st.length===0 && non.length===0){console.warn('SS refresh: ข้อมูลว่าง ข้ามการอัปเดต (คงข้อมูลเดิม)');return;}
-      stData=st;nonData=non;mergeData();
+      if(st.length===0 && non.length===0){console.warn('SS refresh: ข้อมูลว่าง ข้ามการอัปเดต (คงข้อมูลเดิม)');renderDataHealth();return;}
+      stData=st;nonData=non;mergeData();dataLoaded.SS=true;
     } else if(activeBranch==='BG'){
-      const [r1,r2]=await Promise.all([fetchCSV(`${PROXIES.BG}?sheet=BG_ST&t=${ts}`),fetchCSV(`${PROXIES.BG}?sheet=BG_CAR&t=${ts}`)]);
+      const [r1,r2]=await fetchBranchPair(`${PROXIES.BG}?sheet=BG_ST&t=${ts}`,`${PROXIES.BG}?sheet=BG_CAR&t=${ts}`);
       const st=r1.map(mapST).filter(Boolean), car=r2.map(mapNon).filter(Boolean);
-      if(st.length===0 && car.length===0){console.warn('BG refresh: ข้อมูลว่าง ข้ามการอัปเดต (คงข้อมูลเดิม)');return;}
-      bgStData=st;bgCarData=car;mergeBG();
+      if(st.length===0 && car.length===0){console.warn('BG refresh: ข้อมูลว่าง ข้ามการอัปเดต (คงข้อมูลเดิม)');renderDataHealth();return;}
+      bgStData=st;bgCarData=car;mergeBG();dataLoaded.BG=true;
     } else if(activeBranch==='BN'){
-      const [r1,r2]=await Promise.all([fetchCSV(`${PROXIES.BN}?sheet=BN_ST&t=${ts}`),fetchCSV(`${PROXIES.BN}?sheet=BN_CAR&t=${ts}`)]);
+      const [r1,r2]=await fetchBranchPair(`${PROXIES.BN}?sheet=BN_ST&t=${ts}`,`${PROXIES.BN}?sheet=BN_CAR&t=${ts}`);
       const st=r1.map(mapST).filter(Boolean), car=r2.map(mapNon).filter(Boolean);
-      if(st.length===0 && car.length===0){console.warn('BN refresh: ข้อมูลว่าง ข้ามการอัปเดต (คงข้อมูลเดิม)');return;}
-      bnStData=st;bnCarData=car;mergeBN();
+      if(st.length===0 && car.length===0){console.warn('BN refresh: ข้อมูลว่าง ข้ามการอัปเดต (คงข้อมูลเดิม)');renderDataHealth();return;}
+      bnStData=st;bnCarData=car;mergeBN();dataLoaded.BN=true;
     }
     buildMonths();applyAll();
+    renderDataHealth();
     document.getElementById('updTime').textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH');
   }catch(e){console.error('รีเฟรชไม่ได้:',e.message);}
 }
@@ -2246,12 +2333,23 @@ function cOpts(){
     scales:{x:{ticks:{color:chartClr().tick,font:{family:'Noto Sans Thai',size:10},maxTicksLimit:12,maxRotation:0},grid:{color:chartClr().grid}},y:{ticks:{color:chartClr().tick,font:{family:'JetBrains Mono',size:10}},grid:{color:chartClr().grid}}}
   };
 }
-function dChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+// v2.6.1 CHT-01: destroy อาจ throw ถ้า canvas หลุด DOM ไปแล้ว → ห่อ try/catch ไม่ให้ล้มทั้งการ render
+function dChart(id){
+  if(charts[id]){
+    try{charts[id].destroy();}catch(e){console.warn('dChart: destroy #'+id+' ไม่ได้',e.message);}
+    delete charts[id];
+  }
+}
 function makeChart(id,config){
   dChart(id);
   // กัน crash: ถ้าหา canvas ไม่เจอ (tab/section ยังไม่ขึ้น DOM) ให้ข้ามการวาด ไม่ไป new Chart กับ null
   const el=document.getElementById(id);
   if(!el){console.warn('makeChart: ไม่พบ canvas #'+id+' — ข้ามการวาด');return null;}
+  // v2.6.1 CHT-01: guard เดิมเช็คแค่ "มี element ไหม" ยังไม่พอ — ตอนข้อมูลว่าง 0 แถว
+  // element อาจไม่ใช่ <canvas> หรือหลุด DOM แล้ว → Chart.js เรียก getContext กับ null
+  if(typeof el.getContext!=='function'||!el.isConnected){
+    console.warn('makeChart: #'+id+' ไม่ใช่ canvas ที่ใช้ได้ (หลุด DOM?) — ข้ามการวาด');return null;
+  }
   // ตรวจว่าเป็น bar หรือ line
   const hasLine=config.data?.datasets?.some(d=>d.type==='line'||config.type==='line');
   const hasBar=config.data?.datasets?.some(d=>d.type==='bar'||config.type==='bar');
@@ -2272,7 +2370,14 @@ function makeChart(id,config){
   }
   // Mixed (แท่ง+เส้น) — ใช้ reveal
 
-  charts[id]=new Chart(el,config);
+  // v2.6.1 CHT-01: ถ้ากราฟตัวใดตัวหนึ่งพัง ต้องไม่ทำให้ทั้งหน้าหยุด render
+  try{
+    charts[id]=new Chart(el,config);
+  }catch(e){
+    console.error('makeChart: วาด #'+id+' ไม่สำเร็จ —',e.message);
+    delete charts[id];
+    return null;
+  }
 
   // กราฟเส้นหรือ mixed ใช้ reveal plugin
   if(isLineOnly||isMixed) animateChartReveal(charts[id],1200);
