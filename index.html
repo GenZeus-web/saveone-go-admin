@@ -27,11 +27,47 @@
   หมายเหตุ: Firebase apiKey ที่อยู่ในโค้ดเป็นค่าสาธารณะปกติของ Firebase
             ไม่ใช่ความลับ การป้องกันจริงอยู่ที่ Auth + Firestore rules
 
-  TODO (ยังไม่ได้ทำ) — ปรับปรุงความเร็ว/ลดอาการโหลดรวน:
-   - loadAll() ยิงทีละสาขาแบบ await ต่อกัน ควรเปลี่ยนเป็นยิงพร้อมกัน
-     (Promise.all) ทั้ง 6 ท่อ เพื่อให้เร็วขึ้นและลดโอกาสข้อมูลมาไม่ครบ
-   - ดึง token ครั้งเดียวแล้วใช้ซ้ำทุกท่อ (ตอนนี้ getIdToken ทุก fetch)
+  ✅ เสร็จแล้ว v2.5.2 (SEC-05) — ปรับปรุงความเร็ว/ลดอาการโหลดรวน:
+   - loadAll() ยิง 6 ท่อพร้อมกันด้วย Promise.all แล้ว (เดิม await ต่อกันทีละสาขา)
+   - ดึง token ครั้งเดียวใช้ซ้ำทุกท่อแล้ว (refreshToken()/cachedToken)
+   - fetchCSV retry 1 ครั้งถ้าว่าง/error กัน SS=0 ตอน cold start
+   - Apps Script: verifyToken cache ผลด้วย CacheService (เก็บ 5 นาที)
 
+  -----------------------------------------------------------------------
+  v2.6.0 (ก.ค. 2569) — ENH-05 เทียบเป้า vs ยอดจริง + เตือนเมื่อหลุดเป้า
+   1) เป้าแยกสาขา x โซน (ST / Car-Non) เก็บใน localStorage
+      key 'saveone_targets_v1' — sidebar มี 2 ช่อง เปลี่ยนตามสาขาที่เลือก
+   2) แบนเนอร์เตือนหน้าภาพรวม: หลุดเป้าติดกันครบ 3 วัน = แดง,
+      1-2 วัน = ส้ม, วันล่าสุดถึงเป้า = เขียว
+   3) กล่อง "เป้าเดือนนี้" — แถบความคืบหน้า + เส้นเพซที่ควรเป็น
+      + คาดการณ์ยอดสิ้นเดือน + ต้องทำกี่ล็อก/วันในวันที่เหลือ
+   4) รายการ 5 วันล่าสุดเทียบเป้า (เขียว/แดง)
+   * แสดงเฉพาะตอน group = ทุกกลุ่ม (เป้าเทียบยอดรวม ไม่ใช่กลุ่มย่อย)
+  -----------------------------------------------------------------------
+  v2.5.8 (ก.ค. 2569) — Benchmark: กราฟเทรนด์ + ป้ายเตือนสาขาไหลลง
+   BM-01) แท็บ Benchmark กราฟ "ล็อกเฉลี่ย/วัน แต่ละสาขา" เป็นกราฟแท่ง อ่านเป็น
+      การเทียบ ไม่เห็นทิศทาง -> เปลี่ยนเป็น "เทรนด์ล็อกเฉลี่ย/วัน รายเดือน"
+      แบบกราฟเส้น + คำนวณผ่าน bmMonthlyAvg() ที่ "ตัดวันที่ล็อก = 0 ออกก่อนเฉลี่ย"
+      (วันปิด/ไม่มีข้อมูล เดิมถูกนับเป็นวันหนึ่ง ทำให้ค่าเฉลี่ยต่ำกว่าจริง)
+      เดือนที่มีข้อมูล < BM_MIN_DAYS (7) วาดเป็นจุดกลวง = ยังไม่ครบเดือน
+   BM-02) เพิ่มป้ายเตือนอัตโนมัติเหนือกราฟ (#bmAlert): bmTrend() นับเดือนที่ตก
+      ต่อเนื่องนับถอยหลังจากเดือนล่าสุด -> >= BM_ALERT_N (3) = 🔴 "ไหลลงไม่หยุด",
+      2 เดือน = 🟡 เฝ้าระวัง, 1 เดือน = 🟡 ยังไม่นับเป็นเทรนด์, 0 = 🟢
+      พร้อมบอกค่าเฉลี่ยเดือนล่าสุด + % ต่ำกว่าจุดพีค
+      (Benchmark ยังไม่ใส่ filter zone/group ตามดีไซน์เดิม)
+  -----------------------------------------------------------------------
+  v2.5.7 (ก.ค. 2569) — พยากรณ์อิงเดือนปฏิทิน (ตัด "30 วันข้างหน้า")
+   FCST-02) หน้าพยากรณ์: เดิมมีบล็อก "พยากรณ์เดือนหน้า (ฉาย 30 วันข้างหน้า)"
+      ซึ่งซ้ำซ้อนกับ "คาดทั้งเดือน" + คร่อม 2 เดือน เทียบยอดจริงรายเดือนไม่ได้
+      -> เปลี่ยนเป็นการ์ดคู่อิงเดือนปฏิทินทั้งคู่:
+        • "📅 เดือนนี้ (คาดทั้งเดือน)"  = ล็อกสะสม / เพซเฉลี่ย/วัน / คาดทั้งเดือน
+        • "🔮 เดือนหน้า (เต็มเดือนปฏิทิน)" = เฉลี่ย/วัน × จำนวนวันจริงของเดือนหน้า
+   FCST-03) บล็อก "เดือนนี้" เดิมโผล่เฉพาะตอนเดือนยังไม่จบ -> วันสุดท้ายของเดือน
+      การ์ดคู่เหลือข้างเดียว. แก้: แสดงตลอดถ้ามีข้อมูลเดือนปัจจุบัน
+      (จบแล้ว = โชว์ยอดจริง ไม่มีป้ายเตือน/แถบความคืบหน้า/การ์ดคาด)
+   FCST-04) เติมการ์ดรายรับฝั่ง "เดือนนี้" (เฉลี่ย/วัน + คาดทั้งเดือน/ยอดจริง)
+      ให้สมมาตรกับฝั่ง "เดือนหน้า" — gate ตาม role เหมือนจุดอื่น
+      (What If เก็บไว้เหมือนเดิม)
   -----------------------------------------------------------------------
   v2.5.6 (ก.ค. 2569) — แก้บั๊ก 4 จุด + จัดหน้าพยากรณ์ใหม่
    1) กำหนดเองเลือกวันที่: parse เป็นเวลา local (เดิม new Date("YYYY-MM-DD")
@@ -603,7 +639,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.5.6</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.6.0</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -683,14 +719,21 @@ body.manager-mode .admin-only{display:none!important;}
   </div>
 
   <div class="sb-sec">
-    <div class="sb-lbl">🎯 เป้าหมายล็อก/วัน</div>
-    <div style="display:flex;align-items:center;gap:6px">
-      <input type="number" id="targetInput" value="400" min="1" max="9999"
+    <div class="sb-lbl">🎯 เป้าหมายล็อก/วัน · <span id="tgtBranchLbl">ศรีสมาน</span></div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+      <span style="font-size:10px;color:var(--ink3);width:26px">ST</span>
+      <input type="number" id="targetInputST" value="400" min="0" max="99999"
         style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:12px;font-family:'Noto Sans Thai',sans-serif;outline:none;"
-        onchange="setTarget(this.value)" oninput="setTarget(this.value)">
-      <span style="font-size:10px;color:var(--ink3);white-space:nowrap">ล็อก</span>
+        onchange="setTargetZone('st',this.value)">
     </div>
-    <div style="font-size:9px;color:var(--ink3);margin-top:5px">แสดงเส้นเป้าในกราฟ</div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:10px;color:var(--ink3);width:26px" id="tgtNonLbl">Non</span>
+      <input type="number" id="targetInputNon" value="0" min="0" max="99999"
+        style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:12px;font-family:'Noto Sans Thai',sans-serif;outline:none;"
+        onchange="setTargetZone('non',this.value)">
+    </div>
+    <div style="font-size:9px;color:var(--ink3);margin-top:5px" id="tgtZoneNote">โซนที่ดูอยู่: ทั้งหมด → ใช้เป้า 400 ล็อก/วัน</div>
+    <div style="font-size:9px;color:var(--ink3);margin-top:3px">เป้าเก็บในเครื่องนี้ (แยกสาขา)</div>
   </div>
 
 </div><!-- /sidebar -->
@@ -777,6 +820,28 @@ body.manager-mode .admin-only{display:none!important;}
           </div>
         </div>
       </div><!-- /revSection -->
+
+      <!-- ENH-05: แบนเนอร์เตือนหลุดเป้า -->
+      <div id="targetAlert" style="display:none;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;line-height:1.6"></div>
+
+      <!-- ENH-05: เป้าเดือนนี้ (pace) -->
+      <div id="targetMonthBox" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+          <div style="font-size:12px;font-weight:700">🎯 เป้าเดือนนี้ · <span id="tmMonth">—</span></div>
+          <div style="font-size:11px;color:var(--ink2)"><strong id="tmActual">—</strong> / <span id="tmGoal">—</span> ล็อก</div>
+        </div>
+        <div style="height:10px;background:var(--bg);border-radius:5px;position:relative;overflow:visible">
+          <div id="tmBar" style="width:0%;height:100%;border-radius:5px;background:var(--green);transition:width .4s"></div>
+          <div id="tmPace" style="position:absolute;left:0%;top:-3px;bottom:-3px;width:2px;background:var(--ink)"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink3);margin-top:6px;flex-wrap:wrap;gap:6px">
+          <span>ทำได้ <strong id="tmPct">—</strong></span>
+          <span>เพซที่ควรเป็นวันนี้ <strong id="tmPacePct">—</strong> (วันที่ <span id="tmDay">—</span>)</span>
+        </div>
+        <div id="tmNote" style="font-size:11px;margin-top:8px;color:var(--ink2)">—</div>
+        <div style="font-size:11px;color:var(--ink3);margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">5 วันล่าสุด</div>
+        <div id="tmDayList" style="margin-top:4px"></div>
+      </div>
 
       <!-- TARGET SUMMARY (ทุก role เห็น) -->
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
@@ -894,7 +959,7 @@ body.manager-mode .admin-only{display:none!important;}
     <div id="view-forecast" style="display:none">
       <div class="fc-panel">
         <div style="font-size:14px;font-weight:700;margin-bottom:4px">🔮 พยากรณ์เดือนถัดไป</div>
-        <div style="font-size:11px;color:var(--ink3);margin-bottom:14px">คำนวณจากค่าเฉลี่ยย้อนหลัง 3 เดือนล่าสุด</div>
+        <div style="font-size:11px;color:var(--ink3);margin-bottom:14px">คำนวณจากค่าเฉลี่ยย้อนหลัง 3 เดือนเต็มล่าสุด — อิงเดือนปฏิทินทั้งคู่</div>
         <div class="fc-cards" id="fcCards"></div>
         <div class="fc-note" id="fcNote"></div>
       </div>
@@ -1155,8 +1220,9 @@ body.manager-mode .admin-only{display:none!important;}
           <button class="mc-pill" onclick="toggleBmBranch('BN',this)">บางนา (BN)</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px" id="bmKpiRow"></div>
+        <div id="bmAlert" style="display:grid;gap:8px;margin-bottom:14px"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-          <div class="sc"><div class="sc-title">ล็อกเฉลี่ย/วัน แต่ละสาขา</div><div style="height:220px;position:relative"><canvas id="cBmAvg"></canvas></div></div>
+          <div class="sc"><div class="sc-title">เทรนด์ล็อกเฉลี่ย/วัน รายเดือน</div><div style="height:220px;position:relative"><canvas id="cBmAvg"></canvas></div><div style="font-size:10px;color:var(--ink3);margin-top:6px;line-height:1.6">ใช้ <strong>เฉลี่ย/วัน</strong> ไม่ใช่ยอดรวม → เดือนไม่ครบไม่ทำให้เพี้ยน · ตัดวันที่ล็อก = 0 (วันปิด/ไม่มีข้อมูล) ออกก่อนเฉลี่ย</div></div>
           <div class="sc"><div class="sc-title">ล็อกรายเดือน เปรียบเทียบ</div><div style="height:220px;position:relative"><canvas id="cBmMonth"></canvas></div></div>
         </div>
         <div class="sc"><div class="sc-title">แนวโน้มล็อกรายวัน ทุกสาขา (60 วันล่าสุด)</div><div style="height:200px;position:relative"><canvas id="cBmDaily"></canvas></div></div>
@@ -1177,11 +1243,61 @@ let bnStData=[],bnCarData=[],bnMerged=[];
 let period=90,selMonth='',zone='all',group='all',view='overview';
 let customFrom=null,customTo=null;
 let activeBranch='SS'; // SS, BG, BN
-let targetLock=400; // เป้าล็อกต่อวัน
+let targetLock=400; // เป้าล็อกต่อวัน ของสาขา+โซนที่เลือกอยู่ (คำนวณจาก TARGETS)
 
-function setTarget(v){
-  targetLock=Math.max(1,parseInt(v)||400);
-  if(view==='overview') applyAll();
+// ── ENH-05: เป้าแยกสาขา × โซน (เก็บใน localStorage) ──
+const TGT_KEY='saveone_targets_v1';
+const TGT_DEF={SS:{st:400,non:0},BG:{st:350,non:120},BN:{st:300,non:90}};
+const TGT_MISS_STREAK=3; // หลุดเป้ากี่วันติดถึงเตือน
+let TARGETS=loadTargets();
+function loadTargets(){
+  const def=JSON.parse(JSON.stringify(TGT_DEF));
+  try{
+    const raw=localStorage.getItem(TGT_KEY);
+    if(!raw) return def;
+    const o=JSON.parse(raw)||{};
+    ['SS','BG','BN'].forEach(b=>{
+      if(o[b]){
+        def[b].st=Math.max(0,parseInt(o[b].st)||0);
+        def[b].non=Math.max(0,parseInt(o[b].non)||0);
+      }
+    });
+    return def;
+  }catch(e){console.warn('โหลดเป้าไม่ได้ ใช้ค่าเริ่มต้น',e);return def;}
+}
+function saveTargets(){
+  try{localStorage.setItem(TGT_KEY,JSON.stringify(TARGETS));}
+  catch(e){console.warn('บันทึกเป้าไม่ได้',e);}
+}
+// เป้าของสาขา+โซนที่เลือกอยู่ (all = ST + Car/Non)
+function currentTarget(){
+  const t=TARGETS[activeBranch]||{st:0,non:0};
+  if(zone==='st') return t.st||0;
+  if(zone==='non') return t.non||0;
+  return (t.st||0)+(t.non||0);
+}
+// อัปเดตช่อง input + ป้ายในไซด์บาร์ให้ตรงสาขา/โซนปัจจุบัน
+function syncTargetUI(){
+  targetLock=Math.max(1,currentTarget()||1);
+  const t=TARGETS[activeBranch]||{st:0,non:0};
+  const iSt=document.getElementById('targetInputST'); if(iSt) iSt.value=t.st||0;
+  const iNon=document.getElementById('targetInputNon'); if(iNon) iNon.value=t.non||0;
+  const names={SS:'ศรีสมาน',BG:'ประตูกรุงเทพ',BN:'บางนา'};
+  const bl=document.getElementById('tgtBranchLbl'); if(bl) bl.textContent=names[activeBranch]||activeBranch;
+  const zl=document.getElementById('tgtZoneNote');
+  if(zl){
+    const zn=zone==='st'?'ST':zone==='non'?(activeBranch==='SS'?'Non':'Car'):'ทั้งหมด';
+    zl.textContent=`โซนที่ดูอยู่: ${zn} → ใช้เป้า ${fmtN(currentTarget())} ล็อก/วัน`;
+  }
+  const nl=document.getElementById('tgtNonLbl'); if(nl) nl.textContent=activeBranch==='SS'?'Non':'Car';
+}
+function setTargetZone(z,v){
+  const t=TARGETS[activeBranch]; if(!t) return;
+  const val=Math.max(0,Math.min(99999,parseInt(v)||0));
+  if(z==='non') t.non=val; else t.st=val;
+  saveTargets();
+  syncTargetUI();
+  applyAll();
 }
 let charts={};
 
@@ -1440,7 +1556,7 @@ async function loadAll(){
     else{bnStData=bn_st;bnCarData=bn_car;mergeBN();dataLoaded.BN=true;}
     console.log('BN ST:',bnStData.length,'Car:',bnCarData.length,'Merged:',bnMerged.length);
 
-    buildMonths();applyAll();
+    syncTargetUI();buildMonths();applyAll();
     document.getElementById('updTime').textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH');
     document.getElementById('loadingState').style.display='none';
     document.getElementById('mainContent').style.display='block';
@@ -1628,10 +1744,11 @@ function setBranch(b,btn){
   // รีเซ็ต zone เป็น all
   zone='all';document.querySelectorAll('[id^="z-"]').forEach(x=>x.classList.remove('active'));
   const za=document.getElementById('z-all');if(za)za.classList.add('active');
+  syncTargetUI();
   // สลับข้อมูลทันที ไม่ต้องโหลดใหม่
   buildMonths();applyAll();
 }
-function setZone(z,btn){zone=z;document.querySelectorAll('[id^="z-"]').forEach(x=>x.classList.remove('active'));btn.classList.add('active');applyAll();}
+function setZone(z,btn){zone=z;document.querySelectorAll('[id^="z-"]').forEach(x=>x.classList.remove('active'));btn.classList.add('active');syncTargetUI();applyAll();}
 function setGroup(v){group=v;applyAll();}
 function setPeriod(d,btn){period=d;selMonth='';customFrom=null;customTo=null;document.getElementById('monthSel').value='';document.getElementById('customDateWrap').style.display='none';document.querySelectorAll('[id^="p"]').forEach(x=>x.classList.remove('active'));btn.classList.add('active');applyAll();}
 function setMonth(v){selMonth=v;period=0;customFrom=null;customTo=null;document.getElementById('customDateWrap').style.display='none';document.querySelectorAll('[id^="p"]').forEach(x=>x.classList.remove('active'));applyAll();}
@@ -1700,6 +1817,7 @@ function updateDateRange(d){
 function updateRange(d){}
 
 function applyAll(){
+  targetLock=Math.max(1,currentTarget()||1); // ENH-05: เป้าตามสาขา+โซนปัจจุบัน
   const d=getFiltered();
   updateDateRange(d);
   if(view==='overview') renderOverview(d);
@@ -1709,6 +1827,97 @@ function applyAll(){
   else if(view==='compare') renderCompare();
   else if(view==='heatmap') renderHeatmap();
   else if(view==='benchmark') renderBenchmark();
+}
+
+// ── ENH-05: แบนเนอร์เตือนหลุดเป้า + เป้าเดือนนี้ (pace) ──
+function renderTargetStatus(d){
+  const alertEl=document.getElementById('targetAlert');
+  const boxEl=document.getElementById('targetMonthBox');
+  if(!alertEl||!boxEl) return;
+  const tgt=currentTarget();
+  // เป้าเทียบได้เฉพาะตอนดู "ทุกกลุ่ม" และต้องตั้งเป้าไว้ก่อน
+  if(group!=='all'||tgt<=0||!d.length){alertEl.style.display='none';boxEl.style.display='none';return;}
+
+  // 1) หลุดเป้ากี่วันติด (นับจากวันล่าสุดถอยหลัง)
+  const asc=[...d].sort((a,b)=>a.date-b.date);
+  let streak=0,streakSum=0;
+  for(let i=asc.length-1;i>=0;i--){
+    const lk=getLock(asc[i],group);
+    if(lk<tgt){streak++;streakSum+=lk;} else break;
+  }
+  const zn=zone==='st'?'ST':zone==='non'?(activeBranch==='SS'?'Non':'Car'):'ทุกโซน';
+  const names={SS:'ศรีสมาน',BG:'ประตูกรุงเทพ',BN:'บางนา'};
+  if(streak>=TGT_MISS_STREAK){
+    const avg=streakSum/streak;
+    const diff=((tgt-avg)/tgt*100).toFixed(1);
+    alertEl.style.display='block';
+    alertEl.style.background='rgba(239,68,68,.12)';
+    alertEl.style.borderLeft='3px solid var(--red)';
+    alertEl.innerHTML=`<div style="font-weight:700;color:var(--red)">⚠️ หลุดเป้า ${streak} วันติด · ${names[activeBranch]||activeBranch} (${zn})</div>`+
+      `<div style="color:var(--ink2)">เฉลี่ย ${streak} วันล่าสุด ${fmtN(avg,1)} ล็อก/วัน (เป้า ${fmtN(tgt)}) ต่ำกว่าเป้า ${diff}%</div>`;
+  } else if(streak===0){
+    const last=asc[asc.length-1];
+    alertEl.style.display='block';
+    alertEl.style.background='rgba(34,197,94,.12)';
+    alertEl.style.borderLeft='3px solid var(--green)';
+    alertEl.innerHTML=`<div style="font-weight:700;color:var(--green)">✅ วันล่าสุด (${fmtD(last.date)}) ถึงเป้า</div>`+
+      `<div style="color:var(--ink2)">ทำได้ ${fmtN(getLock(last,group))} ล็อก (เป้า ${fmtN(tgt)})</div>`;
+  } else {
+    alertEl.style.display='block';
+    alertEl.style.background='rgba(251,146,60,.12)';
+    alertEl.style.borderLeft='3px solid var(--orange,#fb923c)';
+    alertEl.innerHTML=`<div style="font-weight:700;color:var(--ink)">⚡ หลุดเป้า ${streak} วันติด · ${names[activeBranch]||activeBranch} (${zn})</div>`+
+      `<div style="color:var(--ink2)">เตือนเมื่อหลุดครบ ${TGT_MISS_STREAK} วันติด</div>`;
+  }
+
+  // 2) เป้าเดือนนี้ — ใช้เดือนล่าสุดที่มีข้อมูล (ไม่สนช่วงเวลาที่ filter)
+  const all=applyZone(getActiveMerged());
+  if(!all.length){boxEl.style.display='none';return;}
+  const latest=all.reduce((a,b)=>a.date>b.date?a:b).date;
+  const mk=mKey(latest);
+  const rows=all.filter(r=>mKey(r.date)===mk);
+  const daysInMonth=new Date(latest.getFullYear(),latest.getMonth()+1,0).getDate();
+  const dataDays=rows.length;
+  const sum=rows.reduce((s,r)=>s+getLock(r,group),0);
+  const goal=tgt*daysInMonth;
+  const pct=goal>0?sum/goal*100:0;
+  const pacePct=daysInMonth>0?dataDays/daysInMonth*100:0;
+  const projected=dataDays>0?sum/dataDays*daysInMonth:0;
+  const gap=projected-goal;
+  boxEl.style.display='block';
+  document.getElementById('tmMonth').textContent=mLbl(latest);
+  document.getElementById('tmActual').textContent=fmtN(sum);
+  document.getElementById('tmGoal').textContent=fmtN(goal);
+  document.getElementById('tmPct').textContent=pct.toFixed(1)+'%';
+  document.getElementById('tmPacePct').textContent=pacePct.toFixed(1)+'%';
+  document.getElementById('tmDay').textContent=`${dataDays}/${daysInMonth}`;
+  const bar=document.getElementById('tmBar');
+  bar.style.width=Math.min(100,pct)+'%';
+  bar.style.background=pct>=pacePct?'var(--green)':'var(--red)';
+  document.getElementById('tmPace').style.left=Math.min(100,pacePct)+'%';
+  const note=document.getElementById('tmNote');
+  if(gap>=0){
+    note.style.color='var(--green)';
+    note.textContent=`📈 ตามเพซนี้จะจบเดือนที่ ${fmtN(projected)} ล็อก — เกินเป้า ${fmtN(gap)} ล็อก`;
+  } else {
+    note.style.color='var(--red)';
+    const need=dataDays<daysInMonth?(goal-sum)/(daysInMonth-dataDays):0;
+    note.textContent=`📉 ตามเพซนี้จะจบเดือนที่ ${fmtN(projected)} ล็อก — ต่ำกว่าเป้า ${fmtN(-gap)} ล็อก`+
+      (need>0?` · ต้องทำ ${fmtN(need,1)} ล็อก/วัน ใน ${daysInMonth-dataDays} วันที่เหลือ`:'');
+  }
+
+  // 3) รายการ 5 วันล่าสุดเทียบเป้า
+  const listEl=document.getElementById('tmDayList');
+  if(listEl){
+    listEl.innerHTML=asc.slice(-5).reverse().map(r=>{
+      const lk=getLock(r,group);
+      const diff=tgt?((lk-tgt)/tgt*100):0;
+      const hit=lk>=tgt;
+      return `<div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)">`+
+        `<span style="color:var(--ink2)">${fmtD(r.date)} (${DAYS[r.date.getDay()]})</span>`+
+        `<span style="color:${hit?'var(--green)':'var(--red)'};font-weight:700">${fmtN(lk)} / ${fmtN(tgt)} · ${diff>=0?'+':''}${diff.toFixed(0)}%</span></div>`;
+    }).join('');
+  }
 }
 
 // ── OVERVIEW ──
@@ -1760,6 +1969,7 @@ function renderOverview(d){
   const th=document.getElementById('targetHit');if(th)th.textContent=fmtN(hitDays);
   const tm=document.getElementById('targetMiss');if(tm)tm.textContent=fmtN(missDays);
   const tp=document.getElementById('targetPct');if(tp)tp.textContent=hitPct;
+  renderTargetStatus(d);
 
   // MAIN CHART — แท่ง=ราย เส้น=ล็อก รายวัน (60 วันล่าสุด)
   const sorted=[...d].sort((a,b)=>a.date-b.date);
@@ -1889,46 +2099,69 @@ function renderForecast(){
   const last3=_baseMks.slice(-3);
   const avgLock=last3.reduce((s,k)=>s+mon[k].lock/mon[k].days,0)/last3.length;
   const avgRev=last3.reduce((s,k)=>s+mon[k].rev/mon[k].days,0)/last3.length;
-  const fcLock=Math.round(avgLock*30),fcRev=Math.round(avgRev*30);
+  // v2.5.7 FCST-02: พยากรณ์เดือนหน้าอิง "เดือนปฏิทินเต็ม" แทน 30 วัน rolling
+  // -> เทียบกับยอดจริงรายเดือนได้ตรง ไม่คร่อม 2 เดือน
+  const _nextY=_now.getMonth()===11?_now.getFullYear()+1:_now.getFullYear();
+  const _nextM=(_now.getMonth()+1)%12;
+  const _daysInNext=new Date(_nextY,_nextM+1,0).getDate();
+  const _nextLbl=mLbl(new Date(_nextY,_nextM,1));
+  const fcLock=Math.round(avgLock*_daysInNext),fcRev=Math.round(avgRev*_daysInNext);
   const _fcRev=window.userPerms?window.userPerms.showRevenue:true;
   // pace เทียบค่าเฉลี่ยฐาน (แสดงว่าเร็ว/ช้ากว่าปกติ)
   const _pace=(cur)=>{if(!avgLock)return '';const p=Math.round((cur-avgLock)/avgLock*100);const up=p>=0;return `<div style="font-size:10px;margin-top:3px;color:${up?'var(--green)':'var(--red)'}">${up?'▲':'▼'} ${Math.abs(p)}% เทียบเฉลี่ย 3 ด.</div>`;};
+  // v2.5.7 FCST-03: บล็อก "เดือนนี้" แสดงตลอดถ้ามีข้อมูลเดือนปัจจุบัน
+  //   - เดือนยังไม่จบ -> ป้ายเตือน + แถบความคืบหน้า + การ์ด "คาดทั้งเดือน"
+  //   - เดือนจบแล้ว   -> ยอดจริงทั้งเดือน (ไม่มีป้ายเตือน/แถบ/การ์ดคาด)
+  // v2.5.7 FCST-04: เติมการ์ดรายรับฝั่ง "เดือนนี้" ให้สมมาตรกับ "เดือนหน้า" (gate ตาม role)
+  const _hasCur=!!mon[_curMK];
   let _thisMonthSec='';
-  if(_curIncomplete){
-    const _mtdLock=mon[_curMK].lock,_mtdDays=mon[_curMK].days;
+  if(_hasCur){
+    const _mtdLock=mon[_curMK].lock,_mtdDays=mon[_curMK].days,_mtdRev=mon[_curMK].rev;
     const _mtdAvg=_mtdDays?_mtdLock/_mtdDays:0;
+    const _mtdRevAvg=_mtdDays?_mtdRev/_mtdDays:0;
     const _projLock=Math.round(_mtdAvg*_daysInCur);
+    const _projRev=Math.round(_mtdRevAvg*_daysInCur);
     const _pct=Math.round(_daysElapsed/_daysInCur*100);
     const _curLbl=(function(){const p=_curMK.split('-');return mLbl(new Date(p[0],p[1]-1,1));})();
+    const _warnBar=_curIncomplete?`
+    <div style="grid-column:1/-1;background:rgba(240,165,0,.12);border:1px solid rgba(240,165,0,.35);border-radius:7px;padding:8px 12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gold);margin-bottom:2px">⚠️ เดือน ${_curLbl} ยังไม่จบ — ผ่านไป ${_daysElapsed}/${_daysInCur} วัน (${_pct}%) · ตัวเลขด้านล่างยังไม่ครบเดือน</div>`:'';
+    const _progBar=_curIncomplete?`
+    <div style="grid-column:1/-1;margin:8px 0 2px"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink3);margin-bottom:4px"><span>ความคืบหน้าเดือน ${_curLbl}</span><span>${_daysElapsed}/${_daysInCur} วัน</span></div><div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden"><div style="width:${_pct}%;height:100%;background:var(--gold)"></div></div></div>`:'';
+    const _projCard=_curIncomplete?`
+      <div class="fc-card" style="background:rgba(74,158,255,.08);border-color:rgba(74,158,255,.28)"><div class="fc-val" style="color:var(--blue)">${fmtN(_projLock)}</div><div class="fc-lbl">ล็อกคาดทั้งเดือน (ถ้าคงเพซนี้)</div></div>`:'';
+    const _curRevCards=_fcRev?`
+      <div class="fc-card"><div class="fc-val">${fmtN(_mtdRevAvg)}</div><div class="fc-lbl">รายรับเฉลี่ย/วัน ${_curIncomplete?'ตอนนี้':''} (฿)</div></div>
+      ${_curIncomplete?`<div class="fc-card" style="background:rgba(74,158,255,.08);border-color:rgba(74,158,255,.28)"><div class="fc-val" style="color:var(--blue)">${fmtN(_projRev)}</div><div class="fc-lbl">รายรับคาดทั้งเดือน (฿)</div></div>`:`<div class="fc-card"><div class="fc-val">${fmtN(_mtdRev)}</div><div class="fc-lbl">รายรับรวมทั้งเดือน (฿)</div></div>`}`:'';
     _thisMonthSec=`
-    <div style="grid-column:1/-1;background:rgba(240,165,0,.12);border:1px solid rgba(240,165,0,.35);border-radius:7px;padding:8px 12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gold);margin-bottom:2px">⚠️ เดือน ${_curLbl} ยังไม่จบ — ผ่านไป ${_daysElapsed}/${_daysInCur} วัน (${_pct}%) · ตัวเลขด้านล่างยังไม่ครบเดือน</div>
-    <div style="grid-column:1/-1;font-size:12px;font-weight:700;color:var(--ink2);margin:4px 0 0">📅 เดือนนี้ (กำลังดำเนินอยู่)</div>
+    ${_warnBar}
+    <div style="grid-column:1/-1;font-size:12px;font-weight:700;color:var(--ink2);margin:4px 0 0">📅 เดือนนี้ — ${_curLbl} ${_curIncomplete?'(คาดทั้งเดือน)':'(จบแล้ว · ยอดจริง)'}</div>
     <div style="grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
-      <div class="fc-card"><div class="fc-val">${fmtN(_mtdLock)}</div><div class="fc-lbl">ล็อกสะสม (ถึงวันที่ ${_daysElapsed})</div></div>
-      <div class="fc-card"><div class="fc-val">${fmtN(_mtdAvg,1)}</div><div class="fc-lbl">เพซเฉลี่ย/วัน ตอนนี้</div>${_pace(_mtdAvg)}</div>
-      <div class="fc-card" style="background:rgba(74,158,255,.08);border-color:rgba(74,158,255,.28)"><div class="fc-val" style="color:var(--blue)">${fmtN(_projLock)}</div><div class="fc-lbl">คาดทั้งเดือน (ถ้าคงเพซนี้)</div></div>
+      <div class="fc-card"><div class="fc-val">${fmtN(_mtdLock)}</div><div class="fc-lbl">${_curIncomplete?`ล็อกสะสม (ถึงวันที่ ${_daysElapsed})`:'ล็อกรวมทั้งเดือน'}</div></div>
+      <div class="fc-card"><div class="fc-val">${fmtN(_mtdAvg,1)}</div><div class="fc-lbl">ล็อกเฉลี่ย/วัน ${_curIncomplete?'ตอนนี้':''}</div>${_pace(_mtdAvg)}</div>
+      ${_projCard}
+      ${_curRevCards}
     </div>
-    <div style="grid-column:1/-1;margin:8px 0 2px"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink3);margin-bottom:4px"><span>ความคืบหน้าเดือน ${_curLbl}</span><span>${_daysElapsed}/${_daysInCur} วัน</span></div><div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden"><div style="width:${_pct}%;height:100%;background:var(--gold)"></div></div></div>`;
+    ${_progBar}`;
   }
   const _revCards=_fcRev?`
       <div class="fc-card"><div class="fc-val">${fmtN(avgRev)}</div><div class="fc-lbl">รายรับเฉลี่ย/วัน (฿)</div></div>
-      <div class="fc-card"><div class="fc-val">${fmtN(fcRev)}</div><div class="fc-lbl">รายรับพยากรณ์ 30 วัน (฿)</div></div>`:'';
+      <div class="fc-card"><div class="fc-val">${fmtN(fcRev)}</div><div class="fc-lbl">รายรับคาดทั้งเดือน ${_nextLbl} (฿)</div></div>`:'';
   document.getElementById('fcCards').innerHTML=`
     ${_thisMonthSec}
-    <div style="grid-column:1/-1;font-size:12px;font-weight:700;color:var(--ink2);margin:10px 0 0">🔮 พยากรณ์เดือนหน้า (ฉาย 30 วันข้างหน้า)</div>
+    <div style="grid-column:1/-1;font-size:12px;font-weight:700;color:var(--ink2);margin:10px 0 0">🔮 เดือนหน้า — ${_nextLbl} (เต็มเดือนปฏิทิน ${_daysInNext} วัน)</div>
     <div style="grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
       <div class="fc-card"><div class="fc-val">${fmtN(avgLock,1)}</div><div class="fc-lbl">ล็อกเฉลี่ย/วัน (${last3.length} เดือนเต็ม)</div></div>
-      <div class="fc-card" style="background:rgba(61,214,140,.08);border-color:rgba(61,214,140,.28)"><div class="fc-val" style="color:var(--green)">${fmtN(fcLock)}</div><div class="fc-lbl">ล็อกพยากรณ์ 30 วัน</div></div>
+      <div class="fc-card" style="background:rgba(61,214,140,.08);border-color:rgba(61,214,140,.28)"><div class="fc-val" style="color:var(--green)">${fmtN(fcLock)}</div><div class="fc-lbl">ล็อกคาดทั้งเดือน ${_nextLbl}</div></div>
       ${_revCards}
     </div>
   `;
-  document.getElementById('fcNote').innerHTML=`ฐานพยากรณ์: ค่าเฉลี่ยต่อวันของ <strong>${last3.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));}).join(', ')}</strong>${_curIncomplete?' (ไม่รวมเดือนปัจจุบันที่ยังไม่จบ)':''} → ฉาย 30 วันข้างหน้า | เป็นการพยากรณ์จากสถิติย้อนหลังเท่านั้น`;
+  document.getElementById('fcNote').innerHTML=`ฐานพยากรณ์: ค่าเฉลี่ยต่อวันของ <strong>${last3.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));}).join(', ')}</strong>${_curIncomplete?' (ไม่รวมเดือนปัจจุบันที่ยังไม่จบ)':''} → คูณจำนวนวันของเดือน ${_nextLbl} (${_daysInNext} วัน) | ทั้ง 2 การ์ดอิงเดือนปฏิทิน เทียบกับยอดจริงรายเดือนได้ตรง | เป็นการพยากรณ์จากสถิติย้อนหลังเท่านั้น`;
   // ตั้งค่า default ล็อก/วัน จากพยากรณ์
   const wiInput=document.getElementById('wiLock');
   if(wiInput&&!wiInput.value) wiInput.value=Math.round(avgLock);
   calcWhatIf();
   dChart('cFC');
-  charts.cFC=makeChart('cFC',{type:'line',data:{labels:[...mks.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));}),'พยากรณ์'],datasets:[
+  charts.cFC=makeChart('cFC',{type:'line',data:{labels:[...mks.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));}),_nextLbl+' (คาด)'],datasets:[
     {label:'ล็อกจริง',data:[...mks.map(k=>mon[k].lock)],borderColor:'rgba(74,158,255,.9)',backgroundColor:'rgba(74,158,255,.05)',borderWidth:2,pointRadius:2.5,fill:true,tension:.3},
     {label:'ล็อกพยากรณ์',data:[...mks.map(()=>null),fcLock],borderColor:'rgba(240,165,0,.9)',borderWidth:2,borderDash:[5,3],pointRadius:5,pointStyle:'star',fill:false},
   ]},options:cOpts()});
@@ -2150,7 +2383,7 @@ function renderCompare(){
     const _avg=_daysSum?_lockSum/_daysSum:0;
     let _best=null,_worst=null;
     mks.forEach(k=>{const a=(allTotals[k]||0)/((days_in[k]||1));if(_best===null||a>_best.a)_best={k,a};if(_worst===null||a<_worst.a)_worst={k,a};});
-    const _tgt=parseInt(document.getElementById('targetInput')?.value||'400')||400;
+    const _tgt=currentTarget()||1;
     const _pct=_tgt?(_avg/_tgt*100):0;
     const _canRev=window.userPerms?window.userPerms.showRevenue:true;
     const _bl=(x)=>{if(!x)return '-';const p=x.split('-');return mLbl(new Date(p[0],p[1]-1,1));};
@@ -2236,6 +2469,45 @@ function getBranchMerged(b){
   return [];
 }
 
+// ── v2.5.8 BM-01/BM-02: เทรนด์ล็อกเฉลี่ย/วัน รายเดือน + ป้ายเตือนสาขาไหลลง ──
+const BM_MIN_DAYS=7;   // เดือนที่มีข้อมูลน้อยกว่านี้ ไม่เอามาคิด "ตกต่อเนื่อง" (กันเดือนปัจจุบันเพิ่งเริ่ม)
+const BM_ALERT_N=3;    // ตกติดกันกี่เดือน = ธงแดง "ไหลลงไม่หยุด"
+const BM_DROP_PCT=3;   // ต้องลดเกินกี่ % ถึงนับว่า "ตก" (deadband) — กันกราฟที่ราบแล้วโดนนับเป็นไหลลง
+
+// ล็อกเฉลี่ย/วัน รายเดือน — ตัดวันที่ยอด = 0 ออกก่อนเฉลี่ย (วันปิด/ไม่มีข้อมูล)
+function bmMonthlyAvg(b){
+  const mon={};
+  getBranchMerged(b).forEach(r=>{
+    const v=getLock(r,'all');
+    if(!v) return;
+    const k=mKey(r.date);
+    if(!mon[k])mon[k]={s:0,c:0};
+    mon[k].s+=v; mon[k].c++;
+  });
+  const out={};
+  Object.keys(mon).forEach(k=>{out[k]={avg:mon[k].s/mon[k].c,days:mon[k].c};});
+  return out;
+}
+
+// นับจำนวนเดือนที่ "ตกต่อเนื่อง" นับถอยหลังจากเดือนล่าสุด
+function bmTrend(b){
+  const m=bmMonthlyAvg(b);
+  const ks=Object.keys(m).sort().filter(k=>m[k].days>=BM_MIN_DAYS);
+  if(ks.length<2) return null;
+  const vals=ks.map(k=>m[k].avg);
+  // นับ "ตก" เฉพาะเดือนที่ลดเกิน BM_DROP_PCT% — สาขาที่เจอพื้นแล้วนิ่ง (เช่น BN)
+  // จะไม่ถูกนับเป็นไหลลง แม้ตัวเลขจะขยับลงนิดหน่อยทุกเดือน
+  let streak=0;
+  for(let i=vals.length-1;i>0;i--){
+    const prev=vals[i-1];
+    const dropPct=prev?(prev-vals[i])/prev*100:0;
+    if(dropPct>BM_DROP_PCT) streak++; else break;
+  }
+  const peak=Math.max(...vals), last=vals[vals.length-1];
+  return {ks,vals,streak,peak,last,fromPeak:peak?Math.round((last-peak)/peak*100):0,
+          lastLbl:(function(){const q=ks[ks.length-1].split('-');return mLbl(new Date(q[0],q[1]-1,1));})()};
+}
+
 function renderBenchmark(){
   const branches=[...bmBranches];
   // KPI cards
@@ -2260,20 +2532,45 @@ function renderBenchmark(){
     }).join('');
   }
 
+  // ── ป้ายเตือนอัตโนมัติ: สาขาที่ตกต่อเนื่อง ──
+  const alertBox=document.getElementById('bmAlert');
+  if(alertBox){
+    alertBox.innerHTML=branches.map(b=>{
+      const t=bmTrend(b);
+      const nm=`<strong style="color:${BM_COLORS[b]}">${BM_NAMES[b]}</strong>`;
+      if(!t) return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:12px;color:var(--ink3)">⚪ ${nm} — ข้อมูลยังไม่พอประเมินเทรนด์ (ต้องมีอย่างน้อย 2 เดือนที่มีข้อมูล ≥ ${BM_MIN_DAYS} วัน)</div>`;
+      let ic,txt,col,bg;
+      if(t.streak>=BM_ALERT_N){ ic='🔴'; col='var(--red)'; bg='rgba(255,77,79,.12)'; txt=`<strong>ไหลลงไม่หยุด</strong> — ตกต่อเนื่อง ${t.streak} เดือนติด`; }
+      else if(t.streak===2){ ic='🟡'; col='var(--gold)'; bg='rgba(240,165,0,.12)'; txt='<strong>เฝ้าระวัง</strong> — ตก 2 เดือนติด'; }
+      else if(t.streak===1){ ic='🟡'; col='var(--gold)'; bg='rgba(240,165,0,.08)'; txt=`ตกจากเดือนก่อน 1 เดือน (ยังไม่นับว่าเป็นเทรนด์)`; }
+      else { ic='🟢'; col='var(--green)'; bg='rgba(61,214,140,.10)'; txt=`<strong>ไม่ไหลลง</strong> — เดือนล่าสุดไม่ได้ลดเกิน ${BM_DROP_PCT}% จากเดือนก่อน`; }
+      const peakTxt=t.fromPeak<0?` · ต่ำกว่าจุดพีค ${Math.abs(t.fromPeak)}%`:' · อยู่ที่จุดพีค';
+      return `<div style="background:${bg};border:1px solid ${col};border-radius:7px;padding:8px 12px;font-size:12px;color:var(--ink);display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span>${ic}</span><span>${nm} — ${txt}</span>
+        <span style="color:var(--ink3);font-size:11px">(${t.lastLbl} เฉลี่ย ${fmtN(t.last,1)} ล็อก/วัน${peakTxt})</span>
+      </div>`;
+    }).join('');
+  }
+
   // กราฟล็อกเฉลี่ย/วัน รายเดือน แต่ละสาขา
   const allMks=[...new Set(branches.flatMap(b=>getBranchMerged(b).map(r=>mKey(r.date))))].sort();
   const mkLabels=allMks.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));});
 
   dChart('cBmAvg');
   charts.cBmAvg=makeChart('cBmAvg',{
-    type:'bar',
+    type:'line',
     data:{
       labels:mkLabels,
       datasets:branches.map(b=>{
-        const d=getBranchMerged(b);
-        const mon={};
-        d.forEach(r=>{const k=mKey(r.date);if(!mon[k])mon[k]={s:0,c:0};mon[k].s+=getLock(r,'all');mon[k].c++;});
-        return{label:BM_NAMES[b],data:allMks.map(k=>mon[k]?+(mon[k].s/mon[k].c).toFixed(1):null),backgroundColor:BM_COLORS[b],borderRadius:3};
+        const m=bmMonthlyAvg(b);
+        return{label:BM_NAMES[b],
+          data:allMks.map(k=>m[k]?+m[k].avg.toFixed(1):null),
+          borderColor:BM_COLORS[b],backgroundColor:'transparent',borderWidth:2.5,
+          // เดือนที่ข้อมูลน้อยกว่า BM_MIN_DAYS วาดจุดกลวง = ยังไม่ครบเดือน อ่านเผื่อใจ
+          pointRadius:allMks.map(k=>m[k]?(m[k].days>=BM_MIN_DAYS?3.5:5):0),
+          pointStyle:allMks.map(k=>m[k]&&m[k].days<BM_MIN_DAYS?'circle':'circle'),
+          pointBackgroundColor:allMks.map(k=>m[k]&&m[k].days<BM_MIN_DAYS?'transparent':BM_COLORS[b]),
+          tension:.3,spanGaps:true};
       })
     },
     options:cOpts()
