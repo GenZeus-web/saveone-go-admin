@@ -34,6 +34,34 @@
    - Apps Script: verifyToken cache ผลด้วย CacheService (เก็บ 5 นาที)
 
   -----------------------------------------------------------------------
+  v2.6.3 (28 ก.ค. 2569) — คุมจำนวนท่อที่ยิงพร้อมกัน (โหลด 71.7 วิ -> ~10 วิ)
+   PERF-03) วัดด้วย PERF-01 แล้วได้ตัวเลขจริง:
+      - ท่อที่สำเร็จใช้เวลาแค่ 2.3-3.0 วิ (งานจริงเบามาก)
+      - แต่ยิง 6 ท่อพร้อมกัน คลื่นแรกพังเกือบหมด หลังรอ 18-25 วิ บ้าง timeout 45 วิ บ้าง
+        แล้ว retry ทีหลัง (กระจายตัวแล้ว) ผ่านหมดใน 2-3 วิ
+      - รวม 71.7 วิ โดยเกือบทั้งหมดเป็น retry + backoff ไม่ใช่งานจริง
+      - "ใครพัง" เป็นเรื่องสุ่ม รอบที่วัด SS ผ่านฉลุย BG/BN พังแทน
+        -> เป็นลิมิต concurrency รวมฝั่ง Google ไม่ใช่ปัญหาของสาขาใดสาขาหนึ่ง
+      แก้: เพิ่ม fetchPool() ยิงพร้อมกันไม่เกิน FETCH_CONCURRENCY (=2) ท่อ
+      + เรียงงานสลับสาขา (ST 3 สาขาก่อน แล้วค่อย NON/CAR) ให้ 2 ท่อที่วิ่งพร้อมกัน
+        เป็นคนละ Apps Script เสมอ
+      + refreshBranch (2 ท่อเข้า script เดียวกัน) บังคับ limit=1 ยิงทีละท่อ
+   * ต้นตอย้อนไปถึง v2.5.2 (SEC-05) ที่เปลี่ยนจากยิงทีละท่อเป็น Promise.all 6 ท่อ
+     ตอนนั้นเร็วขึ้นจริงแต่เริ่มมี SS=0 (Fix Log เขียนเองว่าใส่ retry "กัน SS=0 ตอน cold start")
+     พอข้อมูลโตขึ้น execution นานขึ้น การทับซ้อนก็หนักขึ้นจนพังบ่อย
+     v2.6.0 ไม่ได้แตะโค้ดเครือข่ายเลย - แค่อาการหนักพอจนสังเกตเห็น
+  -----------------------------------------------------------------------
+  v2.6.2 (28 ก.ค. 2569) — โหลดเร็วขึ้น + วัดเวลาได้จริง
+   PERF-02) ถอน NET-02 (v2.6.1) กลับเป็นยิง 6 ท่อขนานเหมือนเดิม
+      NET-02 ใส่ไปเพราะเชื่อว่า ST+NON ชนกันคือต้นเหตุที่ SS พลาด -> พิสูจน์แล้ว
+      ว่าไม่ใช่ (แก้เสร็จ ST ยังพลาดตั้งแต่ท่อแรกที่ยิงเดี่ยว) แต่ผลข้างเคียงคือ
+      ทุกสาขาต้องรอ ST เสร็จก่อนยิง NON = เวลารวมคูณสองทุกครั้ง
+      เคสชนกันตอนนี้มี SEC-07 (Apps Script retry + cache 50 นาที) รับแทนแล้ว
+      * (v2.6.3 แทนที่ด้วย fetchPool คุม concurrency แทนแล้ว)
+   PERF-01) เพิ่มตัววัดเวลา: fetchCSV บอก "X.X วิ" ต่อท่อ + logLoadTimes() สรุป
+      ท้ายรอบ (เรียงช้า->เร็ว, เวลาอุ่น token, เวลารวม, ท่อที่ช้าสุด) และเตือน
+      ถ้าเวลารวม > ท่อช้าสุด x1.8 = ท่อไม่ได้ขนานกันจริง
+  -----------------------------------------------------------------------
   v2.6.1 (28 ก.ค. 2569) — ความทนทานตอนโหลด (SS ข้อมูลหาย/ช้า 1-2 นาที)
    อาการ: SS ตอบ Unauthorized + HTTP 404 (script.googleusercontent.com/macros/echo)
      -> SS ST = 0 แถว แต่หน้าจอไม่บอกอะไร โชว์เลข 0 เหมือนไม่มีลูกค้าจริง
@@ -659,7 +687,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.6.1</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.6.3</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -1519,10 +1547,13 @@ const FETCH_RETRY=2;        // จำนวนครั้งที่ลอง�
 const FETCH_BACKOFF=2000;   // ms ครั้งที่ 1 (ครั้งถัดไปคูณ 2)
 // เก็บว่าท่อไหนพลาดบ้างในรอบล่าสุด — ใช้ทำแบนเนอร์เตือน (NET-03)
 let loadErrors=[];
+// v2.6.2 PERF-01: เก็บเวลาต่อท่อ ไว้สรุปท้ายรอบ (ดูใน console ว่าช้าที่ไหน)
+let fetchTimes=[];
 
 async function fetchCSV(url, _attempt){
   const att=_attempt||0;
   const tag=url.slice(-30);
+  const _t0=Date.now();
   try {
     // ใช้ token ที่อุ่นไว้แล้ว (loadAll/refreshBranch เรียก refreshToken มาก่อน) — safety net เผื่อยังไม่อุ่น
     if(cachedToken===null && att===0) await refreshToken();
@@ -1547,11 +1578,14 @@ async function fetchCSV(url, _attempt){
       throw new Error(text.trim().slice(0,60));
     }
     const parsed=Papa.parse(text,{header:true,skipEmptyLines:true,dynamicTyping:false});
-    console.log('Fetched:',tag,'rows:',parsed.data.length,att?`(ลองครั้งที่ ${att+1})`:'');
+    // v2.6.2 PERF-01: บอกเวลาต่อท่อ จะได้รู้ว่าช้าที่ท่อไหน ไม่ต้องเดา
+    const _ms=Date.now()-_t0;
+    fetchTimes.push({url:tag,ms:_ms,rows:parsed.data.length,tries:att+1});
+    console.log(`⏱ ${(_ms/1000).toFixed(1)} วิ  ${tag}  rows: ${parsed.data.length}${att?`  (ลองครั้งที่ ${att+1})`:''}`);
     return parsed.data;
   } catch(e) {
     const msg=e.name==='AbortError'?`timeout ${FETCH_TIMEOUT/1000} วิ`:e.message;
-    console.error('fetchCSV error:',tag,msg);
+    console.error(`fetchCSV error: ${tag}  ${msg}  (ผ่านไป ${((Date.now()-_t0)/1000).toFixed(1)} วิ)`);
     if(att<FETCH_RETRY){
       const wait=FETCH_BACKOFF*Math.pow(2,att);
       console.warn(`retry ${att+1}/${FETCH_RETRY} ใน ${wait/1000} วิ:`,tag);
@@ -1564,13 +1598,32 @@ async function fetchCSV(url, _attempt){
   }
 }
 
-// ยิงท่อของสาขาเดียวกันแบบ "ลำดับ" — ท่อแรกอุ่น verifyToken cache ฝั่ง Apps Script ให้ท่อสอง
-// (ยิงพร้อมกันแล้วทั้งคู่ cache miss → ถาม Firebase ซ้อนกัน → execution ตาย ได้ Unauthorized/404)
-// สาขาต่างกันคนละ script คนละ cache → ยังยิงขนานกันได้ตามเดิม
-async function fetchBranchPair(urlA, urlB){
-  const a=await fetchCSV(urlA);
-  const b=await fetchCSV(urlB);
-  return [a,b];
+// ── v2.6.3 PERF-03: จำกัดจำนวนท่อที่ยิงพร้อมกัน ──
+// วัดจริงด้วย PERF-01 (28 ก.ค.) พบว่า:
+//   - ท่อที่ "สำเร็จ" ใช้เวลาแค่ 2.3-3.0 วิ  (งานจริงเบามาก)
+//   - แต่ยิง 6 ท่อพร้อมกัน -> คลื่นแรกพังเกือบหมด หลังรอ 18-25 วิ แล้วค่อย retry ผ่าน
+//   - รวมเวลาจริง 71.7 วิ โดยเกือบทั้งหมดเป็น retry + backoff ไม่ใช่งานจริง
+//   - "ใครพัง" เป็นเรื่องสุ่ม (รอบนั้น SS ผ่านฉลุย BG/BN พังแทน)
+//     -> เป็นลิมิต concurrency รวมฝั่ง Google ไม่ใช่ปัญหาของ script ตัวใดตัวหนึ่ง
+// ต้นตอย้อนไปถึง v2.5.2 (SEC-05) ที่เปลี่ยนจากยิงทีละท่อเป็น Promise.all 6 ท่อ
+//   ตอนนั้นเร็วขึ้นจริง แต่เริ่มมี SS=0 (มีบันทึกใน Fix Log ว่าใส่ retry "กัน SS=0 ตอน cold start")
+//   พอข้อมูลโตขึ้น execution นานขึ้น การทับซ้อนก็หนักขึ้นจนพังบ่อย
+const FETCH_CONCURRENCY=2;  // ยิงพร้อมกันกี่ท่อ — ปรับที่นี่ที่เดียว (2 = ปลอดภัย, 3 = เร็วขึ้นแต่เสี่ยงชน)
+
+// คิวงาน: ยิงพร้อมกันไม่เกิน FETCH_CONCURRENCY ท่อ ท่อไหนเสร็จก็ดึงงานถัดไปมาทำต่อ
+// tasks = [{key,url}, ...]  คืน {key: rows[]}
+async function fetchPool(tasks, limit){
+  const out={};
+  let next=0;
+  async function worker(){
+    while(next<tasks.length){
+      const t=tasks[next++];
+      out[t.key]=await fetchCSV(t.url);
+    }
+  }
+  const n=Math.min(limit||FETCH_CONCURRENCY, tasks.length);
+  await Promise.all(Array.from({length:n}, worker));
+  return out;
 }
 
 let dataLoaded={SS:false,BG:false,BN:false};
@@ -1581,14 +1634,25 @@ async function loadAll(){
   const ts=Date.now();
   try{
     document.getElementById('spinTxt').textContent='กำลังโหลดข้อมูลทุกสาขา...';
-    loadErrors=[];
+    loadErrors=[]; fetchTimes=[];
+    const _tAll=Date.now();
+    const _tTok=Date.now();
     await refreshToken(); // อุ่น token ครั้งเดียวก่อนยิงทุกท่อ (ท่อแรกจะได้ไม่พลาดเพราะ token ยังไม่พร้อม)
-    // v2.6.1 NET-02: 3 สาขายิงขนานกัน แต่ "ในสาขาเดียวกัน" ยิงทีละท่อ (ท่อแรกอุ่น cache ให้ท่อสอง)
-    const [[r_ss_st,r_ss_non],[r_bg_st,r_bg_car],[r_bn_st,r_bn_car]]=await Promise.all([
-      fetchBranchPair(`${PROXIES.SS}?sheet=ST&t=${ts}`,     `${PROXIES.SS}?sheet=NON&t=${ts}`),
-      fetchBranchPair(`${PROXIES.BG}?sheet=BG_ST&t=${ts}`,  `${PROXIES.BG}?sheet=BG_CAR&t=${ts}`),
-      fetchBranchPair(`${PROXIES.BN}?sheet=BN_ST&t=${ts}`,  `${PROXIES.BN}?sheet=BN_CAR&t=${ts}`)
+    const _msTok=Date.now()-_tTok;
+    // v2.6.3 PERF-03: ยิงทีละ FETCH_CONCURRENCY ท่อ แทนที่จะปล่อย 6 ท่อพร้อมกัน
+    // เรียงสลับสาขา (ST ทั้ง 3 สาขาก่อน แล้วค่อย NON/CAR) เพื่อให้ 2 ท่อที่วิ่งพร้อมกัน
+    // เป็นคนละ Apps Script เสมอ — ไม่มีจังหวะที่ script เดียวกันโดนยิงซ้อน
+    const R=await fetchPool([
+      {key:'ss_st',  url:`${PROXIES.SS}?sheet=ST&t=${ts}`},
+      {key:'bg_st',  url:`${PROXIES.BG}?sheet=BG_ST&t=${ts}`},
+      {key:'bn_st',  url:`${PROXIES.BN}?sheet=BN_ST&t=${ts}`},
+      {key:'ss_non', url:`${PROXIES.SS}?sheet=NON&t=${ts}`},
+      {key:'bg_car', url:`${PROXIES.BG}?sheet=BG_CAR&t=${ts}`},
+      {key:'bn_car', url:`${PROXIES.BN}?sheet=BN_CAR&t=${ts}`}
     ]);
+    const r_ss_st=R.ss_st, r_ss_non=R.ss_non;
+    const r_bg_st=R.bg_st, r_bg_car=R.bg_car;
+    const r_bn_st=R.bn_st, r_bn_car=R.bn_car;
 
     const ss_st=r_ss_st.map(mapST).filter(Boolean), ss_non=r_ss_non.map(mapNon).filter(Boolean);
     if(ss_st.length===0 && ss_non.length===0){console.warn('SS โหลดแรกได้ข้อมูลว่าง');}
@@ -1605,6 +1669,9 @@ async function loadAll(){
     else{bnStData=bn_st;bnCarData=bn_car;mergeBN();dataLoaded.BN=true;}
     console.log('BN ST:',bnStData.length,'Car:',bnCarData.length,'Merged:',bnMerged.length);
 
+    // v2.6.2 PERF-01: สรุปเวลาให้อ่านง่ายใน console — ท่อไหนช้า เสียเวลาไปกับอะไร
+    logLoadTimes(_msTok, Date.now()-_tAll);
+
     syncTargetUI();buildMonths();applyAll();
     renderDataHealth(); // v2.6.1 NET-03: เตือนถ้าสาขาไหนโหลดไม่ครบ
     document.getElementById('updTime').textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH');
@@ -1616,6 +1683,25 @@ async function loadAll(){
     hideSplash();
     document.getElementById('loadingState').style.display='flex';
     document.getElementById('loadingState').innerHTML=`<div style="text-align:center;color:var(--red)">❌ โหลดไม่ได้: ${e.message}<br><br><button class="rfbtn" onclick="loadAll()">ลองใหม่</button></div>`;
+  }
+}
+
+// v2.6.2 PERF-01: สรุปเวลาโหลดใน console — จะได้เห็นว่าเวลาหมดไปตรงไหน ไม่ต้องเดา
+function logLoadTimes(msToken, msTotal){
+  if(!fetchTimes.length && !loadErrors.length) return;
+  const sorted=[...fetchTimes].sort((a,b)=>b.ms-a.ms);
+  const slow=sorted[0];
+  console.log('%c⏱ สรุปเวลาโหลด','font-weight:bold;font-size:13px');
+  console.log(`   อุ่น token      : ${(msToken/1000).toFixed(1)} วิ`);
+  sorted.forEach(f=>{
+    console.log(`   ${(f.ms/1000).toFixed(1).padStart(5)} วิ  ${f.url}  (${f.rows} แถว${f.tries>1?` · ลอง ${f.tries} ครั้ง`:''})`);
+  });
+  if(loadErrors.length) console.log(`   ❌ พลาด ${loadErrors.length} ท่อ: ${loadErrors.map(e=>e.url).join(', ')}`);
+  console.log(`   ── รวมทั้งหมด   : ${(msTotal/1000).toFixed(1)} วิ`);
+  if(slow) console.log(`   ท่อที่ช้าสุด    : ${slow.url} (${(slow.ms/1000).toFixed(1)} วิ)`);
+  // ยิงขนานอยู่ -> เวลารวมควรใกล้เคียงท่อที่ช้าสุด ถ้าห่างกันมากแปลว่ามีอะไรมาขวาง
+  if(slow && msTotal > slow.ms*1.8){
+    console.warn(`   ⚠️ เวลารวม (${(msTotal/1000).toFixed(1)} วิ) มากกว่าท่อช้าสุดเกิน 1.8 เท่า — แปลว่าท่อไม่ได้ขนานกันจริง หรือมี retry แทรก`);
   }
 }
 
@@ -1657,21 +1743,23 @@ async function refreshBranch(){
   const ts=Date.now();
   try{
     await refreshToken(); // อุ่น token ก่อน (บังคับ refresh กัน Unauthorized ตอน auto-refresh ทุก 5 นาที)
-    loadErrors=[];
-    // v2.6.1 NET-02: ยิงทีละท่อเหมือน loadAll (ท่อแรกอุ่น cache ให้ท่อสอง)
+    loadErrors=[]; fetchTimes=[];
+    // v2.6.3 PERF-03: refresh สาขาเดียว = 2 ท่อยิงเข้า "script ตัวเดียวกัน"
+    // จึงบังคับ limit=1 (ยิงทีละท่อ) ไม่ให้ script ตัวเดียวโดนยิงซ้อน — เสียเวลา ~2.5 วิ ยอมรับได้
+    const B=(a,b)=>fetchPool([{key:'r1',url:a},{key:'r2',url:b}], 1);
     if(activeBranch==='SS'){
-      const [r1,r2]=await fetchBranchPair(`${PROXIES.SS}?sheet=ST&t=${ts}`,`${PROXIES.SS}?sheet=NON&t=${ts}`);
+      const {r1,r2}=await B(`${PROXIES.SS}?sheet=ST&t=${ts}`,`${PROXIES.SS}?sheet=NON&t=${ts}`);
       const st=r1.map(mapST).filter(Boolean), non=r2.map(mapNon).filter(Boolean);
       // กันข้อมูลหาย: ถ้า fetch คืนว่าง (timeout/Unauthorized) ห้ามทับของเดิม
       if(st.length===0 && non.length===0){console.warn('SS refresh: ข้อมูลว่าง ข้ามการอัปเดต (คงข้อมูลเดิม)');renderDataHealth();return;}
       stData=st;nonData=non;mergeData();dataLoaded.SS=true;
     } else if(activeBranch==='BG'){
-      const [r1,r2]=await fetchBranchPair(`${PROXIES.BG}?sheet=BG_ST&t=${ts}`,`${PROXIES.BG}?sheet=BG_CAR&t=${ts}`);
+      const {r1,r2}=await B(`${PROXIES.BG}?sheet=BG_ST&t=${ts}`,`${PROXIES.BG}?sheet=BG_CAR&t=${ts}`);
       const st=r1.map(mapST).filter(Boolean), car=r2.map(mapNon).filter(Boolean);
       if(st.length===0 && car.length===0){console.warn('BG refresh: ข้อมูลว่าง ข้ามการอัปเดต (คงข้อมูลเดิม)');renderDataHealth();return;}
       bgStData=st;bgCarData=car;mergeBG();dataLoaded.BG=true;
     } else if(activeBranch==='BN'){
-      const [r1,r2]=await fetchBranchPair(`${PROXIES.BN}?sheet=BN_ST&t=${ts}`,`${PROXIES.BN}?sheet=BN_CAR&t=${ts}`);
+      const {r1,r2}=await B(`${PROXIES.BN}?sheet=BN_ST&t=${ts}`,`${PROXIES.BN}?sheet=BN_CAR&t=${ts}`);
       const st=r1.map(mapST).filter(Boolean), car=r2.map(mapNon).filter(Boolean);
       if(st.length===0 && car.length===0){console.warn('BN refresh: ข้อมูลว่าง ข้ามการอัปเดต (คงข้อมูลเดิม)');renderDataHealth();return;}
       bnStData=st;bnCarData=car;mergeBN();dataLoaded.BN=true;
