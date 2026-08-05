@@ -713,7 +713,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.6.4</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.6.5</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -745,6 +745,16 @@ body.manager-mode .admin-only{display:none!important;}
       <div class="branch-dot" style="background:var(--green)"></div>
       <div><div class="branch-name">บางนา</div><div class="branch-sub">BN · มีข้อมูล</div></div>
     </div>
+    <!-- ผังตลาด 3D (repo แยก: 3D-Market-SR) — เปิดแท็บใหม่ ไม่ให้เสีย filter ที่ตั้งไว้
+         · data-branch="SS" ทำให้ลูปซ่อนสาขาใน onAuthStateChanged ซ่อนปุ่มนี้ให้เอง
+           ถ้าผู้ใช้ไม่มีสิทธิ์สาขาศรีสมาน (ไม่ต้องเขียนเช็คสิทธิ์ซ้ำ)
+         · ต้องเป็น path เต็มจากราก — relative จะวิ่งไปหาไฟล์ใน saveone-go-admin/ แล้ว 404
+         · ตอนนี้มีผังแค่ SS · สาขาอื่นค่อยเพิ่มบรรทัดใหม่เมื่อผังพร้อม -->
+    <a class="branch-item" data-branch="SS" href="/3D-Market-SR/?branch=SS"
+       target="_blank" rel="noopener" style="text-decoration:none;color:var(--ink)">
+      <div class="branch-dot" style="background:var(--gold2,var(--gold))"></div>
+      <div><div class="branch-name">🗺️ ผังตลาด 3D</div><div class="branch-sub">ศรีสมาน · เปิดแท็บใหม่</div></div>
+    </a>
   </div>
 
   <div class="sb-sec">
