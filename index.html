@@ -210,7 +210,7 @@ body.no-elec .col-elec{display:none!important;}
 body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-serif;font-size:13px;line-height:1.5;display:flex;flex-direction:column;height:100vh;overflow:hidden;}#appWrapper_removed{display:flex;flex-direction:column;height:100%;}
 
 /* HEADER */
-.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:50px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:50px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.08);position:relative;z-index:10;}
 .brand{display:flex;align-items:center;gap:10px;}
 .brand-logo{width:30px;height:30px;background:var(--gold);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#1a1f2e;font-family:'JetBrains Mono',monospace;}
 .brand-name{font-size:14px;font-weight:700;color:var(--ink);}
@@ -220,18 +220,33 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 .rfbtn{background:var(--surface2);border:1px solid var(--border);color:var(--ink2);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'Noto Sans Thai',sans-serif;transition:all .15s;}
 .rfbtn:hover{border-color:var(--gold);color:var(--gold);}
 
+/* USR-02: เมนูโปรไฟล์ (มุมขวาบน) */
+.prof-wrap{position:relative;}
+.prof-btn{display:flex;align-items:center;gap:7px;background:transparent;border:1px solid transparent;padding:4px 8px 4px 4px;border-radius:20px;cursor:pointer;transition:all .15s;font-family:'Noto Sans Thai',sans-serif;}
+.prof-btn:hover{background:var(--surface2);border-color:var(--border);}
+.prof-av{width:26px;height:26px;border-radius:50%;background:var(--gold);color:#1a1f2e;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;font-family:'JetBrains Mono',monospace;flex-shrink:0;text-transform:uppercase;}
+.prof-av.lg{width:36px;height:36px;font-size:14px;}
+.prof-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;width:230px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 34px rgba(0,0,0,.35);padding:6px;z-index:9500;}
+.prof-menu.open{display:block;}
+.prof-head{display:flex;align-items:center;gap:10px;padding:10px 10px 12px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+.prof-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:transparent;border:none;color:var(--ink2);padding:8px 10px;border-radius:7px;cursor:pointer;font-size:12px;font-family:'Noto Sans Thai',sans-serif;transition:all .12s;}
+.prof-item:hover{background:var(--surface2);color:var(--ink);}
+.prof-item.danger{color:var(--red);}
+.prof-item.danger:hover{background:rgba(224,92,92,.12);}
+.prof-sep{height:1px;background:var(--border);margin:6px 4px;}
+
 /* LAYOUT */
 .layout{display:flex;flex:1;min-height:0;overflow:hidden;}
 
 /* SIDEBAR */
-.sidebar{width:210px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
+.sidebar{width:210px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;box-shadow:2px 0 6px rgba(0,0,0,.06);}
 .sb-sec{padding:14px 12px;border-bottom:1px solid var(--border);}
 .sb-lbl{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
 
 /* Branch */
-.branch-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;cursor:pointer;transition:all .15s;border:1px solid transparent;margin-bottom:3px;}
+.branch-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;cursor:pointer;transition:all .15s;border:1px solid transparent;border-left:3px solid transparent;margin-bottom:3px;}
 .branch-item:hover:not(.disabled){background:var(--surface2);}
-.branch-item.active{background:rgba(240,165,0,.12);border-color:rgba(240,165,0,.3);}
+.branch-item.active{background:rgba(240,165,0,.12);border-color:rgba(240,165,0,.3);border-left-color:var(--gold);}
 .branch-item.disabled{opacity:.35;cursor:not-allowed;}
 .branch-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 .branch-name{font-size:12px;font-weight:600;}
@@ -240,9 +255,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 
 /* Zone / Type pills */
 .pill-list{display:flex;flex-direction:column;gap:3px;}
-.pill{padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--ink2);background:transparent;border:1px solid transparent;transition:all .15s;text-align:left;font-family:'Noto Sans Thai',sans-serif;display:flex;align-items:center;gap:7px;}
+.pill{padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--ink2);background:transparent;border:1px solid transparent;border-left:3px solid transparent;transition:all .15s;text-align:left;font-family:'Noto Sans Thai',sans-serif;display:flex;align-items:center;gap:7px;}
 .pill:hover{background:var(--surface2);}
-.pill.active{background:var(--surface3);border-color:var(--border);color:var(--ink);font-weight:600;}
+.pill.active{background:var(--surface3);border-color:var(--border);border-left-color:var(--gold);color:var(--ink);font-weight:600;}
 .pill-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
 
 /* Period */
@@ -285,8 +300,13 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 #targetPanel[open] .tgt-more{display:none;}
 .kpi-sec-title{font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;font-weight:700;}
 .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:10px;}
-.kpi{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:13px 15px;transition:transform .15s;}
-.kpi:hover{transform:translateY(-1px);}
+.kpi{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:8px;padding:13px 15px;transition:transform .15s,box-shadow .15s;box-shadow:var(--shadow);}
+.kpi:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.18);}
+.kpi.green{border-left-color:var(--green);}
+.kpi.orange{border-left-color:var(--orange);}
+.kpi.red{border-left-color:var(--red);}
+.kpi.blue{border-left-color:var(--blue);}
+.kpi.purple{border-left-color:var(--purple);}
 .kpi-lbl{font-size:10px;color:var(--ink2);margin-bottom:5px;font-weight:500;}
 .kpi-val{font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;margin-bottom:3px;}
 .kpi-sub{font-size:10px;color:var(--ink3);}
@@ -298,7 +318,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 .kpi.purple .kpi-val{color:var(--purple);}
 
 /* MAIN CHART */
-.main-chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
+.main-chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow);}
 .mc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 .mc-title{font-size:13px;font-weight:700;color:var(--ink);}
 .mc-legend{display:flex;gap:14px;}
@@ -332,7 +352,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 .fd-table tr:hover td{background:rgba(255,255,255,.02);}
 
 /* PRICE NOTE */
-.pn-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
+.pn-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow);}
 .pn-title{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px;}
 .pn-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 @media(max-width:800px){.pn-grid{grid-template-columns:1fr;}}
@@ -349,7 +369,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 .admin-note{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:7px;padding:11px 14px;margin-top:12px;font-size:11px;color:var(--ink2);line-height:1.9;}
 
 /* FORECAST */
-.fc-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
+.fc-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow);}
 .fc-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px;}
 .fc-card{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2);border-radius:7px;padding:12px;text-align:center;}
 .fc-val{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--purple);}
@@ -397,7 +417,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 @keyframes spin{to{transform:rotate(360deg);}}
 .spin-txt{font-size:12px;color:var(--ink3);}
 /* MONTH COMPARE */
-.mc-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
+.mc-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow);}
 .mc-month-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
 .mc-pill{padding:5px 12px;border-radius:20px;border:1px solid var(--border);font-size:11px;cursor:pointer;font-family:"Noto Sans Thai",sans-serif;color:var(--ink2);background:var(--bg);transition:all .15s;}
 .mc-pill:hover{border-color:var(--gold);color:var(--gold);}
@@ -503,8 +523,8 @@ body.manager-mode .admin-only{display:none!important;}
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyD37irb272WHjyIxj3KE5hUZB4dXMe6Pvs",
@@ -578,6 +598,22 @@ body.manager-mode .admin-only{display:none!important;}
         // แสดง email ใน header
         const userEl = document.getElementById('userDisplay');
         if (userEl) userEl.textContent = user.email;
+
+        // USR-02: เติมข้อมูลเมนูโปรไฟล์
+        const initial = (user.email || '?').trim().charAt(0) || '?';
+        ['profAvatar','profAvatarLg'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = initial;
+        });
+        const pe = document.getElementById('profEmail');
+        if (pe) pe.textContent = user.email || '';
+        const pr = document.getElementById('profRole');
+        if (pr) pr.textContent = (role === 'admin' ? 'ผู้ดูแลระบบ (admin)' : 'ผู้จัดการ (manager)')
+          + ' · ' + (Array.isArray(branches) ? branches.join(', ') : '');
+
+        // USR-01: เมนูจัดการผู้ใช้ — เฉพาะ admin เท่านั้น
+        const usersBtn = document.getElementById('profUsers');
+        if (usersBtn) usersBtn.style.display = (role === 'admin') ? '' : 'none';
 
         // ซ่อนสาขาที่ไม่มีสิทธิ์
         document.querySelectorAll('.branch-item[data-branch]').forEach(el => {
@@ -673,6 +709,293 @@ body.manager-mode .admin-only{display:none!important;}
     window.loginKeyPress = function(e) {
       if (e.key === 'Enter') window.doLogin();
     };
+
+    /* ══════════════════════════════════════════════════════════════
+       USR-01: จัดการผู้ใช้ (admin เท่านั้น)
+       ⚠️ ทุกฟังก์ชันเช็ค window.userRole==='admin' ซ้ำอีกชั้นก่อนทำงาน
+          (ซ่อนปุ่มอย่างเดียวไม่พอ — ด่านจริงอยู่ที่ Firestore Rules)
+       ══════════════════════════════════════════════════════════════ */
+    /* ── USR-02: เมนูโปรไฟล์ + เปิด/ปิดหน้าจัดการผู้ใช้ ── */
+    window.toggleProfMenu = function(ev){
+      if(ev) ev.stopPropagation();
+      const m = document.getElementById('profMenu');
+      const b = document.getElementById('profBtn');
+      if(!m) return;
+      const open = m.classList.toggle('open');
+      if(b) b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+    window.closeProfMenu = function(){
+      const m = document.getElementById('profMenu');
+      const b = document.getElementById('profBtn');
+      if(m) m.classList.remove('open');
+      if(b) b.setAttribute('aria-expanded','false');
+    };
+    // คลิกที่อื่น / กด Esc = ปิดเมนู
+    document.addEventListener('click', e => {
+      const w = e.target.closest && e.target.closest('.prof-wrap');
+      if(!w) window.closeProfMenu();
+    });
+    document.addEventListener('keydown', e => {
+      if(e.key !== 'Escape') return;
+      window.closeProfMenu();
+      const um = document.getElementById('usersModal');
+      if(um && um.style.display === 'flex') window.closeUsersPanel();
+    });
+
+    window.openUsersPanel = function(){
+      if(!isAdmin()) return;
+      window.closeProfMenu();
+      const m = document.getElementById('usersModal');
+      if(!m) return;
+      m.style.display = 'flex';
+      window.loadUserList();
+    };
+    window.closeUsersPanel = function(){
+      const m = document.getElementById('usersModal');
+      if(m) m.style.display = 'none';
+    };
+
+    const PERM_KEYS = ['showRevenue','showElec','showExport','showPriceNote','showFreeday','showWhatIf'];
+    const PERM_LABEL = {showRevenue:'รายรับ',showElec:'ค่าไฟ',showExport:'Export',showPriceNote:'หมายเหตุราคา',showFreeday:'วันฝน',showWhatIf:'What If'};
+    const ALL_BRANCHES = ['SS','BG','BN'];
+    const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    function isAdmin(){ return window.userRole === 'admin'; }
+    function usrErr(msg){
+      const el = document.getElementById('usrError');
+      if(!el) return;
+      if(!msg){ el.style.display='none'; el.textContent=''; return; }
+      el.style.display='block'; el.textContent = msg;
+    }
+
+    // ── โหลดรายชื่อผู้ใช้ทั้งหมด ──
+    window.loadUserList = async function(){
+      const tb = document.getElementById('usrTbody');
+      const st = document.getElementById('usrStatus');
+      if(!tb) return;
+      if(!isAdmin()){ tb.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--red)">ไม่มีสิทธิ์</td></tr>'; return; }
+      usrErr('');
+      tb.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--ink3)">กำลังโหลด…</td></tr>';
+      try{
+        const snap = await getDocs(collection(db, 'users'));
+        const rows = [];
+        snap.forEach(d => rows.push({ uid: d.id, ...d.data() }));
+        rows.sort((a,b) => String(a.email||'').localeCompare(String(b.email||'')));
+        if(!rows.length){
+          tb.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--ink3)">ยังไม่มีผู้ใช้</td></tr>';
+        } else {
+          tb.innerHTML = rows.map(u => renderUserRow(u)).join('');
+        }
+        if(st) st.textContent = 'ทั้งหมด ' + rows.length + ' คน · อัปเดต ' + new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+      }catch(e){
+        console.error('loadUserList:', e);
+        tb.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--ink3)">โหลดไม่สำเร็จ</td></tr>';
+        usrErr(e.code === 'permission-denied'
+          ? 'Firestore ปฏิเสธการอ่าน — ยังไม่ได้อัปเดต Security Rules ให้ admin อ่าน collection users ได้ (ดูวิธีใน 6_project-setup.md)'
+          : ('โหลดไม่สำเร็จ: ' + (e.message || e)));
+      }
+    };
+
+    function renderUserRow(u){
+      const isSelf = (window.userEmail && u.email === window.userEmail);
+      const admin = u.role === 'admin';
+      const brs = Array.isArray(u.branches) ? u.branches : [];
+      const permTxt = admin
+        ? '<span style="color:var(--gold)">ทุกอย่าง (admin)</span>'
+        : (PERM_KEYS.filter(k => u[k] === true).map(k => PERM_LABEL[k]).join(', ') || '<span style="color:var(--ink3)">—</span>');
+      return '<tr data-uid="' + esc(u.uid) + '" style="border-bottom:1px solid var(--border)">'
+        + '<td style="padding:9px 6px">' + esc(u.email || '(ไม่มีอีเมล)')
+          + (isSelf ? ' <span style="font-size:9px;background:var(--surface3);color:var(--ink3);padding:1px 5px;border-radius:3px">คุณ</span>' : '')
+          + '<div style="font-size:9px;color:var(--ink3);font-family:\'JetBrains Mono\',monospace">' + esc(u.uid) + '</div></td>'
+        + '<td style="padding:9px 6px"><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:' + (admin?'rgba(240,165,0,.15)':'var(--surface3)') + ';color:' + (admin?'var(--gold)':'var(--ink2)') + '">' + esc(u.role || 'manager') + '</span></td>'
+        + '<td style="padding:9px 6px">' + (brs.length ? esc(brs.join(', ')) : '<span style="color:var(--ink3)">—</span>') + '</td>'
+        + '<td style="padding:9px 6px;font-size:11px;color:var(--ink2)">' + permTxt + '</td>'
+        + '<td style="padding:9px 6px;text-align:right;white-space:nowrap">'
+          + '<button onclick="editUser(\'' + esc(u.uid) + '\')" style="background:var(--surface2);border:1px solid var(--border);color:var(--ink2);padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px;font-family:\'Noto Sans Thai\',sans-serif;margin-right:4px">แก้ไข</button>'
+          + (isSelf ? '' : '<button onclick="removeUser(\'' + esc(u.uid) + '\')" style="background:transparent;border:1px solid var(--red);color:var(--red);padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px;font-family:\'Noto Sans Thai\',sans-serif">ลบ</button>')
+        + '</td></tr>';
+    }
+
+    // ── แก้ไขผู้ใช้: เปลี่ยนแถวเป็นฟอร์มในที่ ──
+    window.editUser = async function(uid){
+      if(!isAdmin()) return;
+      const tr = document.querySelector('#usrTbody tr[data-uid="' + uid + '"]');
+      if(!tr) return;
+      usrErr('');
+      let u = {};
+      try{
+        const d = await getDoc(doc(db, 'users', uid));
+        if(d.exists()) u = d.data();
+      }catch(e){ usrErr('อ่านข้อมูลไม่สำเร็จ: ' + (e.message||e)); return; }
+
+      const brs = Array.isArray(u.branches) ? u.branches : [];
+      const cb = (id, on, label) => '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px"><input type="checkbox" id="' + id + '"' + (on?' checked':'') + '> ' + label + '</label>';
+      tr.innerHTML = '<td colspan="5" style="padding:14px 6px;background:var(--surface2)">'
+        + '<div style="font-size:12px;font-weight:700;margin-bottom:10px">' + esc(u.email || uid) + '</div>'
+        + '<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">'
+          + '<div><div style="font-size:10px;color:var(--ink3);margin-bottom:4px">ROLE</div>'
+            + '<select id="edRole_' + uid + '" onchange="syncEditRole(\'' + uid + '\')" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:12px;font-family:\'Noto Sans Thai\',sans-serif">'
+            + '<option value="manager"' + (u.role!=='admin'?' selected':'') + '>manager</option>'
+            + '<option value="admin"' + (u.role==='admin'?' selected':'') + '>admin</option></select></div>'
+          + '<div><div style="font-size:10px;color:var(--ink3);margin-bottom:4px">สาขา</div><div style="display:flex;gap:12px">'
+            + ALL_BRANCHES.map(b => cb('edBr_' + uid + '_' + b, brs.includes(b), b)).join('') + '</div></div>'
+          + '<div><div style="font-size:10px;color:var(--ink3);margin-bottom:4px">สิทธิ์</div>'
+            + '<div id="edPermBox_' + uid + '" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 14px">'
+            + PERM_KEYS.map(k => cb('edP_' + uid + '_' + k, u[k] === true, PERM_LABEL[k])).join('') + '</div></div>'
+        + '</div>'
+        + '<div style="display:flex;gap:8px;margin-top:12px">'
+          + '<button onclick="saveUser(\'' + uid + '\')" style="background:var(--gold);color:#1a1f2e;border:none;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;font-family:\'Noto Sans Thai\',sans-serif">บันทึก</button>'
+          + '<button onclick="loadUserList()" style="background:var(--surface3);border:1px solid var(--border);color:var(--ink2);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-family:\'Noto Sans Thai\',sans-serif">ยกเลิก</button>'
+        + '</div></td>';
+      syncEditRole(uid);
+    };
+
+    // admin = เปิดสิทธิ์ทุกช่องและล็อกไว้ (ให้ตรงกับ logic ตอน login)
+    window.syncEditRole = function(uid){
+      const sel = document.getElementById('edRole_' + uid);
+      if(!sel) return;
+      const admin = sel.value === 'admin';
+      PERM_KEYS.forEach(k => {
+        const el = document.getElementById('edP_' + uid + '_' + k);
+        if(!el) return;
+        if(admin){ el.checked = true; el.disabled = true; } else { el.disabled = false; }
+      });
+      const box = document.getElementById('edPermBox_' + uid);
+      if(box) box.style.opacity = admin ? '.55' : '1';
+    };
+
+    window.saveUser = async function(uid){
+      if(!isAdmin()) return;
+      usrErr('');
+      const role = document.getElementById('edRole_' + uid).value;
+      const branches = ALL_BRANCHES.filter(b => {
+        const el = document.getElementById('edBr_' + uid + '_' + b);
+        return el && el.checked;
+      });
+      if(!branches.length){ usrErr('ต้องเลือกอย่างน้อย 1 สาขา'); return; }
+
+      const payload = { role, branches };
+      PERM_KEYS.forEach(k => {
+        const el = document.getElementById('edP_' + uid + '_' + k);
+        payload[k] = (role === 'admin') ? true : !!(el && el.checked);
+      });
+
+      try{
+        await setDoc(doc(db, 'users', uid), payload, { merge: true });
+        await window.loadUserList();
+      }catch(e){
+        console.error('saveUser:', e);
+        usrErr(e.code === 'permission-denied'
+          ? 'Firestore ปฏิเสธการเขียน — ยังไม่ได้อัปเดต Security Rules (ดูวิธีใน 6_project-setup.md)'
+          : ('บันทึกไม่สำเร็จ: ' + (e.message || e)));
+      }
+    };
+
+    window.removeUser = async function(uid){
+      if(!isAdmin()) return;
+      usrErr('');
+      let email = uid;
+      try{
+        const d = await getDoc(doc(db, 'users', uid));
+        if(d.exists()) email = d.data().email || uid;
+      }catch(e){}
+      if(!confirm('ลบสิทธิ์ของ ' + email + ' ?\n\nบัญชี login จะยังอยู่ — ต้องลบใน Firebase Console อีกที')) return;
+      try{
+        await deleteDoc(doc(db, 'users', uid));
+        await window.loadUserList();
+      }catch(e){
+        console.error('removeUser:', e);
+        usrErr(e.code === 'permission-denied'
+          ? 'Firestore ปฏิเสธการลบ — ยังไม่ได้อัปเดต Security Rules'
+          : ('ลบไม่สำเร็จ: ' + (e.message || e)));
+      }
+    };
+
+    // ── เพิ่มผู้ใช้ใหม่ ──
+    window.openAddUser = function(){
+      if(!isAdmin()) return;
+      const m = document.getElementById('addUserModal');
+      if(!m) return;
+      ['nuEmail','nuPass'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+      const r = document.getElementById('nuRole'); if(r) r.value = 'manager';
+      const ss = document.getElementById('nuBrSS'); if(ss) ss.checked = true;
+      ['nuBrBG','nuBrBN'].forEach(id => { const el = document.getElementById(id); if(el) el.checked = false; });
+      PERM_KEYS.forEach(k => { const el = document.getElementById('nu' + k.charAt(0).toUpperCase() + k.slice(1)); if(el){ el.checked = false; el.disabled = false; } });
+      const err = document.getElementById('nuError'); if(err){ err.style.display='none'; err.textContent=''; }
+      window.syncNuRole();
+      m.style.display = 'flex';
+    };
+    window.closeAddUser = function(){
+      const m = document.getElementById('addUserModal');
+      if(m) m.style.display = 'none';
+    };
+    window.syncNuRole = function(){
+      const sel = document.getElementById('nuRole');
+      if(!sel) return;
+      const admin = sel.value === 'admin';
+      PERM_KEYS.forEach(k => {
+        const el = document.getElementById('nu' + k.charAt(0).toUpperCase() + k.slice(1));
+        if(!el) return;
+        if(admin){ el.checked = true; el.disabled = true; } else { el.disabled = false; }
+      });
+      const box = document.getElementById('nuPermBox');
+      if(box) box.style.opacity = admin ? '.55' : '1';
+    };
+
+    window.submitAddUser = async function(){
+      if(!isAdmin()) return;
+      const err = document.getElementById('nuError');
+      const btn = document.getElementById('nuSubmit');
+      const show = m => { if(err){ err.style.display='block'; err.textContent = m; } };
+      if(err){ err.style.display='none'; err.textContent=''; }
+
+      const email = (document.getElementById('nuEmail').value || '').trim();
+      const pass  = document.getElementById('nuPass').value || '';
+      const role  = document.getElementById('nuRole').value;
+      const branches = ALL_BRANCHES.filter(b => {
+        const el = document.getElementById('nuBr' + b);
+        return el && el.checked;
+      });
+
+      if(!email){ show('กรอกอีเมล'); return; }
+      if(pass.length < 6){ show('รหัสผ่านต้องอย่างน้อย 6 ตัว'); return; }
+      if(!branches.length){ show('ต้องเลือกอย่างน้อย 1 สาขา'); return; }
+
+      btn.disabled = true; btn.textContent = 'กำลังสร้าง…';
+
+      // สร้าง auth account ผ่าน "แอปสำรอง" — ไม่งั้น createUser จะสลับ session
+      // ทำให้ admin หลุดออกจากระบบทันทีที่สร้างคนใหม่
+      let secondary = null;
+      try{
+        secondary = initializeApp(firebaseConfig, 'usrAdmin_' + Date.now());
+        const secAuth = getAuth(secondary);
+        const cred = await createUserWithEmailAndPassword(secAuth, email, pass);
+        const newUid = cred.user.uid;
+        await signOut(secAuth);
+
+        const payload = { email, role, branches };
+        PERM_KEYS.forEach(k => {
+          const el = document.getElementById('nu' + k.charAt(0).toUpperCase() + k.slice(1));
+          payload[k] = (role === 'admin') ? true : !!(el && el.checked);
+        });
+        await setDoc(doc(db, 'users', newUid), payload);
+
+        window.closeAddUser();
+        await window.loadUserList();
+      }catch(e){
+        console.error('submitAddUser:', e);
+        const map = {
+          'auth/email-already-in-use': 'อีเมลนี้มีบัญชีอยู่แล้ว — ถ้าต้องการให้สิทธิ์ ให้หา uid ใน Firebase Console แล้วเพิ่มเอกสารเอง',
+          'auth/invalid-email': 'รูปแบบอีเมลไม่ถูกต้อง',
+          'auth/weak-password': 'รหัสผ่านอ่อนเกินไป (ต้องอย่างน้อย 6 ตัว)',
+          'auth/operation-not-allowed': 'Firebase ปิดการสมัครด้วย Email/Password อยู่ — เปิดใน Console → Authentication → Sign-in method',
+          'permission-denied': 'สร้างบัญชีแล้วแต่เขียนสิทธิ์ลง Firestore ไม่ได้ — ยังไม่ได้อัปเดต Security Rules (บัญชีถูกสร้างไปแล้ว ต้องไปเพิ่มเอกสารเองใน Console)'
+        };
+        show(map[e.code] || ('สร้างไม่สำเร็จ: ' + (e.message || e)));
+      }finally{
+        btn.disabled = false; btn.textContent = 'สร้างผู้ใช้';
+      }
+    };
   </script>
 </head>
 <body>
@@ -713,17 +1036,43 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.6.5</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.7.0</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
   <div class="header-right">
     <span class="upd" id="updTime">—</span>
-    <span style="font-size:10px;color:var(--ink3)" id="userDisplay"></span>
     <button class="rfbtn" id="sidebarBtn" onclick="toggleSidebar()" title="พับ/แสดง Sidebar">◀</button>
     <button class="rfbtn" id="themeBtn" onclick="toggleTheme()" title="สลับ Light/Dark Mode">🌙 Dark</button>
     <button class="rfbtn" onclick="refreshBranch()">↻ รีเฟรช</button>
-    <button class="rfbtn" onclick="doLogout()" style="color:var(--red)">ออกจากระบบ</button>
+
+    <!-- USR-02: เมนูโปรไฟล์ -->
+    <div class="prof-wrap">
+      <button class="prof-btn" id="profBtn" onclick="toggleProfMenu(event)" aria-haspopup="true" aria-expanded="false">
+        <span class="prof-av" id="profAvatar">?</span>
+        <span style="font-size:10px;color:var(--ink3)" id="userDisplay"></span>
+        <span style="font-size:8px;color:var(--ink3)">▼</span>
+      </button>
+      <div class="prof-menu" id="profMenu">
+        <div class="prof-head">
+          <div class="prof-av lg" id="profAvatarLg">?</div>
+          <div style="min-width:0">
+            <div id="profEmail" style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+            <div id="profRole" style="font-size:10px;color:var(--ink3)"></div>
+          </div>
+        </div>
+        <button class="prof-item" id="profUsers" onclick="openUsersPanel()" style="display:none">
+          <span style="width:16px;display:inline-block">&#9881;&#65039;</span> จัดการผู้ใช้
+        </button>
+        <button class="prof-item" onclick="toggleTheme();closeProfMenu()">
+          <span style="width:16px;display:inline-block">&#127769;</span> สลับธีม สว่าง/มืด
+        </button>
+        <div class="prof-sep"></div>
+        <button class="prof-item danger" onclick="doLogout()">
+          <span style="width:16px;display:inline-block">&#8630;</span> ออกจากระบบ
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1319,6 +1668,88 @@ body.manager-mode .admin-only{display:none!important;}
           <div class="sc"><div class="sc-title">ล็อกรายเดือน เปรียบเทียบ</div><div style="height:220px;position:relative"><canvas id="cBmMonth"></canvas></div></div>
         </div>
         <div class="sc"><div class="sc-title">แนวโน้มล็อกรายวัน ทุกสาขา (60 วันล่าสุด)</div><div style="height:200px;position:relative"><canvas id="cBmDaily"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- ══════════ USR-01: จัดการผู้ใช้ (admin เท่านั้น) — เปิดจากเมนูโปรไฟล์ ══════════ -->
+    <div id="usersModal" onclick="if(event.target===this)closeUsersPanel()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8500;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto">
+      <div class="mc-panel" style="width:900px;max-width:100%;margin:0;box-shadow:0 20px 60px rgba(0,0,0,.45)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <div style="font-size:13px;font-weight:700">&#128101; จัดการผู้ใช้</div>
+          <button onclick="closeUsersPanel()" title="ปิด" style="order:99;background:var(--surface2);border:1px solid var(--border);color:var(--ink2);width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:14px;line-height:1;font-family:'Noto Sans Thai',sans-serif">&times;</button>
+          <button onclick="openAddUser()" style="background:var(--gold);color:#1a1f2e;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;font-family:'Noto Sans Thai',sans-serif">+ เพิ่มผู้ใช้</button>
+          <button onclick="loadUserList()" style="background:var(--surface2);border:1px solid var(--border);color:var(--ink2);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'Noto Sans Thai',sans-serif">&#8635; โหลดใหม่</button>
+          <span id="usrStatus" style="font-size:11px;color:var(--ink3);margin-left:auto"></span>
+        </div>
+
+        <div id="usrError" style="display:none;background:rgba(224,92,92,.12);border:1px solid var(--red);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--red)"></div>
+
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border);text-align:left;color:var(--ink3);font-size:10px;text-transform:uppercase;letter-spacing:.5px">
+                <th style="padding:8px 6px">อีเมล</th>
+                <th style="padding:8px 6px">Role</th>
+                <th style="padding:8px 6px">สาขา</th>
+                <th style="padding:8px 6px">สิทธิ์ที่เปิด</th>
+                <th style="padding:8px 6px;text-align:right">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="usrTbody">
+              <tr><td colspan="5" style="padding:20px;text-align:center;color:var(--ink3)">กดโหลดใหม่เพื่อดึงรายชื่อ</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:14px;font-size:11px;color:var(--ink3);line-height:1.7;border-top:1px solid var(--border);padding-top:12px">
+          &#9888;&#65039; <strong>ข้อควรรู้</strong><br>
+          · ผู้ใช้ต้อง <strong>ออกจากระบบแล้วเข้าใหม่</strong> สิทธิ์ที่แก้ถึงจะมีผล<br>
+          · admin เห็นทุกอย่างเสมอ (ช่องสิทธิ์จะถูกบังคับเปิดทั้งหมด)<br>
+          · ลบผู้ใช้ที่นี่ = ลบเฉพาะสิทธิ์ (Firestore) — <strong>บัญชี login ยังอยู่</strong> ต้องลบใน Firebase Console อีกที
+        </div>
+      </div>
+    </div>
+
+    <!-- USR-01: กล่องเพิ่มผู้ใช้ -->
+    <div id="addUserModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:420px;max-width:92vw;max-height:90vh;overflow-y:auto;box-shadow:0 18px 50px rgba(0,0,0,.4)">
+        <div style="font-size:14px;font-weight:700;margin-bottom:16px">&#128101; เพิ่มผู้ใช้ใหม่</div>
+
+        <div style="font-size:11px;color:var(--ink2);margin-bottom:4px">อีเมล</div>
+        <input id="nuEmail" type="email" autocomplete="off" placeholder="name@saveone.go" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:12px;font-family:'Noto Sans Thai',sans-serif;outline:none;margin-bottom:10px">
+
+        <div style="font-size:11px;color:var(--ink2);margin-bottom:4px">รหัสผ่านตั้งต้น (อย่างน้อย 6 ตัว)</div>
+        <input id="nuPass" type="text" autocomplete="new-password" placeholder="ตั้งรหัสให้ผู้ใช้ใหม่" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:12px;font-family:'Noto Sans Thai',sans-serif;outline:none;margin-bottom:10px">
+
+        <div style="font-size:11px;color:var(--ink2);margin-bottom:4px">Role</div>
+        <select id="nuRole" onchange="syncNuRole()" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:12px;font-family:'Noto Sans Thai',sans-serif;outline:none;margin-bottom:10px">
+          <option value="manager">manager — เห็นเฉพาะที่เปิดให้</option>
+          <option value="admin">admin — เห็นทุกอย่าง</option>
+        </select>
+
+        <div style="font-size:11px;color:var(--ink2);margin-bottom:6px">สาขาที่เข้าได้</div>
+        <div style="display:flex;gap:14px;margin-bottom:12px;font-size:12px">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBrSS" checked> SS</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBrBG"> BG</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBrBN"> BN</label>
+        </div>
+
+        <div style="font-size:11px;color:var(--ink2);margin-bottom:6px">สิทธิ์เพิ่มเติม</div>
+        <div id="nuPermBox" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px;font-size:12px">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowRevenue"> รายรับ</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowElec"> ค่าไฟ</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowExport"> Export CSV</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowPriceNote"> หมายเหตุราคา</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowFreeday"> วันฝน</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowWhatIf"> What If</label>
+        </div>
+
+        <div id="nuError" style="display:none;background:rgba(224,92,92,.12);border:1px solid var(--red);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--red)"></div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button onclick="closeAddUser()" style="background:var(--surface2);border:1px solid var(--border);color:var(--ink2);padding:8px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'Noto Sans Thai',sans-serif">ยกเลิก</button>
+          <button id="nuSubmit" onclick="submitAddUser()" style="background:var(--gold);color:#1a1f2e;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;font-family:'Noto Sans Thai',sans-serif">สร้างผู้ใช้</button>
+        </div>
       </div>
     </div>
 <script>
