@@ -707,6 +707,34 @@ body.manager-mode .admin-only{display:none!important;}
       await signOut(auth);
     };
 
+    /* ══════════════════════════════════════════════════════════════
+       ARCH-01 (v2.8.0): อ่านข้อมูลจาก Firestore แทนการยิงถาม Apps Script
+       Apps Script ดันข้อมูลขึ้น collection `data` เองทุก 10 นาที (time trigger)
+       ผู้ใช้จึงไม่ต้องรอ Apps Script อีกเลย — อ่าน Firestore ตรงๆ ไม่ถึงวินาที
+       ══════════════════════════════════════════════════════════════ */
+    window.fetchBundleFromFirestore = async function(docIds){
+      const out = {};   // { ss_st:'csv…', … }
+      const meta = {};  // { ss_st:{ts,rows}, … }
+      const errs = [];
+      const jobs = docIds.map(async id => {
+        const key = id.toLowerCase();   // SS_ST -> ss_st (ให้ตรงกับ key เดิมทั้งระบบ)
+        try{
+          const snap = await getDoc(doc(db, 'data', id));
+          if(!snap.exists()){ errs.push({url:id, msg:'ยังไม่มีข้อมูล (Apps Script ยังไม่เคยดันขึ้นมา)'}); return; }
+          const d = snap.data();
+          if(!d || typeof d.csv !== 'string' || !d.csv){ errs.push({url:id, msg:'เอกสารว่าง'}); return; }
+          out[key]  = d.csv;
+          meta[key] = { ts:Number(d.ts)||0, rows:Number(d.rows)||0 };
+        }catch(e){
+          errs.push({url:id, msg: e.code === 'permission-denied'
+            ? 'ไม่มีสิทธิ์อ่าน (เช็ค branches ของผู้ใช้ / Firestore Rules)'
+            : (e.message || String(e))});
+        }
+      });
+      await Promise.all(jobs);   // อ่าน Firestore ขนานได้เต็มที่ ไม่มีปัญหาแบบ Apps Script
+      return { csv:out, meta, errs };
+    };
+
     // ดึง ID token ของ user ปัจจุบัน (ไว้แนบไป Apps Script)
     // ไม่ force = คืน token ที่ cache ในเครื่องทันที (ไม่พึ่งเน็ต) Firebase จะ refresh ให้เองตอนใกล้/หมดอายุ
     // → token นิ่ง ~55 นาที ทำให้ cache ฝั่ง Apps Script hit ซ้ำได้ + กัน Unauthorized ตอนเน็ตสะดุด
@@ -1045,7 +1073,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.7.1</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.8.0</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -2166,13 +2194,14 @@ function loadCache(){
 }
 
 // แปลง CSV ดิบ 6 ก้อน -> เข้าตัวแปรข้อมูลของระบบ (ใช้ทางเดียวกับตอนโหลดสด)
-function applyCsvBundle(csv){
+// v2.8.0: รับ quiet เข้ามา — โหลดสดจาก Firestore ก็ใช้ทางนี้ ไม่ควรขึ้น log ว่า "จาก cache"
+function applyCsvBundle(csv, quiet=true){
   const P=t=>t?Papa.parse(t,{header:true,skipEmptyLines:true,dynamicTyping:false}).data:[];
   return applyRowsBundle({
     ss_st:P(csv.ss_st), ss_non:P(csv.ss_non),
     bg_st:P(csv.bg_st), bg_car:P(csv.bg_car),
     bn_st:P(csv.bn_st), bn_car:P(csv.bn_car)
-  }, true);
+  }, quiet);
 }
 
 // map + merge ทั้ง 3 สาขา — แยกออกมาเพื่อให้ทั้ง "โหลดสด" และ "อ่าน cache" ใช้ตัวเดียวกัน
@@ -2240,51 +2269,45 @@ async function loadAll(){
     document.getElementById('mainContent').style.display='none';
   }
   try{
-    document.getElementById('spinTxt').textContent='กำลังโหลดข้อมูลทุกสาขา...';
+    document.getElementById('spinTxt').textContent='กำลังโหลดข้อมูล...';
     loadErrors=[]; fetchTimes=[];
     const _tAll=Date.now();
-    const _tTok=Date.now();
-    await refreshToken(); // อุ่น token ครั้งเดียวก่อนยิงทุกท่อ (ท่อแรกจะได้ไม่พลาดเพราะ token ยังไม่พร้อม)
-    const _msTok=Date.now()-_tTok;
-    // v2.6.2 PERF-03: ยิงทีละ FETCH_CONCURRENCY ท่อ แทนที่จะปล่อย 6 ท่อพร้อมกัน
-    // เรียงสลับสาขา (ST ทั้ง 3 สาขาก่อน แล้วค่อย NON/CAR) เพื่อให้ 2 ท่อที่วิ่งพร้อมกัน
-    // เป็นคนละ Apps Script เสมอ — ไม่มีจังหวะที่ script เดียวกันโดนยิงซ้อน
-    // v2.7.1 PERM-01: ยิงเฉพาะสาขาที่ผู้ใช้มีสิทธิ์
-    //   ของเดิมยิงครบ 6 ท่อทุกคน → manager สิทธิ์สาขาเดียวต้องรอท่อของอีก 2 สาขา
-    //   ที่ตัวเองไม่มีวันได้เห็น และถ้าท่อพวกนั้น timeout ก็ไม่ได้ cache ด้วย (ช้าตลอดไป)
-    //   คงลำดับเดิมไว้: ST ทุกสาขาก่อน แล้วค่อย NON/CAR (ให้ 2 ท่อที่วิ่งพร้อมกันเป็นคนละ script)
+
+    // ══ v2.8.0 ARCH-01: อ่านจาก Firestore แทนการยิงถาม Apps Script ══
+    //   Apps Script ดันข้อมูลขึ้นเองทุก 10 นาที (time trigger) ผู้ใช้จึงไม่ต้องรอมันอีก
+    //   เดิม: เปิดเว็บ -> รอ Apps Script 9-108 วิ (สุ่มพัง 404/timeout แก้ที่โค้ดไม่ได้)
+    //   ใหม่: อ่าน Firestore < 1 วิ  ยิงขนานได้เต็มที่ ไม่มีลิมิต concurrency แบบ Apps Script
     const _br=myBranches();
-    const _tasks=[
-      {br:'SS', key:'ss_st',  url:`${PROXIES.SS}?sheet=ST&t=${ts}`},
-      {br:'BG', key:'bg_st',  url:`${PROXIES.BG}?sheet=BG_ST&t=${ts}`},
-      {br:'BN', key:'bn_st',  url:`${PROXIES.BN}?sheet=BN_ST&t=${ts}`},
-      {br:'SS', key:'ss_non', url:`${PROXIES.SS}?sheet=NON&t=${ts}`},
-      {br:'BG', key:'bg_car', url:`${PROXIES.BG}?sheet=BG_CAR&t=${ts}`},
-      {br:'BN', key:'bn_car', url:`${PROXIES.BN}?sheet=BN_CAR&t=${ts}`}
-    ].filter(t=>_br.includes(t.br)).map(({key,url})=>({key,url}));
-    console.log(`📡 ยิง ${_tasks.length} ท่อ (สาขาที่มีสิทธิ์: ${_br.join(', ')})`);
-    // สาขาเดียว = 2 ท่อเข้า script ตัวเดียวกัน → บังคับ limit=1 เหมือน refreshBranch
-    // ไม่งั้น script ตัวเดียวโดนยิงซ้อน ซึ่งคือต้นเหตุเดิมของ PERF-03
-    const R=await fetchPool(_tasks, _br.length===1?1:undefined);
-    const r_ss_st=R.ss_st, r_ss_non=R.ss_non;
-    const r_bg_st=R.bg_st, r_bg_car=R.bg_car;
-    const r_bn_st=R.bn_st, r_bn_car=R.bn_car;
+    const _docIds=myPipeKeys().map(k=>k.toUpperCase());   // ss_st -> SS_ST
+    console.log(`📡 อ่าน Firestore ${_docIds.length} เอกสาร (สาขาที่มีสิทธิ์: ${_br.join(', ')})`);
 
-    applyRowsBundle({
-      ss_st:r_ss_st, ss_non:r_ss_non,
-      bg_st:r_bg_st, bg_car:r_bg_car,
-      bn_st:r_bn_st, bn_car:r_bn_car
-    });
+    if(typeof window.fetchBundleFromFirestore!=='function'){
+      throw new Error('ตัวอ่าน Firestore ยังไม่พร้อม (โมดูล Firebase โหลดไม่สำเร็จ)');
+    }
+    const FB=await window.fetchBundleFromFirestore(_docIds);
+    loadErrors=FB.errs||[];
 
-    // v2.6.2 PERF-01: สรุปเวลาให้อ่านง่ายใน console — ท่อไหนช้า เสียเวลาไปกับอะไร
-    logLoadTimes(_msTok, Date.now()-_tAll, _br.length===1?1:FETCH_CONCURRENCY);
+    // เก็บ CSV ดิบไว้ทั้งก้อน แล้วเข้าเส้นทางเดียวกับ cache (applyCsvBundle)
+    rawCSV={...rawCSV, ...FB.csv};
+    applyCsvBundle(FB.csv, false);
+
+    // ป้ายเวลา = เวลาที่ Apps Script เขียนขึ้น Firestore (ไม่ใช่เวลาที่เราเพิ่งอ่าน)
+    //   ผู้ใช้ต้องรู้ว่ากำลังดูข้อมูลของเมื่อไหร่จริงๆ ไม่ใช่แค่ "เพิ่งโหลด"
+    const _stamps=Object.values(FB.meta||{}).map(m=>m.ts).filter(Boolean);
+    const _dataTs=_stamps.length?Math.min(..._stamps):0;
+
+    console.log(`⏱ อ่าน Firestore เสร็จใน ${((Date.now()-_tAll)/1000).toFixed(2)} วิ`
+      + (_dataTs?` · ข้อมูลอัปเดตล่าสุด ${new Date(_dataTs).toLocaleString('th-TH')}`:'')
+      + (loadErrors.length?` · พลาด ${loadErrors.length} เอกสาร`:''));
+    if(loadErrors.length) console.warn('เอกสารที่อ่านไม่ได้:', loadErrors);
 
     syncTargetUI();buildMonths();applyAll();
     renderDataHealth(); // v2.6.2 NET-03: เตือนถ้าสาขาไหนโหลดไม่ครบ
 
     // v2.6.3 CACHE-01: ได้ของใหม่แล้ว -> เก็บ cache + อัปป้ายเวลา
-    if(loadErrors.length===0){ saveCache(); setDataAge(Date.now(),'fresh'); }
-    else { setDataAge(cacheShownAt||Date.now(),'stale'); }
+    // v2.8.0: ป้ายบอก "เวลาที่ข้อมูลถูกเขียนขึ้น Firestore" ไม่ใช่เวลาที่เราเพิ่งอ่าน
+    if(loadErrors.length===0){ saveCache(); setDataAge(_dataTs||Date.now(),'fresh'); }
+    else { setDataAge(_dataTs||cacheShownAt||Date.now(),'stale'); }
 
     document.getElementById('loadingState').style.display='none';
     document.getElementById('mainContent').style.display='block';
@@ -2357,47 +2380,52 @@ function renderDataHealth(){
     ? `<div style="font-size:11px;color:var(--ink3);margin-top:6px">รายละเอียด: ${loadErrors.map(x=>`${x.url} — ${x.msg}`).join(' · ')}</div>`
     : '';
   const head=bad.length
-    ? `⚠️ ข้อมูลไม่ครบ — โหลดไม่ได้: <strong>${bad.join(', ')}</strong>`
-    : `⚠️ บางท่อโหลดไม่สำเร็จ ข้อมูลอาจไม่ครบ`;
+    ? `⚠️ ข้อมูลไม่ครบ — อ่านไม่ได้: <strong>${bad.join(', ')}</strong>`
+    : `⚠️ บางส่วนอ่านไม่สำเร็จ ข้อมูลอาจไม่ครบ`;
   el.style.display='block';
+  // v2.8.0: ข้อมูลมาจาก Firestore แล้ว — อ่านไม่ได้ = Apps Script ยังไม่เคยดันขึ้นมา หรือสิทธิ์ไม่ถึง
   el.innerHTML=`<div style="background:rgba(255,86,86,.12);border:1px solid var(--red);border-radius:10px;padding:12px 14px;margin-bottom:14px">
     <div style="color:var(--red);font-weight:700;font-size:13px">${head}</div>
-    <div style="font-size:12px;color:var(--ink2);margin-top:4px">ตัวเลขบนหน้านี้ <strong>ยังไม่ใช่ยอดจริง</strong> อย่าเพิ่งเอาไปใช้ตัดสินใจ — กด "รีเฟรช" อีกครั้ง หรือรอสักครู่แล้วลองใหม่</div>
+    <div style="font-size:12px;color:var(--ink2);margin-top:4px">ตัวเลขบนหน้านี้ <strong>ยังไม่ใช่ยอดจริง</strong> อย่าเพิ่งเอาไปใช้ตัดสินใจ — กด "รีเฟรช" อีกครั้ง · ถ้ายังไม่หาย เช็คว่า Apps Script ของสาขานั้นรัน trigger อยู่ไหม (ดู APPSCRIPT-v3-firestore.md)</div>
     ${detail}
   </div>`;
 }
 
+// v2.8.0 ARCH-01: รีเฟรชสาขาที่ดูอยู่ = อ่าน Firestore 2 เอกสาร (เร็ว ไม่แตะ Apps Script)
+//   เดิมยิง Apps Script ทีละท่อ (limit=1) เสียเวลา ~2.5 วิ และสุ่มพังได้
+//   ตอนนี้ข้อมูลถูกดันขึ้นมาแล้วโดย trigger — "รีเฟรช" จึงแค่ไปหยิบของล่าสุดมาดู
 async function refreshBranch(){
-  // รีเฟรชเฉพาะสาขาที่กำลังดูอยู่
-  const ts=Date.now();
   try{
-    await refreshToken(); // อุ่น token ก่อน (บังคับ refresh กัน Unauthorized ตอน auto-refresh ทุก 5 นาที)
-    loadErrors=[]; fetchTimes=[];
-    // v2.6.2 PERF-03: refresh สาขาเดียว = 2 ท่อยิงเข้า "script ตัวเดียวกัน"
-    // จึงบังคับ limit=1 (ยิงทีละท่อ) ไม่ให้ script ตัวเดียวโดนยิงซ้อน — เสียเวลา ~2.5 วิ ยอมรับได้
-    const B=(a,b)=>fetchPool([{key:'r1',url:a},{key:'r2',url:b}], 1);
-    if(activeBranch==='SS'){
-      const {r1,r2}=await B(`${PROXIES.SS}?sheet=ST&t=${ts}`,`${PROXIES.SS}?sheet=NON&t=${ts}`);
-      const st=r1.map(mapST).filter(Boolean), non=r2.map(mapNon).filter(Boolean);
-      // กันข้อมูลหาย: ถ้า fetch คืนว่าง (timeout/Unauthorized) ห้ามทับของเดิม
-      if(st.length===0 && non.length===0){console.warn('SS refresh: ข้อมูลว่าง ข้ามการอัปเดต (คงข้อมูลเดิม)');renderDataHealth();return;}
-      stData=st;nonData=non;mergeData();dataLoaded.SS=true;
-    } else if(activeBranch==='BG'){
-      const {r1,r2}=await B(`${PROXIES.BG}?sheet=BG_ST&t=${ts}`,`${PROXIES.BG}?sheet=BG_CAR&t=${ts}`);
-      const st=r1.map(mapST).filter(Boolean), car=r2.map(mapNon).filter(Boolean);
-      if(st.length===0 && car.length===0){console.warn('BG refresh: ข้อมูลว่าง ข้ามการอัปเดต (คงข้อมูลเดิม)');renderDataHealth();return;}
-      bgStData=st;bgCarData=car;mergeBG();dataLoaded.BG=true;
-    } else if(activeBranch==='BN'){
-      const {r1,r2}=await B(`${PROXIES.BN}?sheet=BN_ST&t=${ts}`,`${PROXIES.BN}?sheet=BN_CAR&t=${ts}`);
-      const st=r1.map(mapST).filter(Boolean), car=r2.map(mapNon).filter(Boolean);
-      if(st.length===0 && car.length===0){console.warn('BN refresh: ข้อมูลว่าง ข้ามการอัปเดต (คงข้อมูลเดิม)');renderDataHealth();return;}
-      bnStData=st;bnCarData=car;mergeBN();dataLoaded.BN=true;
+    loadErrors=[];
+    if(!myBranches().includes(activeBranch)){ console.warn('refresh: ไม่มีสิทธิ์สาขา '+activeBranch); return; }
+    if(typeof window.fetchBundleFromFirestore!=='function'){ console.warn('refresh: ตัวอ่าน Firestore ยังไม่พร้อม'); return; }
+
+    const ids=(BR_PIPES[activeBranch]||[]).map(k=>k.toUpperCase());
+    const FB=await window.fetchBundleFromFirestore(ids);
+    loadErrors=FB.errs||[];
+
+    const P=t=>t?Papa.parse(t,{header:true,skipEmptyLines:true,dynamicTyping:false}).data:[];
+    const [kSt,kNon]=BR_PIPES[activeBranch];
+    const st=P(FB.csv[kSt]).map(mapST).filter(Boolean);
+    const non=P(FB.csv[kNon]).map(mapNon).filter(Boolean);
+
+    // กันข้อมูลหาย: อ่านไม่ได้/ว่าง ห้ามทับของเดิม (เจตนาเดิมจาก v2.6.2)
+    if(st.length===0 && non.length===0){
+      console.warn(activeBranch+' refresh: ข้อมูลว่าง ข้ามการอัปเดต (คงข้อมูลเดิม)');
+      renderDataHealth(); setDataAge(cacheShownAt,'stale'); return;
     }
+
+    rawCSV[kSt]=FB.csv[kSt]; rawCSV[kNon]=FB.csv[kNon];
+    if(activeBranch==='SS'){ stData=st;nonData=non;mergeData();dataLoaded.SS=true; }
+    else if(activeBranch==='BG'){ bgStData=st;bgCarData=non;mergeBG();dataLoaded.BG=true; }
+    else if(activeBranch==='BN'){ bnStData=st;bnCarData=non;mergeBN();dataLoaded.BN=true; }
+
     buildMonths();applyAll();
     renderDataHealth();
-    // v2.6.3 CACHE-01: refresh สาขาเดียว -> อัป cache เฉพาะเมื่อไม่มีท่อพลาด
-    if(loadErrors.length===0){ saveCache(); setDataAge(Date.now(),'fresh'); }
-    else { setDataAge(cacheShownAt,'stale'); }
+    const _ts=Object.values(FB.meta||{}).map(m=>m.ts).filter(Boolean);
+    const _dataTs=_ts.length?Math.min(..._ts):0;
+    if(loadErrors.length===0){ saveCache(); setDataAge(_dataTs||Date.now(),'fresh'); }
+    else { setDataAge(_dataTs||cacheShownAt,'stale'); }
   }catch(e){console.error('รีเฟรชไม่ได้:',e.message);setDataAge(cacheShownAt,'stale');}
 }
 
