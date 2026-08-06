@@ -621,6 +621,15 @@ body.manager-mode .admin-only{display:none!important;}
           el.style.display = branches.includes(branch) ? '' : 'none';
         });
 
+        // PERM-01: Benchmark เทียบข้ามสาขา — คนมีสาขาเดียวไม่ควรเห็นตัวเลขสาขาอื่น
+        const bmTab = document.getElementById('tab-benchmark');
+        if (bmTab) bmTab.style.display = (Array.isArray(branches) && branches.length > 1) ? '' : 'none';
+        // ซ่อนปุ่มเลือกสาขาในหน้า Benchmark ที่ผู้ใช้ไม่มีสิทธิ์ด้วย
+        document.querySelectorAll('#bmBranchPills .mc-pill').forEach(el => {
+          const m = /toggleBmBranch\('(\w+)'/.exec(el.getAttribute('onclick') || '');
+          if (m) el.style.display = branches.includes(m[1]) ? '' : 'none';
+        });
+
         // ตั้ง activeBranch เป็นสาขาแรกที่มีสิทธิ์
         if (typeof activeBranch !== 'undefined' && !branches.includes(activeBranch)) {
           if(typeof setBranch === 'function'){
@@ -1036,7 +1045,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.7.0</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.7.1</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -1219,7 +1228,7 @@ body.manager-mode .admin-only{display:none!important;}
       <button class="vtab" onclick="setView('pricenote',this)" id='tab-pricenote' class='vtab'>📋 หมายเหตุราคา</button>
       <button class="vtab" onclick="setView('rawdata',this)">📄 ข้อมูลดิบ</button>
       <button class="vtab" onclick="setView('heatmap',this)">🗓 ปฏิทินล็อก</button>
-      <button class="vtab" onclick="setView('benchmark',this)">⚖️ Benchmark</button>
+      <button class="vtab" onclick="setView('benchmark',this)" id="tab-benchmark">⚖️ Benchmark</button>
     </div>
 
     <!-- ===== OVERVIEW ===== -->
@@ -2115,13 +2124,30 @@ const CACHE_MAX_AGE=7*24*60*60*1000;  // เก่าเกิน 7 วันไ
 let rawCSV={};      // {ss_st:'csv...', ss_non:'...', bg_st:..., bg_car:..., bn_st:..., bn_car:...}
 let cacheShownAt=0; // เวลาของข้อมูลที่โชว์อยู่ตอนนี้ (0 = ยังไม่มี)
 
+// ── v2.7.1 PERM-01: สาขาที่ผู้ใช้คนนี้มีสิทธิ์ ──
+// ใช้เป็นตัวกำหนดว่าจะยิงกี่ท่อ + cache ชุดไหน
+// ถ้ายังไม่รู้ (เรียกก่อน onAuthStateChanged เสร็จ) ให้ถือว่าครบ 3 สาขาไว้ก่อน = พฤติกรรมเดิม
+const ALL_BR=['SS','BG','BN'];
+const BR_PIPES={SS:['ss_st','ss_non'], BG:['bg_st','bg_car'], BN:['bn_st','bn_car']};
+function myBranches(){
+  const b=window.userBranches;
+  if(!Array.isArray(b)||!b.length) return ALL_BR.slice();
+  const f=ALL_BR.filter(x=>b.includes(x));
+  return f.length?f:ALL_BR.slice();
+}
+// รายชื่อ key ของท่อที่ "ควรได้" สำหรับผู้ใช้คนนี้
+function myPipeKeys(){ return myBranches().flatMap(b=>BR_PIPES[b]); }
+// ลายเซ็นชุดสาขา — ใช้กัน cache ของ admin (3 สาขา) ไปโผล่ให้ manager (สาขาเดียว) และกลับกัน
+function brSig(){ return myBranches().join('-'); }
+
 function saveCache(){
   try{
-    const keys=['ss_st','ss_non','bg_st','bg_car','bn_st','bn_car'];
-    // เก็บเฉพาะตอนที่ได้ครบทุกท่อ — ไม่งั้นจะ cache ข้อมูลไม่ครบไว้หลอกตัวเองรอบหน้า
+    // v2.7.1 PERM-01: เช็คเฉพาะท่อที่ผู้ใช้คนนี้ควรได้ ไม่ใช่ทั้ง 6 ท่อ
+    //   ของเดิมบังคับครบ 6 → manager ที่โหลดแค่สาขาตัวเองจะไม่มีวันได้ cache เลย
+    const keys=myPipeKeys();
     if(!keys.every(k=>rawCSV[k])) { console.warn('cache: ข้อมูลไม่ครบ ไม่บันทึก'); return; }
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ts:Date.now(), csv:rawCSV}));
-    console.log('💾 บันทึก cache แล้ว');
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ts:Date.now(), br:brSig(), csv:rawCSV}));
+    console.log('💾 บันทึก cache แล้ว ('+brSig()+')');
   }catch(e){ console.warn('cache: บันทึกไม่ได้ (พื้นที่เต็ม?)', e.message); }
 }
 
@@ -2132,6 +2158,9 @@ function loadCache(){
     const o=JSON.parse(raw);
     if(!o || !o.csv || !o.ts) return null;
     if(Date.now()-o.ts > CACHE_MAX_AGE){ console.warn('cache: เก่าเกิน 7 วัน ไม่ใช้'); return null; }
+    // v2.7.1 PERM-01: cache ที่เก็บไว้ตอนสิทธิ์ไม่ตรงกัน ใช้ไม่ได้
+    //   (ไม่มี br = cache เก่าก่อน v2.7.1 → ทิ้ง ให้โหลดใหม่รอบเดียว)
+    if(o.br !== brSig()){ console.warn('cache: คนละชุดสาขา ('+(o.br||'ไม่ระบุ')+' ≠ '+brSig()+') ไม่ใช้'); return null; }
     return o;
   }catch(e){ console.warn('cache: อ่านไม่ได้', e.message); return null; }
 }
@@ -2220,14 +2249,23 @@ async function loadAll(){
     // v2.6.2 PERF-03: ยิงทีละ FETCH_CONCURRENCY ท่อ แทนที่จะปล่อย 6 ท่อพร้อมกัน
     // เรียงสลับสาขา (ST ทั้ง 3 สาขาก่อน แล้วค่อย NON/CAR) เพื่อให้ 2 ท่อที่วิ่งพร้อมกัน
     // เป็นคนละ Apps Script เสมอ — ไม่มีจังหวะที่ script เดียวกันโดนยิงซ้อน
-    const R=await fetchPool([
-      {key:'ss_st',  url:`${PROXIES.SS}?sheet=ST&t=${ts}`},
-      {key:'bg_st',  url:`${PROXIES.BG}?sheet=BG_ST&t=${ts}`},
-      {key:'bn_st',  url:`${PROXIES.BN}?sheet=BN_ST&t=${ts}`},
-      {key:'ss_non', url:`${PROXIES.SS}?sheet=NON&t=${ts}`},
-      {key:'bg_car', url:`${PROXIES.BG}?sheet=BG_CAR&t=${ts}`},
-      {key:'bn_car', url:`${PROXIES.BN}?sheet=BN_CAR&t=${ts}`}
-    ]);
+    // v2.7.1 PERM-01: ยิงเฉพาะสาขาที่ผู้ใช้มีสิทธิ์
+    //   ของเดิมยิงครบ 6 ท่อทุกคน → manager สิทธิ์สาขาเดียวต้องรอท่อของอีก 2 สาขา
+    //   ที่ตัวเองไม่มีวันได้เห็น และถ้าท่อพวกนั้น timeout ก็ไม่ได้ cache ด้วย (ช้าตลอดไป)
+    //   คงลำดับเดิมไว้: ST ทุกสาขาก่อน แล้วค่อย NON/CAR (ให้ 2 ท่อที่วิ่งพร้อมกันเป็นคนละ script)
+    const _br=myBranches();
+    const _tasks=[
+      {br:'SS', key:'ss_st',  url:`${PROXIES.SS}?sheet=ST&t=${ts}`},
+      {br:'BG', key:'bg_st',  url:`${PROXIES.BG}?sheet=BG_ST&t=${ts}`},
+      {br:'BN', key:'bn_st',  url:`${PROXIES.BN}?sheet=BN_ST&t=${ts}`},
+      {br:'SS', key:'ss_non', url:`${PROXIES.SS}?sheet=NON&t=${ts}`},
+      {br:'BG', key:'bg_car', url:`${PROXIES.BG}?sheet=BG_CAR&t=${ts}`},
+      {br:'BN', key:'bn_car', url:`${PROXIES.BN}?sheet=BN_CAR&t=${ts}`}
+    ].filter(t=>_br.includes(t.br)).map(({key,url})=>({key,url}));
+    console.log(`📡 ยิง ${_tasks.length} ท่อ (สาขาที่มีสิทธิ์: ${_br.join(', ')})`);
+    // สาขาเดียว = 2 ท่อเข้า script ตัวเดียวกัน → บังคับ limit=1 เหมือน refreshBranch
+    // ไม่งั้น script ตัวเดียวโดนยิงซ้อน ซึ่งคือต้นเหตุเดิมของ PERF-03
+    const R=await fetchPool(_tasks, _br.length===1?1:undefined);
     const r_ss_st=R.ss_st, r_ss_non=R.ss_non;
     const r_bg_st=R.bg_st, r_bg_car=R.bg_car;
     const r_bn_st=R.bn_st, r_bn_car=R.bn_car;
@@ -2239,7 +2277,7 @@ async function loadAll(){
     });
 
     // v2.6.2 PERF-01: สรุปเวลาให้อ่านง่ายใน console — ท่อไหนช้า เสียเวลาไปกับอะไร
-    logLoadTimes(_msTok, Date.now()-_tAll);
+    logLoadTimes(_msTok, Date.now()-_tAll, _br.length===1?1:FETCH_CONCURRENCY);
 
     syncTargetUI();buildMonths();applyAll();
     renderDataHealth(); // v2.6.2 NET-03: เตือนถ้าสาขาไหนโหลดไม่ครบ
@@ -2268,7 +2306,7 @@ async function loadAll(){
 }
 
 // v2.6.2 PERF-01: สรุปเวลาโหลดใน console — จะได้เห็นว่าเวลาหมดไปตรงไหน ไม่ต้องเดา
-function logLoadTimes(msToken, msTotal){
+function logLoadTimes(msToken, msTotal, workers){
   if(!fetchTimes.length && !loadErrors.length) return;
   const sorted=[...fetchTimes].sort((a,b)=>b.ms-a.ms);
   const slow=sorted[0];
@@ -2281,9 +2319,11 @@ function logLoadTimes(msToken, msTotal){
   // PERF-05: เกณฑ์เตือนเดิม (เทียบกับ "ท่อช้าสุด x1.8") ใช้ได้เฉพาะตอนยิงขนานทั้งหมด
   //   พอมาใช้ pool คุมที่ FETCH_CONCURRENCY เวลารวม "ควรจะ" เป็น ผลรวมทุกท่อ ÷ จำนวน worker อยู่แล้ว
   //   เกณฑ์เก่าเลยเตือนผิดทุกครั้ง (เตือนหมาป่า) — เปลี่ยนมาเทียบกับค่าที่ควรเป็นจริงๆ
+  //   v2.7.1: จำนวน worker จริงส่งเข้ามา (สาขาเดียวบังคับ 1) ไม่ใช่ FETCH_CONCURRENCY เสมอไป
+  const W=Math.max(1, workers||FETCH_CONCURRENCY);
   const sum=fetchTimes.reduce((a,f)=>a+f.ms,0);
-  const expect=sum/Math.max(1,FETCH_CONCURRENCY);
-  console.log(`   ── รวมทั้งหมด   : ${(msTotal/1000).toFixed(1)} วิ   (ควรได้ ~${(expect/1000).toFixed(1)} วิ = งานรวม ${(sum/1000).toFixed(1)} ÷ ${FETCH_CONCURRENCY} ท่อพร้อมกัน)`);
+  const expect=sum/W;
+  console.log(`   ── รวมทั้งหมด   : ${(msTotal/1000).toFixed(1)} วิ   (ควรได้ ~${(expect/1000).toFixed(1)} วิ = งานรวม ${(sum/1000).toFixed(1)} ÷ ${W} ท่อพร้อมกัน)`);
   if(slow) console.log(`   ท่อที่ช้าสุด    : ${slow.url} (${(slow.ms/1000).toFixed(1)} วิ)`);
 
   const hadRetry=fetchTimes.some(f=>f.tries>1)||loadErrors.length>0;
@@ -2308,10 +2348,10 @@ function hideSplash(){
 function renderDataHealth(){
   const el=document.getElementById('dataHealth');
   if(!el) return;
-  const bad=[];
-  if(!dataLoaded.SS) bad.push('ศรีสมาน (SS)');
-  if(!dataLoaded.BG) bad.push('ประตูกรุงเทพ (BG)');
-  if(!dataLoaded.BN) bad.push('บางนา (BN)');
+  // v2.7.1 PERM-01: เตือนเฉพาะสาขาที่ผู้ใช้มีสิทธิ์ — สาขาที่ไม่ได้โหลดเพราะไม่มีสิทธิ์ ไม่ใช่ "ข้อมูลไม่ครบ"
+  const _mine=myBranches();
+  const NAME={SS:'ศรีสมาน (SS)', BG:'ประตูกรุงเทพ (BG)', BN:'บางนา (BN)'};
+  const bad=_mine.filter(b=>!dataLoaded[b]).map(b=>NAME[b]);
   if(bad.length===0 && loadErrors.length===0){ el.style.display='none'; el.innerHTML=''; return; }
   const detail=loadErrors.length
     ? `<div style="font-size:11px;color:var(--ink3);margin-top:6px">รายละเอียด: ${loadErrors.map(x=>`${x.url} — ${x.msg}`).join(' · ')}</div>`
