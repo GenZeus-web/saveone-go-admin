@@ -551,7 +551,14 @@ body.manager-mode .admin-only{display:none!important;}
           showExport: false,
           showPriceNote: false,
           showFreeday: false,
-          showWhatIf: false
+          showWhatIf: false,
+          // PERM-03: 6 คีย์ใหม่ v2.9.0 — ของเดิมทุกคนเห็นอยู่แล้ว จึงตั้งต้นเป็น "เปิด"
+          showCompare: true,
+          showForecast: true,
+          showRawData: true,
+          showHeatmap: true,
+          showBenchmark: true,
+          showMap3D: true
         };
 
         try {
@@ -568,7 +575,13 @@ body.manager-mode .admin-only{display:none!important;}
                 showExport: true,
                 showPriceNote: true,
                 showFreeday: true,
-                showWhatIf: true
+                showWhatIf: true,
+                showCompare: true,
+                showForecast: true,
+                showRawData: true,
+                showHeatmap: true,
+                showBenchmark: true,
+                showMap3D: true
               };
             } else {
               // อ่านค่าจาก Firestore ถ้ามี ไม่งั้นใช้ default false
@@ -578,6 +591,14 @@ body.manager-mode .admin-only{display:none!important;}
               perms.showPriceNote = d.showPriceNote === true;
               perms.showFreeday = d.showFreeday === true;
               perms.showWhatIf = d.showWhatIf === true;
+              // PERM-03: คีย์ใหม่ v2.9.0 ใช้ `!== false` — ผู้ใช้เดิมที่ยังไม่มี field นี้
+              // ใน Firestore จะเห็นเหมือนเดิมทุกอย่าง ไม่มีแท็บหายไปเงียบๆ ตอน deploy
+              perms.showCompare = d.showCompare !== false;
+              perms.showForecast = d.showForecast !== false;
+              perms.showRawData = d.showRawData !== false;
+              perms.showHeatmap = d.showHeatmap !== false;
+              perms.showBenchmark = d.showBenchmark !== false;
+              perms.showMap3D = d.showMap3D !== false;
             }
           }
         } catch(e) {
@@ -621,9 +642,10 @@ body.manager-mode .admin-only{display:none!important;}
           el.style.display = branches.includes(branch) ? '' : 'none';
         });
 
-        // PERM-01: Benchmark เทียบข้ามสาขา — คนมีสาขาเดียวไม่ควรเห็นตัวเลขสาขาอื่น
+        // PERM-01 + PERM-03: Benchmark เทียบข้ามสาขา — ต้องผ่าน 2 ด่าน
+        // (1) มีสิทธิ์ showBenchmark  (2) มีมากกว่า 1 สาขา (ไม่งั้นไม่มีอะไรให้เทียบ + กันเห็นตัวเลขสาขาอื่น)
         const bmTab = document.getElementById('tab-benchmark');
-        if (bmTab) bmTab.style.display = (Array.isArray(branches) && branches.length > 1) ? '' : 'none';
+        if (bmTab) bmTab.style.display = (perms.showBenchmark && Array.isArray(branches) && branches.length > 1) ? '' : 'none';
         // ซ่อนปุ่มเลือกสาขาในหน้า Benchmark ที่ผู้ใช้ไม่มีสิทธิ์ด้วย
         document.querySelectorAll('#bmBranchPills .mc-pill').forEach(el => {
           const m = /toggleBmBranch\('(\w+)'/.exec(el.getAttribute('onclick') || '');
@@ -661,6 +683,28 @@ body.manager-mode .admin-only{display:none!important;}
         // What If section
         const whatifSection = document.getElementById('whatif-section');
         if(whatifSection) whatifSection.style.display = perms.showWhatIf ? '' : 'none';
+
+        // PERM-03: แท็บใหม่ที่เพิ่งมีสิทธิ์คุม (v2.9.0)
+        [['tab-compare','showCompare'],['tab-forecast','showForecast'],
+         ['tab-rawdata','showRawData'],['tab-heatmap','showHeatmap']].forEach(([id,key]) => {
+          const el = document.getElementById(id);
+          if(el) el.style.display = perms[key] ? '' : 'none';
+        });
+
+        // PERM-04: แท็บที่กำลังเปิดอยู่ถูกซ่อน → เด้งกลับหน้าภาพรวม
+        // (กันเคสผู้ใช้ค้างอยู่ในแท็บที่เพิ่งโดนถอดสิทธิ์ แล้วยังเห็นข้อมูลต่อ)
+        try {
+          const firstTab = document.querySelector('.vtabs .vtab');
+          const activeTab = document.querySelector('.vtabs .vtab.active');
+          if (activeTab && activeTab.style.display === 'none' && firstTab && typeof setView === 'function') {
+            setView('overview', firstTab);
+          }
+        } catch(e){ console.warn('PERM-04:', e); }
+
+        // PERM-05: ลิงก์ผัง 3D — คุมด้วย showMap3D อีกชั้นนอกเหนือจากการซ่อนตามสาขา
+        document.querySelectorAll('a.branch-item[data-branch]').forEach(el => {
+          if(!perms.showMap3D) el.style.display = 'none';
+        });
 
         // ซ่อนคอลัมน์รายรับ/ค่าไฟ ในตาราง (ข้อมูลดิบ ฯลฯ) ตามสิทธิ์
         document.body.classList.toggle('no-rev', !perms.showRevenue);
@@ -792,8 +836,10 @@ body.manager-mode .admin-only{display:none!important;}
       if(m) m.style.display = 'none';
     };
 
-    const PERM_KEYS = ['showRevenue','showElec','showExport','showPriceNote','showFreeday','showWhatIf'];
-    const PERM_LABEL = {showRevenue:'รายรับ',showElec:'ค่าไฟ',showExport:'Export',showPriceNote:'หมายเหตุราคา',showFreeday:'วันฝน',showWhatIf:'What If'};
+    const PERM_KEYS = ['showRevenue','showElec','showExport','showPriceNote','showFreeday','showWhatIf','showCompare','showForecast','showRawData','showHeatmap','showBenchmark','showMap3D'];
+    const PERM_LABEL = {showRevenue:'รายรับ',showElec:'ค่าไฟ',showExport:'Export',showPriceNote:'หมายเหตุราคา',showFreeday:'วันฝน',showWhatIf:'What If',showCompare:'เปรียบเทียบเดือน',showForecast:'พยากรณ์',showRawData:'ข้อมูลดิบ',showHeatmap:'ปฏิทินล็อก',showBenchmark:'Benchmark',showMap3D:'ผัง 3D'};
+    // PERM-03: คีย์ที่ตั้งต้นเป็น "เปิด" ตอนสร้างผู้ใช้ใหม่ (ของเดิมทุกคนเห็นอยู่แล้ว)
+    const PERM_DEFAULT_ON = ['showCompare','showForecast','showRawData','showHeatmap','showBenchmark','showMap3D'];
     const ALL_BRANCHES = ['SS','BG','BN'];
     const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -957,7 +1003,7 @@ body.manager-mode .admin-only{display:none!important;}
       const r = document.getElementById('nuRole'); if(r) r.value = 'manager';
       const ss = document.getElementById('nuBrSS'); if(ss) ss.checked = true;
       ['nuBrBG','nuBrBN'].forEach(id => { const el = document.getElementById(id); if(el) el.checked = false; });
-      PERM_KEYS.forEach(k => { const el = document.getElementById('nu' + k.charAt(0).toUpperCase() + k.slice(1)); if(el){ el.checked = false; el.disabled = false; } });
+      PERM_KEYS.forEach(k => { const el = document.getElementById('nu' + k.charAt(0).toUpperCase() + k.slice(1)); if(el){ el.checked = PERM_DEFAULT_ON.includes(k); el.disabled = false; } });
       const err = document.getElementById('nuError'); if(err){ err.style.display='none'; err.textContent=''; }
       window.syncNuRole();
       m.style.display = 'flex';
@@ -1073,7 +1119,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.8.0</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.9.0</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -1250,12 +1296,12 @@ body.manager-mode .admin-only{display:none!important;}
     <!-- VIEW TABS -->
     <div class="vtabs">
       <button class="vtab active" onclick="setView('overview',this)">📊 ภาพรวม</button>
-      <button class="vtab" onclick="setView('compare',this)">📅 เปรียบเทียบเดือน</button>
+      <button class="vtab" onclick="setView('compare',this)" id="tab-compare">📅 เปรียบเทียบเดือน</button>
       <button class="vtab" onclick="setView('freeday',this)" id="tab-freeday">🌧 วันฝน</button>
-      <button class="vtab" onclick="setView('forecast',this)">🔮 พยากรณ์</button>
+      <button class="vtab" onclick="setView('forecast',this)" id="tab-forecast">🔮 พยากรณ์</button>
       <button class="vtab" onclick="setView('pricenote',this)" id='tab-pricenote' class='vtab'>📋 หมายเหตุราคา</button>
-      <button class="vtab" onclick="setView('rawdata',this)">📄 ข้อมูลดิบ</button>
-      <button class="vtab" onclick="setView('heatmap',this)">🗓 ปฏิทินล็อก</button>
+      <button class="vtab" onclick="setView('rawdata',this)" id="tab-rawdata">📄 ข้อมูลดิบ</button>
+      <button class="vtab" onclick="setView('heatmap',this)" id="tab-heatmap">🗓 ปฏิทินล็อก</button>
       <button class="vtab" onclick="setView('benchmark',this)" id="tab-benchmark">⚖️ Benchmark</button>
     </div>
 
@@ -1413,10 +1459,10 @@ body.manager-mode .admin-only{display:none!important;}
     <!-- ===== FREEDAY ===== -->
     <div id="view-freeday" style="display:none">
       <div class="fd-panel">
-        <div class="fd-title">🌧 สรุปวันฝน — รายได้ที่สูญเสียไป</div>
+        <div class="fd-title">🌧 สรุปวันฝน</div>
         <div class="fd-kpi-row" id="fdKpi"></div>
         <div class="charts-grid2" style="margin-bottom:12px">
-          <div class="sc">
+          <div class="sc col-rev">
             <div class="sc-title">ส่วนลดวันฝน รายเดือน (บาท)</div>
             <div class="ch-md"><canvas id="cFDMonth"></canvas></div>
           </div>
@@ -1427,7 +1473,7 @@ body.manager-mode .admin-only{display:none!important;}
         </div>
         <div class="fd-table-wrap">
           <table class="fd-table">
-            <thead><tr><th>วันที่</th><th>วัน</th><th>ออนไลน์ล็อก</th><th>ลา</th><th>ไม่มา</th><th>ราคา/ล็อก</th><th>รายได้ปกติ</th><th>รายได้จริง</th><th>เสียไป (฿)</th></tr></thead>
+            <thead><tr><th>วันที่</th><th>วัน</th><th>ออนไลน์ล็อก</th><th>ลา</th><th>ไม่มา</th><th class="col-rev">ราคา/ล็อก</th><th class="col-rev">รายได้ปกติ</th><th class="col-rev">รายได้จริง</th><th class="col-rev">เสียไป (฿)</th></tr></thead>
             <tbody id="fdTbl"></tbody>
           </table>
         </div>
@@ -1779,6 +1825,12 @@ body.manager-mode .admin-only{display:none!important;}
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowPriceNote"> หมายเหตุราคา</label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowFreeday"> วันฝน</label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowWhatIf"> What If</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowCompare" checked> เปรียบเทียบเดือน</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowForecast" checked> พยากรณ์</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowRawData" checked> ข้อมูลดิบ</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowHeatmap" checked> ปฏิทินล็อก</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowBenchmark" checked> Benchmark</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowMap3D" checked> ผัง 3D</label>
         </div>
 
         <div id="nuError" style="display:none;background:rgba(224,92,92,.12);border:1px solid var(--red);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--red)"></div>
@@ -2910,10 +2962,11 @@ function renderFreeday(d){
   fds.forEach(r=>{td+=calcDiscount(r);tn+=revSTNormal(r)+revNonNormal(r);ta+=revST(r)+revNon(r);});
   document.getElementById('fdKpi').innerHTML=`
     <div class="fd-kpi"><div class="fd-kpi-val">${fds.length}</div><div class="fd-kpi-lbl">จำนวนวันฝน</div></div>
-    <div class="fd-kpi"><div class="fd-kpi-val">${fmtN(td)}</div><div class="fd-kpi-lbl">รายได้ที่เสียไป (฿)</div></div>
-    <div class="fd-kpi"><div class="fd-kpi-val">${fmtN(tn)}</div><div class="fd-kpi-lbl">รายได้ถ้าไม่มีวันฝน (฿)</div></div>
-    <div class="fd-kpi"><div class="fd-kpi-val">${fmtN(ta)}</div><div class="fd-kpi-lbl">รายได้จริง (฿)</div></div>
-    <div class="fd-kpi"><div class="fd-kpi-val">${tn>0?(td/tn*100).toFixed(1)+'%':'—'}</div><div class="fd-kpi-lbl">% ที่หายไป</div></div>
+    <div class="fd-kpi"><div class="fd-kpi-val">${fmtN(fds.reduce((s,r)=>s+(+r.onlineLock||0),0))}</div><div class="fd-kpi-lbl">ออนไลน์ล็อกรวม</div></div>
+    <div class="fd-kpi col-rev"><div class="fd-kpi-val">${fmtN(td)}</div><div class="fd-kpi-lbl">รายได้ที่เสียไป (฿)</div></div>
+    <div class="fd-kpi col-rev"><div class="fd-kpi-val">${fmtN(tn)}</div><div class="fd-kpi-lbl">รายได้ถ้าไม่มีวันฝน (฿)</div></div>
+    <div class="fd-kpi col-rev"><div class="fd-kpi-val">${fmtN(ta)}</div><div class="fd-kpi-lbl">รายได้จริง (฿)</div></div>
+    <div class="fd-kpi col-rev"><div class="fd-kpi-val">${tn>0?(td/tn*100).toFixed(1)+'%':'—'}</div><div class="fd-kpi-lbl">% ที่หายไป</div></div>
   `;
   const fdm={};
   [...d].sort((a,b)=>a.date-b.date).forEach(r=>{const k=mLbl(r.date);if(!fdm[k])fdm[k]={d:0,c:0};if(r.freeDay){fdm[k].d+=calcDiscount(r);fdm[k].c++;}});
@@ -2922,7 +2975,7 @@ function renderFreeday(d){
   dChart('cFDCount');charts.cFDCount=makeChart('cFDCount',{type:'bar',data:{labels:fmks,datasets:[{label:'จำนวนวันฝน',data:fmks.map(k=>fdm[k].c),backgroundColor:'rgba(61,214,140,.7)',borderRadius:3}]},options:cOpts()});
   document.getElementById('fdTbl').innerHTML=fds.sort((a,b)=>b.date-a.date).map(r=>{
     const po=isWknd(r.date)?130:100,dc=calcDiscount(r),ac=revST(r)+revNon(r),nm=revSTNormal(r)+revNonNormal(r);
-    return`<tr><td style="color:var(--gold)">${fmtD(r.date)}</td><td>${DAYS[r.date.getDay()]}</td><td class="num">${fmtN(r.onlineLock)}</td><td class="num">${fmtN(r.absentLock)}</td><td class="num">${fmtN(r.cancelLock)}</td><td class="num">${po} → ${po/2} ฿</td><td class="num">${fmtN(nm)}</td><td class="num">${fmtN(ac)}</td><td class="num" style="color:var(--red);font-weight:700">−${fmtN(dc)}</td></tr>`;
+    return`<tr><td style="color:var(--gold)">${fmtD(r.date)}</td><td>${DAYS[r.date.getDay()]}</td><td class="num">${fmtN(r.onlineLock)}</td><td class="num">${fmtN(r.absentLock)}</td><td class="num">${fmtN(r.cancelLock)}</td><td class="num col-rev">${po} → ${po/2} ฿</td><td class="num col-rev">${fmtN(nm)}</td><td class="num col-rev">${fmtN(ac)}</td><td class="num col-rev" style="color:var(--red);font-weight:700">−${fmtN(dc)}</td></tr>`;
   }).join('');
 }
 
