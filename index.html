@@ -716,10 +716,12 @@ body.manager-mode .admin-only{display:none!important;}
           }
         } catch(e){ console.warn('PERM-04:', e); }
 
-        // PERM-05: ลิงก์ผัง 3D — คุมด้วย showMap3D อีกชั้นนอกเหนือจากการซ่อนตามสาขา
-        document.querySelectorAll('a.branch-item[data-branch]').forEach(el => {
-          if(!perms.showMap3D) el.style.display = 'none';
-        });
+        // PERM-05: ลิงก์ผัง 3D — คุมด้วย showMap3D ตัวเดียว
+        // v2.10.0 LAY-03: อ้างด้วย id แทน `[data-branch]` เพราะถอด data-branch ออกแล้ว
+        //   (ไม่งั้นลูป "ซ่อนสาขาที่ไม่มีสิทธิ์" ข้างบนจะซ่อนปุ่มนี้จาก manager BG/BN
+        //    ทั้งที่ผัง 3D เปิดให้ดูข้ามสาขาได้แล้ว)
+        const map3dLink = document.getElementById('link-map3d');
+        if(map3dLink) map3dLink.style.display = perms.showMap3D ? '' : 'none';
 
         // ซ่อนคอลัมน์รายรับ/ค่าไฟ ในตาราง (ข้อมูลดิบ ฯลฯ) ตามสิทธิ์
         document.body.classList.toggle('no-rev', !perms.showRevenue);
@@ -1253,11 +1255,14 @@ body.manager-mode .admin-only{display:none!important;}
       <div><div class="branch-name">บางนา</div><div class="branch-sub">BN · มีข้อมูล</div></div>
     </div>
     <!-- ผังตลาด 3D (repo แยก: 3D-Market-SR) — เปิดแท็บใหม่ ไม่ให้เสีย filter ที่ตั้งไว้
-         · data-branch="SS" ทำให้ลูปซ่อนสาขาใน onAuthStateChanged ซ่อนปุ่มนี้ให้เอง
-           ถ้าผู้ใช้ไม่มีสิทธิ์สาขาศรีสมาน (ไม่ต้องเขียนเช็คสิทธิ์ซ้ำ)
+         · v2.10.0 LAY-03: **ถอด `data-branch="SS"` ออกแล้ว** — เดิมลูปซ่อนสาขาใน
+           onAuthStateChanged ซ่อนปุ่มนี้ให้ผู้ใช้ที่ไม่มีสิทธิ์ SS ซึ่งตอนนี้ผิดกติกา
+           เพราะผัง 3D เปิดให้ทุกคนที่มีโปรไฟล์เข้าดูข้ามสาขาได้แล้ว
+           (manager BG/BN เคยไม่เห็นปุ่มนี้เลย = เปิดประตูแล้วแต่ซ่อนลูกบิด)
+           คุมด้วย `showMap3D` ตัวเดียว ผ่าน id ด้านล่าง (PERM-05)
          · ต้องเป็น path เต็มจากราก — relative จะวิ่งไปหาไฟล์ใน saveone-go-admin/ แล้ว 404
-         · ตอนนี้มีผังแค่ SS · สาขาอื่นค่อยเพิ่มบรรทัดใหม่เมื่อผังพร้อม -->
-    <a class="branch-item" data-branch="SS" href="/3D-Market-SR/?branch=SS"
+         · ตอนนี้มีผังจริงแค่ SS — BG/BN ยังไม่ได้ถอดพิกัดจาก CAD กดเข้าไปจะเจอข้อความบอก -->
+    <a class="branch-item" id="link-map3d" href="/3D-Market-SR/?branch=SS"
        target="_blank" rel="noopener" style="text-decoration:none;color:var(--ink)">
       <div class="branch-dot" style="background:var(--gold2,var(--gold))"></div>
       <div><div class="branch-name">🗺️ ผังตลาด 3D</div><div class="branch-sub">ศรีสมาน · เปิดแท็บใหม่</div></div>
