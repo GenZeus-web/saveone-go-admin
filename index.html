@@ -545,6 +545,11 @@ body.manager-mode .admin-only{display:none!important;}
       if (user) {
         let role = 'manager';
         let branches = ['SS'];
+        // BM-04 (v2.10.0): สาขาที่ "เทียบได้ใน Benchmark" — แยกคนละแกนกับ branches
+        //   branches   = สาขาที่ดูแล    → เห็นข้อมูลเต็ม ทุกแท็บ ทุกตัวเลข
+        //   bmBranches = สาขาที่เทียบได้ → เอาข้อมูลมาใช้ในหน้า Benchmark เท่านั้น
+        // fail-safe: ไม่มี field = ว่าง = พฤติกรรมเดิมเป๊ะ ไม่มีใครโดนเปิดสิทธิ์เงียบๆ ตอน deploy
+        let bmBranches = [];
         let perms = {
           showRevenue: false,
           showElec: false,
@@ -567,6 +572,8 @@ body.manager-mode .admin-only{display:none!important;}
             const d = userDoc.data();
             role = d.role || 'manager';
             branches = d.branches || ['SS'];
+            // BM-04: อ่าน field ใหม่ — ไม่มี/ผิดชนิด = ว่าง (ไม่ใช่ ['SS'] แบบ branches)
+            bmBranches = Array.isArray(d.bmBranches) ? d.bmBranches : [];
             // ถ้าเป็น admin ให้เห็นทุกอย่าง
             if (role === 'admin') {
               perms = {
@@ -583,6 +590,7 @@ body.manager-mode .admin-only{display:none!important;}
                 showBenchmark: true,
                 showMap3D: true
               };
+              bmBranches = ['SS','BG','BN'];   // BM-04: admin เทียบได้ทุกสาขาเสมอ
             } else {
               // อ่านค่าจาก Firestore ถ้ามี ไม่งั้นใช้ default false
               perms.showRevenue = d.showRevenue === true;
@@ -613,6 +621,7 @@ body.manager-mode .admin-only{display:none!important;}
         // ตั้งค่า global
         window.userRole = role;
         window.userBranches = branches;
+        window.userBmBranches = bmBranches;   // BM-04
         window.userPerms = perms;
         window.userEmail = user.email;
 
@@ -642,15 +651,21 @@ body.manager-mode .admin-only{display:none!important;}
           el.style.display = branches.includes(branch) ? '' : 'none';
         });
 
-        // PERM-01 + PERM-03: Benchmark เทียบข้ามสาขา — ต้องผ่าน 2 ด่าน
-        // (1) มีสิทธิ์ showBenchmark  (2) มีมากกว่า 1 สาขา (ไม่งั้นไม่มีอะไรให้เทียบ + กันเห็นตัวเลขสาขาอื่น)
+        // BM-04 (v2.10.0): Benchmark คุมด้วย showBenchmark ตัวเดียว
+        //   ถอดด่าน `branches.length > 1` ของ PERM-01/02 ออก — manager สาขาเดียวที่ได้สิทธิ์นี้
+        //   ต้องเข้าได้ ส่วนจะ "เห็นข้อมูลสาขาไหน" คุมด้วย bmBranches แทน (คนละแกน)
+        //   ตัวเลขเงินในหน้านี้ยัง gate ด้วย showRevenue เหมือนเดิม (จุดเดียวที่ #bmKpiRow)
         const bmTab = document.getElementById('tab-benchmark');
-        if (bmTab) bmTab.style.display = (perms.showBenchmark && Array.isArray(branches) && branches.length > 1) ? '' : 'none';
-        // ซ่อนปุ่มเลือกสาขาในหน้า Benchmark ที่ผู้ใช้ไม่มีสิทธิ์ด้วย
+        if (bmTab) bmTab.style.display = perms.showBenchmark ? '' : 'none';
+        // ปุ่มเลือกสาขาในหน้า Benchmark — ซ่อนตาม "สาขาที่เทียบได้" (branches ∪ bmBranches)
+        // ไม่ใช่ตาม branches อย่างเดียวเหมือน PERM-02 เดิม
+        const bmView = ['SS','BG','BN'].filter(b => branches.includes(b) || bmBranches.includes(b));
         document.querySelectorAll('#bmBranchPills .mc-pill').forEach(el => {
           const m = /toggleBmBranch\('(\w+)'/.exec(el.getAttribute('onclick') || '');
-          if (m) el.style.display = branches.includes(m[1]) ? '' : 'none';
+          if (m) el.style.display = bmView.includes(m[1]) ? '' : 'none';
         });
+        // ตั้งต้นปุ่มที่ถูกเลือก = สาขาแรกที่เทียบได้ (ไม่ใช่ 'SS' ตายตัวใน HTML)
+        if (typeof window.initBmPills === 'function') window.initBmPills();
 
         // ตั้ง activeBranch เป็นสาขาแรกที่มีสิทธิ์
         if (typeof activeBranch !== 'undefined' && !branches.includes(activeBranch)) {
@@ -837,9 +852,15 @@ body.manager-mode .admin-only{display:none!important;}
     };
 
     const PERM_KEYS = ['showRevenue','showElec','showExport','showPriceNote','showFreeday','showWhatIf','showCompare','showForecast','showRawData','showHeatmap','showBenchmark','showMap3D'];
-    const PERM_LABEL = {showRevenue:'รายรับ',showElec:'ค่าไฟ',showExport:'Export',showPriceNote:'หมายเหตุราคา',showFreeday:'วันฝน',showWhatIf:'What If',showCompare:'เปรียบเทียบเดือน',showForecast:'พยากรณ์',showRawData:'ข้อมูลดิบ',showHeatmap:'ปฏิทินล็อก',showBenchmark:'Benchmark',showMap3D:'ผัง 3D'};
-    // PERM-03: คีย์ที่ตั้งต้นเป็น "เปิด" ตอนสร้างผู้ใช้ใหม่ (ของเดิมทุกคนเห็นอยู่แล้ว)
-    const PERM_DEFAULT_ON = ['showCompare','showForecast','showRawData','showHeatmap','showBenchmark','showMap3D'];
+    // WI-01: ป้าย What If บอกด้วยว่ามันอยู่ในแท็บพยากรณ์ — คนตั้งสิทธิ์จะได้เห็นความสัมพันธ์
+    const PERM_LABEL = {showRevenue:'รายรับ',showElec:'ค่าไฟ',showExport:'Export',showPriceNote:'หมายเหตุราคา',showFreeday:'วันฝน',showWhatIf:'What If (อยู่ในแท็บพยากรณ์)',showCompare:'เปรียบเทียบเดือน',showForecast:'พยากรณ์',showRawData:'ข้อมูลดิบ',showHeatmap:'ปฏิทินล็อก',showBenchmark:'Benchmark',showMap3D:'ผัง 3D'};
+    /* PERM-06 (v2.10.0): คีย์ที่ตั้งต้นเป็น "เปิด" ตอนสร้าง manager ใหม่
+       + showFreeday  — ปลอดภัย ตัวเลขเงินในแท็บถูกซ่อนด้วย .col-rev อยู่แล้ว (FD-01) เห็นแค่จำนวนล็อก/วัน
+       + showWhatIf   — คู่กับ showForecast ที่เปิดอยู่แล้ว (WI-01)
+       − showRawData  — อันตรายกว่า: ให้ล็อกรายวันแยกออนไลน์/วอล์กอิน/โซนครบทุกวัน
+                        ถึงซ่อนคอลัมน์เงิน แต่เอาไปคูณราคาเองก็ได้รายรับกลับมาเกือบเป๊ะ
+                        ซ่อนผลลัพธ์แต่ไม่ซ่อนตัวตั้ง = ไม่ได้ซ่อนจริง · สอดคล้องกับ showPriceNote ที่ปิด default */
+    const PERM_DEFAULT_ON = ['showFreeday','showWhatIf','showCompare','showForecast','showHeatmap','showBenchmark','showMap3D'];
     const ALL_BRANCHES = ['SS','BG','BN'];
     const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -912,6 +933,7 @@ body.manager-mode .admin-only{display:none!important;}
       }catch(e){ usrErr('อ่านข้อมูลไม่สำเร็จ: ' + (e.message||e)); return; }
 
       const brs = Array.isArray(u.branches) ? u.branches : [];
+      const bms = Array.isArray(u.bmBranches) ? u.bmBranches : [];   // BM-04
       const cb = (id, on, label) => '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px"><input type="checkbox" id="' + id + '"' + (on?' checked':'') + '> ' + label + '</label>';
       tr.innerHTML = '<td colspan="5" style="padding:14px 6px;background:var(--surface2)">'
         + '<div style="font-size:12px;font-weight:700;margin-bottom:10px">' + esc(u.email || uid) + '</div>'
@@ -921,7 +943,10 @@ body.manager-mode .admin-only{display:none!important;}
             + '<option value="manager"' + (u.role!=='admin'?' selected':'') + '>manager</option>'
             + '<option value="admin"' + (u.role==='admin'?' selected':'') + '>admin</option></select></div>'
           + '<div><div style="font-size:10px;color:var(--ink3);margin-bottom:4px">สาขา</div><div style="display:flex;gap:12px">'
-            + ALL_BRANCHES.map(b => cb('edBr_' + uid + '_' + b, brs.includes(b), b)).join('') + '</div></div>'
+            + ALL_BRANCHES.map(b => cb('edBr_' + uid + '_' + b, brs.includes(b), b)).join('') + '</div>'
+            // BM-04: สาขาที่เอาข้อมูลมาเทียบได้ในหน้า Benchmark เท่านั้น (ไม่ใช่สาขาที่ดูแล)
+            + '<div id="edBmBox_' + uid + '" style="margin-top:8px"><div style="font-size:10px;color:var(--ink3);margin-bottom:4px">สาขาที่เทียบได้ใน Benchmark</div><div style="display:flex;gap:12px">'
+            + ALL_BRANCHES.map(b => cb('edBm_' + uid + '_' + b, bms.includes(b), b)).join('') + '</div></div></div>'
           + '<div><div style="font-size:10px;color:var(--ink3);margin-bottom:4px">สิทธิ์</div>'
             + '<div id="edPermBox_' + uid + '" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 14px">'
             + PERM_KEYS.map(k => cb('edP_' + uid + '_' + k, u[k] === true, PERM_LABEL[k])).join('') + '</div></div>'
@@ -931,7 +956,19 @@ body.manager-mode .admin-only{display:none!important;}
           + '<button onclick="loadUserList()" style="background:var(--surface3);border:1px solid var(--border);color:var(--ink2);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-family:\'Noto Sans Thai\',sans-serif">ยกเลิก</button>'
         + '</div></td>';
       syncEditRole(uid);
+      // WI-01: ผูก What If เข้ากับ พยากรณ์ (แถวถูกสร้างใหม่ทุกครั้ง → ไม่มี listener ซ้อน)
+      bindWhatIfPair(document.getElementById('edP_' + uid + '_showWhatIf'),
+                     document.getElementById('edP_' + uid + '_showForecast'));
     };
+
+    /* WI-01 (v2.10.0): #whatif-section เป็น .fc-panel ที่ฝังอยู่ "ข้างใน" แท็บ 🔮 พยากรณ์
+       ไม่ใช่แท็บของตัวเอง — ปิด showForecast = เข้าไม่ถึง What If แม้ showWhatIf จะเปิด
+       แก้ที่ต้นทาง: ผูกคู่กันตั้งแต่ตอนคนตั้งสิทธิ์ติ๊ก ไม่ใช่ไปแก้ตัว gate ตอน login */
+    function bindWhatIfPair(wi, fc){
+      if(!wi || !fc) return;
+      wi.addEventListener('change', () => { if(wi.checked) fc.checked = true; });
+      fc.addEventListener('change', () => { if(!fc.checked) wi.checked = false; });
+    }
 
     // admin = เปิดสิทธิ์ทุกช่องและล็อกไว้ (ให้ตรงกับ logic ตอน login)
     window.syncEditRole = function(uid){
@@ -943,6 +980,14 @@ body.manager-mode .admin-only{display:none!important;}
         if(!el) return;
         if(admin){ el.checked = true; el.disabled = true; } else { el.disabled = false; }
       });
+      // BM-04: admin เทียบได้ทุกสาขาเสมอ → ติ๊กครบแล้วล็อก (เหมือน perms อื่น)
+      ALL_BRANCHES.forEach(b => {
+        const el = document.getElementById('edBm_' + uid + '_' + b);
+        if(!el) return;
+        if(admin){ el.checked = true; el.disabled = true; } else { el.disabled = false; }
+      });
+      const bmBox = document.getElementById('edBmBox_' + uid);
+      if(bmBox) bmBox.style.opacity = admin ? '.55' : '1';
       const box = document.getElementById('edPermBox_' + uid);
       if(box) box.style.opacity = admin ? '.55' : '1';
     };
@@ -956,12 +1001,19 @@ body.manager-mode .admin-only{display:none!important;}
         return el && el.checked;
       });
       if(!branches.length){ usrErr('ต้องเลือกอย่างน้อย 1 สาขา'); return; }
+      // BM-04: สาขาที่เทียบได้ใน Benchmark (ว่างได้ = เห็นแค่สาขาตัวเอง)
+      const bmBranches = (role === 'admin') ? ALL_BRANCHES.slice() : ALL_BRANCHES.filter(b => {
+        const el = document.getElementById('edBm_' + uid + '_' + b);
+        return el && el.checked;
+      });
 
-      const payload = { role, branches };
+      const payload = { role, branches, bmBranches };
       PERM_KEYS.forEach(k => {
         const el = document.getElementById('edP_' + uid + '_' + k);
         payload[k] = (role === 'admin') ? true : !!(el && el.checked);
       });
+      // WI-01: normalize อีกชั้นก่อนเขียน — กันข้อมูลเก่าที่ค้างสถานะขัดกันอยู่แล้ว
+      if(payload.showWhatIf === true) payload.showForecast = true;
 
       try{
         await setDoc(doc(db, 'users', uid), payload, { merge: true });
@@ -995,6 +1047,7 @@ body.manager-mode .admin-only{display:none!important;}
     };
 
     // ── เพิ่มผู้ใช้ใหม่ ──
+    let nuPairBound = false;   // WI-01: ผูก What If ↔ พยากรณ์ ในกล่องเพิ่มผู้ใช้แล้วหรือยัง
     window.openAddUser = function(){
       if(!isAdmin()) return;
       const m = document.getElementById('addUserModal');
@@ -1003,8 +1056,15 @@ body.manager-mode .admin-only{display:none!important;}
       const r = document.getElementById('nuRole'); if(r) r.value = 'manager';
       const ss = document.getElementById('nuBrSS'); if(ss) ss.checked = true;
       ['nuBrBG','nuBrBN'].forEach(id => { const el = document.getElementById(id); if(el) el.checked = false; });
+      // BM-04: ตั้งต้นไม่ติ๊กเลย = เห็นแค่สาขาตัวเองใน Benchmark (พฤติกรรมเดิม)
+      ALL_BRANCHES.forEach(b => { const el = document.getElementById('nuBm' + b); if(el){ el.checked = false; el.disabled = false; } });
       PERM_KEYS.forEach(k => { const el = document.getElementById('nu' + k.charAt(0).toUpperCase() + k.slice(1)); if(el){ el.checked = PERM_DEFAULT_ON.includes(k); el.disabled = false; } });
       const err = document.getElementById('nuError'); if(err){ err.style.display='none'; err.textContent=''; }
+      // WI-01: กล่องนี้เป็น HTML คงที่ (ไม่ได้สร้างใหม่ทุกครั้ง) → ผูก listener ครั้งเดียวพอ
+      if(!nuPairBound){
+        nuPairBound = true;
+        bindWhatIfPair(document.getElementById('nuShowWhatIf'), document.getElementById('nuShowForecast'));
+      }
       window.syncNuRole();
       m.style.display = 'flex';
     };
@@ -1021,6 +1081,14 @@ body.manager-mode .admin-only{display:none!important;}
         if(!el) return;
         if(admin){ el.checked = true; el.disabled = true; } else { el.disabled = false; }
       });
+      // BM-04: admin เทียบได้ทุกสาขาเสมอ
+      ALL_BRANCHES.forEach(b => {
+        const el = document.getElementById('nuBm' + b);
+        if(!el) return;
+        if(admin){ el.checked = true; el.disabled = true; } else { el.disabled = false; }
+      });
+      const bmBox = document.getElementById('nuBmBox');
+      if(bmBox) bmBox.style.opacity = admin ? '.55' : '1';
       const box = document.getElementById('nuPermBox');
       if(box) box.style.opacity = admin ? '.55' : '1';
     };
@@ -1037,6 +1105,11 @@ body.manager-mode .admin-only{display:none!important;}
       const role  = document.getElementById('nuRole').value;
       const branches = ALL_BRANCHES.filter(b => {
         const el = document.getElementById('nuBr' + b);
+        return el && el.checked;
+      });
+      // BM-04
+      const bmBranches = (role === 'admin') ? ALL_BRANCHES.slice() : ALL_BRANCHES.filter(b => {
+        const el = document.getElementById('nuBm' + b);
         return el && el.checked;
       });
 
@@ -1056,11 +1129,13 @@ body.manager-mode .admin-only{display:none!important;}
         const newUid = cred.user.uid;
         await signOut(secAuth);
 
-        const payload = { email, role, branches };
+        const payload = { email, role, branches, bmBranches };
         PERM_KEYS.forEach(k => {
           const el = document.getElementById('nu' + k.charAt(0).toUpperCase() + k.slice(1));
           payload[k] = (role === 'admin') ? true : !!(el && el.checked);
         });
+        // WI-01: normalize อีกชั้นก่อนเขียน
+        if(payload.showWhatIf === true) payload.showForecast = true;
         await setDoc(doc(db, 'users', newUid), payload);
 
         window.closeAddUser();
@@ -1119,7 +1194,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.9.0</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.10.0</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -1817,17 +1892,25 @@ body.manager-mode .admin-only{display:none!important;}
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBrBN"> BN</label>
         </div>
 
+        <!-- BM-04: สาขาที่เอาข้อมูลมาเทียบได้ในหน้า Benchmark เท่านั้น (คนละแกนกับ "สาขาที่เข้าได้") -->
+        <div style="font-size:11px;color:var(--ink2);margin-bottom:6px">สาขาที่เทียบได้ใน Benchmark</div>
+        <div id="nuBmBox" style="display:flex;gap:14px;margin-bottom:12px;font-size:12px">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBmSS"> SS</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBmBG"> BG</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBmBN"> BN</label>
+        </div>
+
         <div style="font-size:11px;color:var(--ink2);margin-bottom:6px">สิทธิ์เพิ่มเติม</div>
         <div id="nuPermBox" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px;font-size:12px">
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowRevenue"> รายรับ</label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowElec"> ค่าไฟ</label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowExport"> Export CSV</label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowPriceNote"> หมายเหตุราคา</label>
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowFreeday"> วันฝน</label>
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowWhatIf"> What If</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowFreeday" checked> วันฝน</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowWhatIf" checked> What If (อยู่ในแท็บพยากรณ์)</label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowCompare" checked> เปรียบเทียบเดือน</label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowForecast" checked> พยากรณ์</label>
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowRawData" checked> ข้อมูลดิบ</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowRawData"> ข้อมูลดิบ</label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowHeatmap" checked> ปฏิทินล็อก</label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowBenchmark" checked> Benchmark</label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuShowMap3D" checked> ผัง 3D</label>
@@ -2215,10 +2298,22 @@ function myBranches(){
   const f=ALL_BR.filter(x=>b.includes(x));
   return f.length?f:ALL_BR.slice();
 }
+// ── v2.10.0 BM-04: สาขาที่ผู้ใช้ "เทียบได้" ในหน้า Benchmark ──
+// = สาขาที่ดูแล (branches) ∪ สาขาที่เปิดให้เทียบ (bmBranches)
+// bmBranches ไม่มี/ว่าง = ได้เท่ากับ myBranches() = พฤติกรรมเดิมก่อน v2.10.0 เป๊ะ
+function myBmBranches(){
+  const x=window.userBmBranches;
+  const extra=Array.isArray(x)?ALL_BR.filter(b=>x.includes(b)):[];
+  const mine=myBranches();
+  return ALL_BR.filter(b=>mine.includes(b)||extra.includes(b));
+}
 // รายชื่อ key ของท่อที่ "ควรได้" สำหรับผู้ใช้คนนี้
-function myPipeKeys(){ return myBranches().flatMap(b=>BR_PIPES[b]); }
+// v2.10.0: รวมสาขาที่เทียบได้ด้วย ไม่งั้น renderBenchmark ได้ bgMerged/bnMerged = [] → "ยังไม่มีข้อมูล"
+function myPipeKeys(){ return myBmBranches().flatMap(b=>BR_PIPES[b]); }
 // ลายเซ็นชุดสาขา — ใช้กัน cache ของ admin (3 สาขา) ไปโผล่ให้ manager (สาขาเดียว) และกลับกัน
-function brSig(){ return myBranches().join('-'); }
+// v2.10.0: ต้องรวม bmBranches ด้วย ไม่งั้น cache ของคนที่เทียบ 3 สาขาจะไปปนกับคนที่มีสาขาเดียว
+//   (ลายเซ็นเปลี่ยนรูปแบบ → cache เก่าก่อน v2.10.0 ใช้ไม่ได้ ทิ้งแล้วโหลดใหม่รอบเดียว)
+function brSig(){ return myBranches().join('-')+'+'+myBmBranches().join('-'); }
 
 function saveCache(){
   try{
@@ -2427,9 +2522,12 @@ function renderDataHealth(){
   const _mine=myBranches();
   const NAME={SS:'ศรีสมาน (SS)', BG:'ประตูกรุงเทพ (BG)', BN:'บางนา (BN)'};
   const bad=_mine.filter(b=>!dataLoaded[b]).map(b=>NAME[b]);
-  if(bad.length===0 && loadErrors.length===0){ el.style.display='none'; el.innerHTML=''; return; }
-  const detail=loadErrors.length
-    ? `<div style="font-size:11px;color:var(--ink3);margin-top:6px">รายละเอียด: ${loadErrors.map(x=>`${x.url} — ${x.msg}`).join(' · ')}</div>`
+  // v2.10.0 BM-04: เอกสารที่พลาดเพราะเป็นสาขาที่ "เทียบได้เฉยๆ" (bmBranches) ไม่ใช่สาขาที่ดูแล
+  //   ไม่ใช่ "ข้อมูลไม่ครบ" ของคนนี้ — ขึ้นแบนเนอร์แดงจะเป็นการเตือนมั่ว (docId = SS_ST / BG_CAR …)
+  const _errMine=loadErrors.filter(x=>_mine.includes(String(x.url||'').split('_')[0].toUpperCase()));
+  if(bad.length===0 && _errMine.length===0){ el.style.display='none'; el.innerHTML=''; return; }
+  const detail=_errMine.length
+    ? `<div style="font-size:11px;color:var(--ink3);margin-top:6px">รายละเอียด: ${_errMine.map(x=>`${x.url} — ${x.msg}`).join(' · ')}</div>`
     : '';
   const head=bad.length
     ? `⚠️ ข้อมูลไม่ครบ — อ่านไม่ได้: <strong>${bad.join(', ')}</strong>`
@@ -3366,13 +3464,40 @@ function renderHeatmap(){
 
 
 // ── BENCHMARK ──
-let bmBranches=new Set(['SS']);
+// v2.10.0 BM-04: เปลี่ยนชื่อจาก `bmBranches` เป็น `bmSelected` — ชื่อเดิมชนกับ field ใหม่
+//   `bmBranches` ใน users/ (สิทธิ์: เทียบสาขาไหนได้บ้าง) · `bmSelected` (UI: ตอนนี้เลือกดูสาขาไหน)
+let bmSelected=new Set(['SS']);
+let bmSelInit=false;
 const BM_COLORS={SS:'rgba(240,165,0,.85)',BG:'rgba(74,158,255,.85)',BN:'rgba(61,214,140,.85)'};
 const BM_NAMES={SS:'ศรีสมาน',BG:'ประตูกรุงเทพ',BN:'บางนา'};
 
+// ตั้งต้น = สาขาแรกที่ผู้ใช้ "เทียบได้" ไม่ใช่ 'SS' ตายตัว (manager BN ที่ไม่มี SS จะได้ BN)
+function bmEnsureInit(){
+  if(bmSelInit) return;
+  bmSelInit=true;
+  const list=myBmBranches();
+  bmSelected=new Set(list.length?[list[0]]:['SS']);
+  syncBmPills();
+}
+// ให้ class .sel ของปุ่มตรงกับ bmSelected เสมอ (HTML เขียน sel ไว้ที่ SS ตายตัว)
+function syncBmPills(){
+  const list=myBmBranches();
+  document.querySelectorAll('#bmBranchPills .mc-pill').forEach(el=>{
+    const m=/toggleBmBranch\('(\w+)'/.exec(el.getAttribute('onclick')||'');
+    if(!m) return;
+    const ok=list.includes(m[1]);
+    el.style.display=ok?'':'none';
+    el.classList.toggle('sel', ok&&bmSelected.has(m[1]));
+  });
+}
+// ด่าน auth เรียกตัวนี้หลังรู้สิทธิ์จริงแล้ว — บังคับตั้งต้นใหม่อีกรอบ
+window.initBmPills=function(){ bmSelInit=false; bmEnsureInit(); };
+
 function toggleBmBranch(b,btn){
-  if(bmBranches.has(b)){if(bmBranches.size>1){bmBranches.delete(b);btn.classList.remove('sel');}}
-  else{bmBranches.add(b);btn.classList.add('sel');}
+  bmEnsureInit();
+  if(!myBmBranches().includes(b)) return;   // กันเรียกจาก console ข้ามสิทธิ์
+  if(bmSelected.has(b)){if(bmSelected.size>1){bmSelected.delete(b);btn.classList.remove('sel');}}
+  else{bmSelected.add(b);btn.classList.add('sel');}
   renderBenchmark();
 }
 
@@ -3423,7 +3548,8 @@ function bmTrend(b){
 }
 
 function renderBenchmark(){
-  const branches=[...bmBranches];
+  bmEnsureInit();                       // v2.10.0 BM-04
+  const branches=[...bmSelected].filter(b=>myBmBranches().includes(b));
   // KPI cards
   const kpiRow=document.getElementById('bmKpiRow');
   if(kpiRow){
