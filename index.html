@@ -307,6 +307,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 .kpi.red{border-left-color:var(--red);}
 .kpi.blue{border-left-color:var(--blue);}
 .kpi.purple{border-left-color:var(--purple);}
+.kpi.kpi-hero{border-left-width:5px;box-shadow:0 0 0 1px rgba(74,158,255,.25),var(--shadow);position:relative;}
+.kpi-hero-tag{display:inline-block;font-size:9px;font-weight:700;color:var(--blue);background:rgba(74,158,255,.12);padding:1px 6px;border-radius:4px;margin-bottom:4px;}
 .kpi-lbl{font-size:10px;color:var(--ink2);margin-bottom:5px;font-weight:500;}
 .kpi-val{font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;margin-bottom:3px;}
 .kpi-sub{font-size:10px;color:var(--ink3);}
@@ -354,9 +356,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 /* PRICE NOTE */
 .pn-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow);}
 .pn-title{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px;}
-.pn-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.pn-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;}
 @media(max-width:800px){.pn-grid{grid-template-columns:1fr;}}
-.pn-zone{background:var(--surface2);border-radius:8px;padding:13px;border:1px solid var(--border);}
+.pn-zone{background:var(--surface2);border-radius:8px;padding:16px;border:1px solid var(--border);}
 .pn-zone-title{font-size:11px;font-weight:700;color:var(--green);margin-bottom:10px;}
 .pn-tbl{width:100%;border-collapse:collapse;font-size:11px;}
 .pn-tbl th{padding:5px 8px;color:var(--ink3);font-size:10px;border-bottom:1px solid var(--border);text-align:left;}
@@ -364,8 +366,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-ser
 .pn-tbl tr:last-child td{border:none;}
 .price-num{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--green);}
 .fd-mark{color:var(--gold);font-size:10px;}
-.formula-box{background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.2);border-radius:6px;padding:10px 12px;margin-top:10px;font-size:11px;color:var(--blue);line-height:1.9;}
-.formula-box code{font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(74,158,255,.12);padding:1px 4px;border-radius:3px;}
+.formula-box{background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.2);border-radius:6px;padding:12px 14px;margin-top:12px;font-size:11px;color:var(--blue);line-height:2.1;}
+.formula-box code{font-family:'JetBrains Mono',monospace;font-size:10.5px;background:rgba(74,158,255,.14);padding:2px 5px;border-radius:3px;display:inline-block;margin:2px 0;}
 .admin-note{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:7px;padding:11px 14px;margin-top:12px;font-size:11px;color:var(--ink2);line-height:1.9;}
 
 /* FORECAST */
@@ -1196,7 +1198,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.10.2</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.10.3</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -1407,7 +1409,8 @@ body.manager-mode .admin-only{display:none!important;}
             <div class="kpi-val" id="k-revst">—</div>
             <div class="kpi-sub">บาท</div>
           </div>
-          <div class="kpi blue">
+          <div class="kpi blue kpi-hero">
+            <div class="kpi-hero-tag">ตัวเลขสรุป</div>
             <div class="kpi-lbl">รายรับสุทธิรวม (ST+Non)</div>
             <div class="kpi-val" id="k-revtotal">—</div>
             <div class="kpi-sub">บาท</div>
@@ -1784,15 +1787,14 @@ body.manager-mode .admin-only{display:none!important;}
     <div id="view-heatmap" style="display:none">
       <div class="mc-panel">
         <div style="font-size:13px;font-weight:700;margin-bottom:4px">&#128197; ปฏิทินล็อก — Heatmap</div>
-        <div style="font-size:11px;color:var(--ink3);margin-bottom:10px">สีเข้ม = ล็อกมาก | สีเขียว = วันฝน (FreeDay)</div>
+        <div style="font-size:11px;color:var(--ink3);margin-bottom:10px" id="hmLegendNote">สีเทียบกับเป้าหมายล็อก/วัน — เขียว = ถึง/เกินเป้า · ส้ม-แดง = ต่ำกว่าเป้า (ยิ่งแดงยิ่งขาดเยอะ) | สีเขียวสด = วันฝน (FreeDay)</div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
           <div style="display:flex;gap:3px;align-items:center">
-            <div style="width:14px;height:14px;border-radius:2px;background:rgba(240,165,0,.1)"></div>
-            <div style="width:14px;height:14px;border-radius:2px;background:rgba(240,165,0,.3)"></div>
-            <div style="width:14px;height:14px;border-radius:2px;background:rgba(240,165,0,.55)"></div>
-            <div style="width:14px;height:14px;border-radius:2px;background:rgba(240,165,0,.8)"></div>
-            <div style="width:14px;height:14px;border-radius:2px;background:rgba(240,165,0,1)"></div>
-            <span style="font-size:10px;color:var(--ink3);margin-left:4px">น้อย to มาก</span>
+            <div style="width:14px;height:14px;border-radius:2px;background:rgba(224,92,92,.55)" title="ขาดเป้ามาก"></div>
+            <div style="width:14px;height:14px;border-radius:2px;background:rgba(240,165,0,.35)" title="ขาดเป้าเล็กน้อย"></div>
+            <div style="width:14px;height:14px;border-radius:2px;background:rgba(61,214,140,.35)" title="ถึงเป้า"></div>
+            <div style="width:14px;height:14px;border-radius:2px;background:rgba(61,214,140,.9)" title="เกินเป้ามาก"></div>
+            <span style="font-size:10px;color:var(--ink3);margin-left:4px">ขาดเป้ามาก → เกินเป้ามาก</span>
           </div>
           <div style="display:flex;gap:4px;align-items:center">
             <div style="width:14px;height:14px;border-radius:2px;background:rgba(61,214,140,.7)"></div>
@@ -2845,30 +2847,35 @@ function renderTargetStatus(d){
   const zn=zone==='st'?'ST':zone==='non'?(activeBranch==='SS'?'Non':'Car'):'ทุกโซน';
   const names={SS:'ศรีสมาน',BG:'ประตูกรุงเทพ',BN:'บางนา'};
   // v2.6.4 UI-04: เกณฑ์สี/ข้อความเดิม แต่บีบเหลือบรรทัดเดียวไว้บนแถบพับ
-  let sumTxt='',sumCol='var(--ink)';
+  // v2.10.3 UX polish (TARGET-BANNER): แยกเป็นหัวข้อตัวหนา (สั้น จับใจความ) + รายละเอียดสีอ่อนกว่า
+  //   ไม่เปลี่ยนเกณฑ์สี/เงื่อนไข/ตัวเลขใดๆ — แค่จัดลำดับสายตาให้เห็น "หลุดเป้ากี่วัน" ก่อน
+  let sumHead='',sumDetail='',sumTxt='',sumCol='var(--ink)';
   if(streak>=TGT_MISS_STREAK){
     const avg=streakSum/streak;
     const diff=((tgt-avg)/tgt*100).toFixed(1);
     sumCol='var(--red)';
     sumEl.style.background='rgba(239,68,68,.12)';
     sumEl.style.borderLeft='3px solid var(--red)';
-    sumTxt=`⚠️ หลุดเป้า ${streak} วันติด · ${names[activeBranch]||activeBranch} (${zn}) · เฉลี่ย ${fmtN(avg,1)}/${fmtN(tgt)} ล็อก/วัน ต่ำกว่าเป้า ${diff}%`;
+    sumHead=`⚠️ หลุดเป้า ${streak} วันติด`;
+    sumDetail=`${names[activeBranch]||activeBranch} (${zn}) · เฉลี่ย ${fmtN(avg,1)}/${fmtN(tgt)} ล็อก/วัน ต่ำกว่าเป้า ${diff}%`;
   } else if(streak===0){
     const last=asc[asc.length-1];
     sumCol='var(--green)';
     sumEl.style.background='rgba(34,197,94,.12)';
     sumEl.style.borderLeft='3px solid var(--green)';
-    sumTxt=`✅ วันล่าสุด (${fmtD(last.date)}) ถึงเป้า · ทำได้ ${fmtN(getLock(last,group))}/${fmtN(tgt)} ล็อก`;
+    sumHead=`✅ วันล่าสุดถึงเป้า`;
+    sumDetail=`(${fmtD(last.date)}) · ทำได้ ${fmtN(getLock(last,group))}/${fmtN(tgt)} ล็อก`;
   } else {
     sumCol='var(--ink)';
     sumEl.style.background='rgba(251,146,60,.12)';
     sumEl.style.borderLeft='3px solid var(--orange,#fb923c)';
-    sumTxt=`⚡ หลุดเป้า ${streak} วันติด · ${names[activeBranch]||activeBranch} (${zn}) · เตือนเมื่อครบ ${TGT_MISS_STREAK} วันติด`;
+    sumHead=`⚡ หลุดเป้า ${streak} วันติด`;
+    sumDetail=`${names[activeBranch]||activeBranch} (${zn}) · เตือนเมื่อครบ ${TGT_MISS_STREAK} วันติด`;
   }
+  sumTxt=sumHead+' · '+sumDetail; // เก็บไว้เผื่อโค้ดอื่นอ้าง (ไม่มีจุดอื่นอ้างจริง — เป็น safety net)
   sumEl.style.borderRadius='0';
   txtEl.style.color=sumCol;
-  txtEl.style.fontWeight='700';
-  txtEl.textContent=sumTxt;
+  txtEl.innerHTML=`<strong style="font-weight:700">${sumHead}</strong> <span style="opacity:.8;font-weight:400">${sumDetail}</span>`;
 
   // 2) เป้าเดือนนี้ — ใช้เดือนล่าสุดที่มีข้อมูล (ไม่สนช่วงเวลาที่ filter)
   const all=applyZone(getActiveMerged());
@@ -2885,7 +2892,8 @@ function renderTargetStatus(d){
   const projected=dataDays>0?sum/dataDays*daysInMonth:0;
   const gap=projected-goal;
   // v2.6.4 UI-04: ต่อ % เป้าเดือนเข้าท้ายแถบพับ ให้เห็นสถานะครบโดยไม่ต้องกาง
-  txtEl.textContent=sumTxt+` · เป้าเดือนนี้ ${pct.toFixed(1)}%`;
+  // v2.10.3: ต่อเข้า detail span (ยังหัวข้อตัวหนาเหมือนเดิม ไม่ใช่ raw text ทับ)
+  txtEl.innerHTML=`<strong style="font-weight:700">${sumHead}</strong> <span style="opacity:.8;font-weight:400">${sumDetail} · เป้าเดือนนี้ ${pct.toFixed(1)}%</span>`;
   boxEl.style.display='block';
   document.getElementById('tmMonth').textContent=mLbl(latest);
   document.getElementById('tmActual').textContent=fmtN(sum);
@@ -3445,8 +3453,13 @@ function renderHeatmap(){
   let allMks=[...new Set(allData.map(r=>mKey(r.date)))].sort();
   const nMonths=parseInt(document.getElementById('hmMonths')?.value??'3');
   if(nMonths>0) allMks=allMks.slice(-nMonths);
+  // v2.10.3 ENH-07: สีเทียบกับ "เป้า" (currentTarget) แทนการไล่ตาม max ของชุดข้อมูลเอง
+  //   ของเดิม: วันที่ล็อกเยอะสุดในชุดข้อมูลได้สีเข้มสุดเสมอ ต่อให้ทั้งเดือนต่ำกว่าเป้าหมดก็ไม่รู้จากสี
+  //   ใหม่: ถึงเป้า/เกินเป้า = โทนเขียว (ไล่เข้มตามที่เกิน) · ต่ำกว่าเป้า = โทนส้ม/แดง (ไล่ตามที่ขาด)
+  //   ไม่มีเป้าตั้งไว้ (tgt<=0) → ตกกลับพฤติกรรมเดิม (เทียบ maxLock) กันจอว่าง/สีจืดทั้งกระดาน
+  const hmTgt=currentTarget();
   const maxLock=Math.max(...allData.map(r=>getLock(r,group)),1);
-  
+
   let html='';
   allMks.forEach(mk=>{
     const[y,m]=mk.split('-');
@@ -3472,6 +3485,24 @@ function renderHeatmap(){
       } else if(info.free){
         bg='background:rgba(61,214,140,.7)';
         title=`วันฝน | ล็อก: ${info.lock}`;
+      } else if(hmTgt>0){
+        // ENH-07: เทียบเป้า — เขียว = ถึง/เกินเป้า (ไล่เข้มตามส่วนเกิน) · ส้ม→แดง = ต่ำกว่าเป้า (ไล่ตามส่วนที่ขาด)
+        const ratio=info.lock/hmTgt;
+        if(ratio>=1){
+          const over=Math.min(ratio-1,1); // เกินเป้า 100% ขึ้นไป = เขียวเข้มสุด
+          const a=(0.35+over*0.55).toFixed(2);
+          bg=`background:rgba(61,214,140,${a})`;
+        } else {
+          const under=1-ratio; // ขาดเป้ากี่ % (0 = พอดีเป้า, 1 = ได้ 0 ล็อก)
+          if(under<=0.4){
+            const a=(0.15+under*1.2).toFixed(2); // ขาดไม่เกิน 40% = โทนส้ม
+            bg=`background:rgba(240,165,0,${a})`;
+          } else {
+            const a=(0.35+Math.min(under-0.4,0.6)*1.0).toFixed(2); // ขาดเกิน 40% = โทนแดง
+            bg=`background:rgba(224,92,92,${a})`;
+          }
+        }
+        title=`วันที่ ${d} | ล็อก: ${info.lock} / เป้า ${hmTgt} (${(ratio*100).toFixed(0)}%)`;
       } else {
         const intensity=Math.min(info.lock/maxLock,1);
         const a=(0.1+intensity*0.9).toFixed(2);
