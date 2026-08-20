@@ -722,8 +722,11 @@ body.manager-mode .admin-only{display:none!important;}
         // v2.10.0 LAY-03: อ้างด้วย id แทน `[data-branch]` เพราะถอด data-branch ออกแล้ว
         //   (ไม่งั้นลูป "ซ่อนสาขาที่ไม่มีสิทธิ์" ข้างบนจะซ่อนปุ่มนี้จาก manager BG/BN
         //    ทั้งที่ผัง 3D เปิดให้ดูข้ามสาขาได้แล้ว)
-        const map3dLink = document.getElementById('link-map3d');
-        if(map3dLink) map3dLink.style.display = perms.showMap3D ? '' : 'none';
+        // v2.10.4 LAY-04-link: คุมลิงก์ผัง 3D ทุกตัว (SS + BN พรีวิว) ด้วย showMap3D ตัวเดียว
+        //   ใช้ querySelectorAll เผื่อเพิ่มสาขาใหม่ในอนาคต ไม่ต้องกลับมาแก้ตรงนี้อีก
+        document.querySelectorAll('[id^="link-map3d"]').forEach(el => {
+          el.style.display = perms.showMap3D ? '' : 'none';
+        });
 
         // ซ่อนคอลัมน์รายรับ/ค่าไฟ ในตาราง (ข้อมูลดิบ ฯลฯ) ตามสิทธิ์
         document.body.classList.toggle('no-rev', !perms.showRevenue);
@@ -1198,7 +1201,7 @@ body.manager-mode .admin-only{display:none!important;}
   <div class="brand">
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.10.3</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.10.4</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -1268,6 +1271,15 @@ body.manager-mode .admin-only{display:none!important;}
        target="_blank" rel="noopener" style="text-decoration:none;color:var(--ink)">
       <div class="branch-dot" style="background:var(--gold2,var(--gold))"></div>
       <div><div class="branch-name">🗺️ ผังตลาด 3D</div><div class="branch-sub">ศรีสมาน · เปิดแท็บใหม่</div></div>
+    </a>
+    <!-- v2.10.4 LAY-04-link: ผัง 3D บางนา (โหมดพรีวิว)
+         · ยังไม่มีพิกัดแถว/ล็อกจาก CAD — ผัง 3D v0.14.0 เปิด preview ให้ดูโมเดลจริง
+           + วาดโซนอีเวนต์ / วางของเองได้ ส่วนเครื่องมือที่ต้องใช้พิกัดขึ้นป้าย "รอ CAD"
+         · คุมด้วย `showMap3D` ตัวเดียวกับ SS (PERM-05) — ไม่ใส่ data-branch ด้วยเหตุผลเดียวกัน -->
+    <a class="branch-item" id="link-map3d-bn" href="/3D-Market-SR/?branch=BN"
+       target="_blank" rel="noopener" style="text-decoration:none;color:var(--ink)">
+      <div class="branch-dot" style="background:var(--green)"></div>
+      <div><div class="branch-name">🗺️ ผังตลาด 3D</div><div class="branch-sub">บางนา · พรีวิว (รอ CAD)</div></div>
     </a>
   </div>
 
