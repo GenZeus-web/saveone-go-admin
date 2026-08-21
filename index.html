@@ -175,8 +175,19 @@
 =========================================================================
 -->
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>เซฟวันโก | รายงานการจองตลาด</title>
+
+<!-- v2.11.0 PWA-01: เพิ่มลงหน้าจอโฮมแล้วเปิดเหมือนแอป (ไม่มีแถบ URL)
+     apple-touch-icon.png = 180x180 ต้อง deploy คู่กับ index.html ไม่งั้นไอคอนเป็นภาพหน้าจอ -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="เซฟวันโก">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a1f2e">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -496,28 +507,96 @@ body.manager-mode .admin-only{display:none!important;}
 
 
 /* RESPONSIVE MOBILE */
+/* ═══════════════════════════════════════════════════════════════
+   v2.11.0 RWD-01 — มือถือ: sidebar เป็น drawer + PWA safe-area
+   CSS/HTML ล้วน ไม่แตะ logic คำนวณ/โครงข้อมูล/permission gate
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ปุ่มแฮมเบอร์เกอร์ + ฉากหลังทับตอน drawer เปิด — ซ่อนไว้บนจอใหญ่ */
+.mnav-btn{display:none;background:var(--surface2);border:1px solid var(--border);color:var(--ink2);
+  width:38px;height:38px;border-radius:9px;cursor:pointer;font-size:17px;line-height:1;
+  align-items:center;justify-content:center;flex-shrink:0;margin-right:10px;
+  -webkit-tap-highlight-color:transparent;}
+.mnav-btn:active{background:var(--surface3);}
+.sb-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:8000;
+  opacity:0;transition:opacity .22s ease;-webkit-tap-highlight-color:transparent;}
+.sb-backdrop.show{display:block;opacity:1;}
+
+/* พื้นที่ปลอดภัยจอบาก (iPhone) — มีผลเฉพาะตอนเปิดจากหน้าจอโฮม */
+@supports(padding:env(safe-area-inset-top)){
+  @media(display-mode:standalone){
+    .header{height:calc(50px + env(safe-area-inset-top));padding-top:env(safe-area-inset-top);}
+    .sidebar{padding-top:env(safe-area-inset-top);}
+  }
+}
+
 @media(max-width:768px){
-  body{height:auto;overflow-y:auto;}
-  .layout{flex-direction:column;overflow:visible;min-height:0;}
-  .content{overflow:visible;}
-  .sidebar{width:100%!important;height:auto;position:relative;top:0;display:flex;flex-wrap:wrap;gap:0;padding:8px;overflow:visible;}
-  .sb-sec{padding:8px;border:none;flex:1;min-width:140px;}
-  .content{padding:12px;}
-  .kpi-row{grid-template-columns:repeat(2,1fr);}
-  .charts-grid{grid-template-columns:1fr;}
-  .charts-grid2{grid-template-columns:1fr;}
-  .charts-row{grid-template-columns:1fr;}
-  .charts-row2{grid-template-columns:1fr;}
-  .topbot{grid-template-columns:1fr;}
-  .header{padding:0 12px;}
+  body{height:100vh;overflow:hidden;}
+  .layout{flex-direction:row;overflow:hidden;min-height:0;}
+
+  /* sidebar → drawer เลื่อนออกจากซ้าย (ตามดีไซน์ Claude Design: กว้าง 78%) */
+  .sidebar{position:fixed;top:0;bottom:0;left:0;z-index:8500;
+    width:78%!important;max-width:310px;height:100%;
+    padding-bottom:calc(24px + env(safe-area-inset-bottom));
+    overflow-y:auto;-webkit-overflow-scrolling:touch;
+    transform:translateX(-100%);transition:transform .24s cubic-bezier(.4,0,.2,1);
+    box-shadow:8px 0 24px rgba(0,0,0,.4);}
+  .sidebar.mopen{transform:translateX(0);}
+  /* ปุ่มพับ sidebar ของจอใหญ่ใช้ไม่ได้บนมือถือ — กันไม่ให้ค้างซ่อน */
+  .sidebar.collapsed{width:78%!important;opacity:1;padding:0;overflow-y:auto;}
+
+  .mnav-btn{display:flex;}
+  /* overflow-x:hidden = กันทั้งหน้าเลื่อนซ้ายขวา (ให้เลื่อนได้เฉพาะในกล่องตาราง/แท็บ) */
+  .content{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;width:100%;max-width:100%;
+    padding:12px 12px calc(16px + env(safe-area-inset-bottom));}
+  .content *{max-width:100%;}
+
+  /* หัวเว็บ: เหลือของจำเป็น ปุ่มพับ sidebar/ป้ายเวลาเอาออก ไม่ให้ล้น */
+  .header{padding:0 10px;}
   .brand-name{font-size:13px;}
-  .vtabs{flex-wrap:wrap;}
-  .vtab{font-size:11px;padding:5px 10px;}
-  .ch-main{height:320px;}
-  .ch-sm{height:240px;}
-  .ch-md{height:260px;}
+  .brand-sub{display:none;}
+  .header-right{gap:6px;}
+  #sidebarBtn{display:none;}
+  .upd{display:none;}
+  .prof-btn #userDisplay{display:none;}
+
+  /* การ์ด KPI เรียงคอลัมน์เดียว */
+  .kpi-row{grid-template-columns:1fr;}
+  .charts-grid,.charts-grid2,.charts-row,.charts-row2,.topbot,.pn-grid{grid-template-columns:1fr;}
+
+  /* แท็บ: เลื่อนแนวนอนแทนตัดบรรทัด */
+  .vtabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+    position:sticky;top:0;z-index:20;background:var(--bg);width:100%;
+    margin:0 0 10px;padding:8px 0;border-bottom:1px solid var(--border);}
+  .vtabs::-webkit-scrollbar{display:none;}
+  .vtab{flex-shrink:0;font-size:11.5px;padding:9px 13px;}
+
+  /* ตาราง/heatmap: เลื่อนแนวนอนได้จริง (ไม่บีบคอลัมน์จนอ่านไม่ออก) */
+  .fd-table-wrap,.dtbl-wrap,.hm-wrap{-webkit-overflow-scrolling:touch;}
+  .fd-table,.dtbl{min-width:560px;}
+  .pn-tbl{min-width:0;}
+
+  /* กราฟสูงพอดูบนจอตั้ง */
+  .ch-main{height:300px;}
+  .ch-sm{height:230px;}
+  .ch-md{height:250px;}
+
+  /* แตะง่าย: ปุ่ม/ช่องกรอกอย่างน้อย ~44px + ตัวอักษร 16px กัน iOS ซูมเอง */
+  .rfbtn,.pbtn{min-height:40px;padding:9px 12px;font-size:12.5px;}
+  .branch-item,.pill{min-height:44px;padding:11px 12px;}
+  .msel,input[type=text],input[type=number],input[type=date],input[type=email],
+  input[type=password],select,textarea{min-height:44px;font-size:16px;}
+  .sb-sec{padding:14px 14px;}
+
   .splash-sg{font-size:52px!important;}
   .splash-logo-savewan,.splash-logo-go{font-size:52px!important;}
+}
+
+@media(max-width:420px){
+  .content{padding:10px 10px calc(14px + env(safe-area-inset-bottom));}
+  .brand-name{font-size:12px;}
+  .ch-main{height:260px;}
+  .ch-sm,.ch-md{height:210px;}
 }
 
 </style>
@@ -1199,9 +1278,11 @@ body.manager-mode .admin-only{display:none!important;}
 
 <div class="header" id="mainHeader" style="display:none">
   <div class="brand">
+    <!-- v2.11.0 RWD-01: ปุ่มแฮมเบอร์เกอร์ โผล่เฉพาะจอ <=768px -->
+    <button class="mnav-btn" id="mnavBtn" onclick="toggleMobileNav()" aria-label="เปิดเมนู" aria-expanded="false" aria-controls="sidebar">&#9776;</button>
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.10.4</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.11.0</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -1242,6 +1323,8 @@ body.manager-mode .admin-only{display:none!important;}
 </div>
 
 <div class="layout" id="mainLayout" style="display:none">
+<!-- v2.11.0 RWD-01: ฉากหลังทับตอน drawer เปิด แตะเพื่อปิด -->
+<div class="sb-backdrop" id="sbBackdrop" onclick="closeMobileNav()"></div>
 <!-- SIDEBAR -->
 <div class="sidebar" id="sidebar">
 
@@ -3798,6 +3881,37 @@ function toggleSidebar(){
   if(sb) sb.classList.toggle('collapsed',!sidebarOpen);
   if(btn) btn.textContent=sidebarOpen?'◀':'▶';
 }
+
+/* ── v2.11.0 RWD-01: drawer สำหรับมือถือ (<=768px) ──
+   แยกคนละคลาสกับ .collapsed ของจอใหญ่ เพื่อไม่ให้ 2 โหมดตีกัน
+   ไม่แตะ state ของข้อมูล/สิทธิ์ใดๆ — เปิด/ปิดหน้าตาอย่างเดียว */
+function isMobileNav(){ return window.matchMedia('(max-width:768px)').matches; }
+function setMobileNav(open){
+  const sb=document.getElementById('sidebar');
+  const bd=document.getElementById('sbBackdrop');
+  const btn=document.getElementById('mnavBtn');
+  if(sb) sb.classList.toggle('mopen',open);
+  if(bd) bd.classList.toggle('show',open);
+  if(btn) btn.setAttribute('aria-expanded',open?'true':'false');
+}
+function toggleMobileNav(){
+  const sb=document.getElementById('sidebar');
+  setMobileNav(!(sb&&sb.classList.contains('mopen')));
+}
+function closeMobileNav(){ setMobileNav(false); }
+
+// แตะลิงก์ที่พาออกจากหน้า (ผัง 3D เปิดแท็บใหม่) แล้วปิด drawer เอง
+// ส่วนตัวกรอง สาขา/โซน/ช่วงเวลา ตั้งใจให้ drawer ค้างเปิด เพราะมักตั้งหลายอย่างติดกัน
+// (แท็บรายงาน .vtabs อยู่ในพื้นที่เนื้อหา ไม่ได้อยู่ใน sidebar จึงไม่เกี่ยวกับ drawer)
+document.addEventListener('click',function(e){
+  if(!isMobileNav()) return;
+  const sb=document.getElementById('sidebar');
+  if(!sb||!sb.classList.contains('mopen')) return;
+  if(e.target.closest&&e.target.closest('#sidebar a')) closeMobileNav();
+});
+// ปิด drawer อัตโนมัติเมื่อหมุนจอ/ขยายกลับเป็นจอใหญ่ กัน state ค้าง
+window.addEventListener('resize',function(){ if(!isMobileNav()) closeMobileNav(); });
+document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeMobileNav(); });
 
 // ── DARK/LIGHT MODE จำค่า ──
 let isDark=localStorage.getItem('swTheme')!=='light';
