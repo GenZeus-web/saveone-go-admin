@@ -592,8 +592,93 @@ body.manager-mode .admin-only{display:none!important;}
   .splash-logo-savewan,.splash-logo-go{font-size:52px!important;}
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   v2.11.1 RWD-02 — หน้าตาตามดีไซน์ (Claude Design · SaveOneGo Mobile)
+   รอบ v2.11.0 ทำแค่ "ไม่ล้นจอ" แต่ยังเป็นสีเดิม/มุมเดิมของแดชบอร์ดเดสก์ท็อป
+   บล็อกนี้คือชั้นหน้าตา แยกออกมาต่างหากเพื่อให้ย้อนกลับได้ง่าย (ลบทั้งบล็อกจบ)
+
+   ⚠️ ขอบเขต: เฉพาะจอ ≤768px และเฉพาะโหมดมืด — เดสก์ท็อป/โหมดสว่างไม่กระทบ
+   ═══════════════════════════════════════════════════════════════ */
+@media(max-width:768px){
+
+  /* 1) ชุดสีตามดีไซน์ — ทุก component ใช้ var() อยู่แล้ว เปลี่ยนที่เดียวเปลี่ยนทั้งหน้า */
+  body:not(.light-mode){
+    --bg:#12141c;
+    --surface:#1b1e29;
+    --surface2:#232735;
+    --surface3:#2b3040;
+    --border:rgba(255,255,255,.08);
+    --ink:#f4f2ee;
+    --ink2:#9599ab;   /* text secondary ตาม handoff (ไม่ใช่ #c9cbd6 ที่เห็นในการ์ดบางใบ) */
+    --ink3:#5c6075;
+    --gold:#e8a33d;  --gold2:#f2b968;
+    --green:#4fbf82; --green2:#4fbf82;
+    --red:#e2685f;   --orange:#e8a33d;
+    --blue:#5b8fd6;  --purple:#a992e0;
+    --shadow:0 8px 20px rgba(0,0,0,.22);
+  }
+
+  /* 1.5) ระยะตาม handoff: ขอบจอ 20px · ระยะห่างการ์ด 14-16px */
+  .content{padding-left:20px;padding-right:20px;}
+  .kpi-row{gap:14px;margin-bottom:16px;}
+  .kpi-section{margin-bottom:20px;}
+  .charts-grid,.charts-grid2,.charts-row,.charts-row2,.topbot{gap:14px;margin-bottom:16px;}
+
+  /* 2) การ์ด: มุมโค้ง 14px (hero 18px) + ไม่มีแถบสีขีดซ้าย (นั่นคือภาษาแดชบอร์ดเดสก์ท็อป ดีไซน์ไม่มี) */
+  .kpi{border-radius:14px;padding:16px 18px;border-left-width:1px;
+    border-left-color:var(--border);box-shadow:var(--shadow);}
+  .kpi:hover{transform:none;}
+  .kpi.kpi-hero{border-radius:18px;border-left-width:1px;border-color:rgba(232,163,61,.25);
+    background:linear-gradient(165deg,#1f2330,#181b25);box-shadow:0 10px 24px rgba(0,0,0,.28);}
+  /* คืนสีประจำการ์ดที่หายไปกับแถบซ้าย ให้ไปอยู่ที่ "ตัวเลข" แทน (ดีไซน์ทำแบบนี้) */
+  .kpi-lbl{font-size:10.5px;color:var(--ink2);margin-bottom:7px;}
+  .kpi-val{font-size:26px;letter-spacing:-.5px;margin-bottom:4px;}
+  .kpi-sub{font-size:10px;}
+  .kpi-sec-title{font-size:10px;letter-spacing:.6px;margin-bottom:10px;}
+
+  .sc,.tb-card,.fc-card,.mom-card,.main-chart-card{
+    border-radius:14px;padding:16px;box-shadow:var(--shadow);}
+  .sc-title{font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:12px;}
+  .fd-panel,.fd-kpi{border-radius:14px;}
+
+  /* 3) แท็บรายงาน: ทรงเม็ดยาแบบดีไซน์ (active = พื้นเข้ม ตัวหนังสือสว่าง) */
+  .vtabs{background:transparent;border:none;padding:8px 0;width:auto;gap:6px;}
+  .vtab{border-radius:10px;background:var(--surface);border:1px solid var(--border);
+    color:var(--ink3);font-weight:600;}
+  .vtab.active{background:var(--surface2);color:var(--ink);border-color:rgba(232,163,61,.35);}
+
+  /* แท็บเดียวกันนี้ พอถูกย้ายเข้า drawer ให้กลายเป็นรายการแนวตั้งตามดีไซน์
+     (ทับ sticky/overflow ของบล็อกบน ที่ตั้งไว้ตอนมันยังอยู่ในเนื้อหา) */
+  #sbNavHost .vtabs{flex-direction:column;width:100%;gap:2px;
+    position:static;overflow:visible;border:none;border-bottom:none;padding:0;margin:0;}
+  #sbNavHost .vtab{width:100%;text-align:left;padding:11px 12px;font-size:12.5px;
+    border-radius:10px;background:transparent;border:1px solid transparent;color:var(--ink2);}
+  #sbNavHost .vtab.active{background:var(--surface2);color:var(--ink);font-weight:700;
+    border-color:transparent;box-shadow:inset 0 0 0 1px rgba(232,163,61,.25);}
+
+  /* 4) drawer: หัวเมนู/รายการ ให้ระยะห่างแบบดีไซน์ */
+  .sidebar{background:var(--surface);}
+  .sb-lbl{font-size:10px;letter-spacing:.6px;color:var(--ink3);}
+  .branch-item{border-radius:10px;border-left-width:1px;border-left-color:transparent;}
+  .branch-item.active{background:var(--surface2);border-color:transparent;
+    border-left-color:transparent;box-shadow:inset 0 0 0 1px rgba(232,163,61,.25);}
+  .branch-name{font-size:12.5px;}
+  .pill{border-radius:10px;border-left-width:1px;border-left-color:transparent;}
+  .pill.active{background:var(--surface2);border-left-color:transparent;
+    box-shadow:inset 0 0 0 1px rgba(232,163,61,.25);}
+  .pbtn{border-radius:9px;}
+
+  /* 5) หัวเว็บ + ปุ่ม ให้เข้าชุดกัน */
+  .header{background:var(--bg);border-bottom-color:var(--border);box-shadow:none;}
+  .mnav-btn{background:var(--surface);border-radius:10px;}
+  .rfbtn{border-radius:9px;background:var(--surface);}
+  .prof-av{background:var(--surface2);color:var(--gold);
+    border:1px solid rgba(232,163,61,.35);}
+}
+
 @media(max-width:420px){
-  .content{padding:10px 10px calc(14px + env(safe-area-inset-bottom));}
+  /* ขอบจอคง 20px ตาม handoff (เดิม 10px — แคบกว่าดีไซน์) */
+  .content{padding:10px 20px calc(14px + env(safe-area-inset-bottom));}
   .brand-name{font-size:12px;}
   .ch-main{height:260px;}
   .ch-sm,.ch-md{height:210px;}
@@ -1282,7 +1367,7 @@ body.manager-mode .admin-only{display:none!important;}
     <button class="mnav-btn" id="mnavBtn" onclick="toggleMobileNav()" aria-label="เปิดเมนู" aria-expanded="false" aria-controls="sidebar">&#9776;</button>
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.11.0</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.11.1</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -1364,6 +1449,14 @@ body.manager-mode .admin-only{display:none!important;}
       <div class="branch-dot" style="background:var(--green)"></div>
       <div><div class="branch-name">🗺️ ผังตลาด 3D</div><div class="branch-sub">บางนา · พรีวิว (รอ CAD)</div></div>
     </a>
+  </div>
+
+  <!-- v2.11.1 RWD-02: ที่วางเมนูรายงานตอนอยู่บนมือถือ (ตามดีไซน์ เมนูอยู่ใน drawer)
+       ตัว .vtabs ถูก "ย้ายโหนดจริง" เข้ามาที่นี่ด้วย syncNavPlacement() ไม่ได้ copy
+       → onclick=setView(...) เดิมติดมาด้วย ไม่ต้องแก้ JS ของ view เลย
+       จอใหญ่ย้ายกลับที่เดิมอัตโนมัติ กล่องนี้จะว่างแล้วถูกซ่อน -->
+  <div class="sb-sec" id="sbNavHost" style="display:none">
+    <div class="sb-lbl">รายงาน</div>
   </div>
 
   <div class="sb-sec">
@@ -3909,8 +4002,32 @@ document.addEventListener('click',function(e){
   if(!sb||!sb.classList.contains('mopen')) return;
   if(e.target.closest&&e.target.closest('#sidebar a')) closeMobileNav();
 });
+/* v2.11.1 RWD-02: มือถือ = ย้ายแท็บรายงานเข้า drawer (ตามดีไซน์) · จอใหญ่ = ย้ายกลับที่เดิม
+   ย้ายโหนดจริงด้วย appendChild ไม่ใช่ copy — event handler เดิมจึงติดไปด้วยทั้งหมด
+   จำที่อยู่เดิมไว้ครั้งแรกครั้งเดียว เพื่อคืนตำแหน่งให้ถูกเป๊ะตอนกลับจอใหญ่ */
+let _navHome=null;
+function syncNavPlacement(){
+  const vt=document.querySelector('.vtabs');
+  const host=document.getElementById('sbNavHost');
+  if(!vt||!host) return;
+  if(!_navHome) _navHome={parent:vt.parentElement,next:vt.nextSibling};
+  if(isMobileNav()){
+    if(vt.parentElement!==host){ host.appendChild(vt); }
+    host.style.display='';
+  }else{
+    if(vt.parentElement!==_navHome.parent){ _navHome.parent.insertBefore(vt,_navHome.next); }
+    host.style.display='none';
+  }
+}
+document.addEventListener('DOMContentLoaded',syncNavPlacement);
+// แตะเมนูรายงานใน drawer แล้วปิด drawer เอง (ถือว่าไปหน้าใหม่แล้ว)
+document.addEventListener('click',function(e){
+  if(!isMobileNav()) return;
+  if(e.target.closest&&e.target.closest('#sbNavHost .vtab')) closeMobileNav();
+});
+
 // ปิด drawer อัตโนมัติเมื่อหมุนจอ/ขยายกลับเป็นจอใหญ่ กัน state ค้าง
-window.addEventListener('resize',function(){ if(!isMobileNav()) closeMobileNav(); });
+window.addEventListener('resize',function(){ if(!isMobileNav()) closeMobileNav(); syncNavPlacement(); });
 document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeMobileNav(); });
 
 // ── DARK/LIGHT MODE จำค่า ──
