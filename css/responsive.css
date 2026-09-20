@@ -1,0 +1,181 @@
+/* ============================================================
+   responsive.css — media query มือถือ/PWA (ต้องโหลดเป็นไฟล์สุดท้าย)   [index.html เดิม 509-686]
+   ============================================================ */
+/* RESPONSIVE MOBILE */
+/* ═══════════════════════════════════════════════════════════════
+   v2.11.0 RWD-01 — มือถือ: sidebar เป็น drawer + PWA safe-area
+   CSS/HTML ล้วน ไม่แตะ logic คำนวณ/โครงข้อมูล/permission gate
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ปุ่มแฮมเบอร์เกอร์ + ฉากหลังทับตอน drawer เปิด — ซ่อนไว้บนจอใหญ่ */
+.mnav-btn{display:none;background:var(--surface2);border:1px solid var(--border);color:var(--ink2);
+  width:38px;height:38px;border-radius:9px;cursor:pointer;font-size:17px;line-height:1;
+  align-items:center;justify-content:center;flex-shrink:0;margin-right:10px;
+  -webkit-tap-highlight-color:transparent;}
+.mnav-btn:active{background:var(--surface3);}
+.sb-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:8000;
+  opacity:0;transition:opacity .22s ease;-webkit-tap-highlight-color:transparent;}
+.sb-backdrop.show{display:block;opacity:1;}
+
+/* พื้นที่ปลอดภัยจอบาก (iPhone) — มีผลเฉพาะตอนเปิดจากหน้าจอโฮม */
+@supports(padding:env(safe-area-inset-top)){
+  @media(display-mode:standalone){
+    .header{height:calc(50px + env(safe-area-inset-top));padding-top:env(safe-area-inset-top);}
+    .sidebar{padding-top:env(safe-area-inset-top);}
+  }
+}
+
+@media(max-width:768px){
+  body{height:100vh;overflow:hidden;}
+  .layout{flex-direction:row;overflow:hidden;min-height:0;}
+
+  /* sidebar → drawer เลื่อนออกจากซ้าย (ตามดีไซน์ Claude Design: กว้าง 78%) */
+  .sidebar{position:fixed;top:0;bottom:0;left:0;z-index:8500;
+    width:78%!important;max-width:310px;height:100%;
+    padding-bottom:calc(24px + env(safe-area-inset-bottom));
+    overflow-y:auto;-webkit-overflow-scrolling:touch;
+    transform:translateX(-100%);transition:transform .24s cubic-bezier(.4,0,.2,1);
+    box-shadow:8px 0 24px rgba(0,0,0,.4);}
+  .sidebar.mopen{transform:translateX(0);}
+  /* ปุ่มพับ sidebar ของจอใหญ่ใช้ไม่ได้บนมือถือ — กันไม่ให้ค้างซ่อน */
+  .sidebar.collapsed{width:78%!important;opacity:1;padding:0;overflow-y:auto;}
+
+  .mnav-btn{display:flex;}
+  /* overflow-x:hidden = กันทั้งหน้าเลื่อนซ้ายขวา (ให้เลื่อนได้เฉพาะในกล่องตาราง/แท็บ) */
+  .content{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;width:100%;max-width:100%;
+    padding:12px 12px calc(16px + env(safe-area-inset-bottom));}
+  .content *{max-width:100%;}
+
+  /* หัวเว็บ: เหลือของจำเป็น ปุ่มพับ sidebar/ป้ายเวลาเอาออก ไม่ให้ล้น */
+  .header{padding:0 10px;}
+  .brand-name{font-size:13px;}
+  .brand-sub{display:none;}
+  .header-right{gap:6px;}
+  #sidebarBtn{display:none;}
+  .upd{display:none;}
+  .prof-btn #userDisplay{display:none;}
+
+  /* การ์ด KPI เรียงคอลัมน์เดียว */
+  .kpi-row{grid-template-columns:1fr;}
+  .charts-grid,.charts-grid2,.charts-row,.charts-row2,.topbot,.pn-grid{grid-template-columns:1fr;}
+
+  /* แท็บ: เลื่อนแนวนอนแทนตัดบรรทัด */
+  .vtabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+    position:sticky;top:0;z-index:20;background:var(--bg);width:100%;
+    margin:0 0 10px;padding:8px 0;border-bottom:1px solid var(--border);}
+  .vtabs::-webkit-scrollbar{display:none;}
+  .vtab{flex-shrink:0;font-size:11.5px;padding:9px 13px;}
+
+  /* ตาราง/heatmap: เลื่อนแนวนอนได้จริง (ไม่บีบคอลัมน์จนอ่านไม่ออก) */
+  .fd-table-wrap,.dtbl-wrap,.hm-wrap{-webkit-overflow-scrolling:touch;}
+  .fd-table,.dtbl{min-width:560px;}
+  .pn-tbl{min-width:0;}
+
+  /* กราฟสูงพอดูบนจอตั้ง */
+  .ch-main{height:300px;}
+  .ch-sm{height:230px;}
+  .ch-md{height:250px;}
+
+  /* แตะง่าย: ปุ่ม/ช่องกรอกอย่างน้อย ~44px + ตัวอักษร 16px กัน iOS ซูมเอง */
+  .rfbtn,.pbtn{min-height:40px;padding:9px 12px;font-size:12.5px;}
+  .branch-item,.pill{min-height:44px;padding:11px 12px;}
+  .msel,input[type=text],input[type=number],input[type=date],input[type=email],
+  input[type=password],select,textarea{min-height:44px;font-size:16px;}
+  .sb-sec{padding:14px 14px;}
+
+  .splash-sg{font-size:52px!important;}
+  .splash-logo-savewan,.splash-logo-go{font-size:52px!important;}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   v2.11.1 RWD-02 — หน้าตาตามดีไซน์ (Claude Design · SaveOneGo Mobile)
+   รอบ v2.11.0 ทำแค่ "ไม่ล้นจอ" แต่ยังเป็นสีเดิม/มุมเดิมของแดชบอร์ดเดสก์ท็อป
+   บล็อกนี้คือชั้นหน้าตา แยกออกมาต่างหากเพื่อให้ย้อนกลับได้ง่าย (ลบทั้งบล็อกจบ)
+
+   ⚠️ ขอบเขต: เฉพาะจอ ≤768px และเฉพาะโหมดมืด — เดสก์ท็อป/โหมดสว่างไม่กระทบ
+   ═══════════════════════════════════════════════════════════════ */
+@media(max-width:768px){
+
+  /* 1) ชุดสีตามดีไซน์ — ทุก component ใช้ var() อยู่แล้ว เปลี่ยนที่เดียวเปลี่ยนทั้งหน้า */
+  body:not(.light-mode){
+    --bg:#12141c;
+    --surface:#1b1e29;
+    --surface2:#232735;
+    --surface3:#2b3040;
+    --border:rgba(255,255,255,.08);
+    --ink:#f4f2ee;
+    --ink2:#9599ab;   /* text secondary ตาม handoff (ไม่ใช่ #c9cbd6 ที่เห็นในการ์ดบางใบ) */
+    --ink3:#5c6075;
+    --gold:#e8a33d;  --gold2:#f2b968;
+    --green:#4fbf82; --green2:#4fbf82;
+    --red:#e2685f;   --orange:#e8a33d;
+    --blue:#5b8fd6;  --purple:#a992e0;
+    --shadow:0 8px 20px rgba(0,0,0,.22);
+  }
+
+  /* 1.5) ระยะตาม handoff: ขอบจอ 20px · ระยะห่างการ์ด 14-16px */
+  .content{padding-left:20px;padding-right:20px;}
+  .kpi-row{gap:14px;margin-bottom:16px;}
+  .kpi-section{margin-bottom:20px;}
+  .charts-grid,.charts-grid2,.charts-row,.charts-row2,.topbot{gap:14px;margin-bottom:16px;}
+
+  /* 2) การ์ด: มุมโค้ง 14px (hero 18px) + ไม่มีแถบสีขีดซ้าย (นั่นคือภาษาแดชบอร์ดเดสก์ท็อป ดีไซน์ไม่มี) */
+  .kpi{border-radius:14px;padding:16px 18px;border-left-width:1px;
+    border-left-color:var(--border);box-shadow:var(--shadow);}
+  .kpi:hover{transform:none;}
+  .kpi.kpi-hero{border-radius:18px;border-left-width:1px;border-color:rgba(232,163,61,.25);
+    background:linear-gradient(165deg,#1f2330,#181b25);box-shadow:0 10px 24px rgba(0,0,0,.28);}
+  /* คืนสีประจำการ์ดที่หายไปกับแถบซ้าย ให้ไปอยู่ที่ "ตัวเลข" แทน (ดีไซน์ทำแบบนี้) */
+  .kpi-lbl{font-size:10.5px;color:var(--ink2);margin-bottom:7px;}
+  .kpi-val{font-size:26px;letter-spacing:-.5px;margin-bottom:4px;}
+  .kpi-sub{font-size:10px;}
+  .kpi-sec-title{font-size:10px;letter-spacing:.6px;margin-bottom:10px;}
+
+  .sc,.tb-card,.fc-card,.mom-card,.main-chart-card{
+    border-radius:14px;padding:16px;box-shadow:var(--shadow);}
+  .sc-title{font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:12px;}
+  .fd-panel,.fd-kpi{border-radius:14px;}
+
+  /* 3) แท็บรายงาน: ทรงเม็ดยาแบบดีไซน์ (active = พื้นเข้ม ตัวหนังสือสว่าง) */
+  .vtabs{background:transparent;border:none;padding:8px 0;width:auto;gap:6px;}
+  .vtab{border-radius:10px;background:var(--surface);border:1px solid var(--border);
+    color:var(--ink3);font-weight:600;}
+  .vtab.active{background:var(--surface2);color:var(--ink);border-color:rgba(232,163,61,.35);}
+
+  /* แท็บเดียวกันนี้ พอถูกย้ายเข้า drawer ให้กลายเป็นรายการแนวตั้งตามดีไซน์
+     (ทับ sticky/overflow ของบล็อกบน ที่ตั้งไว้ตอนมันยังอยู่ในเนื้อหา) */
+  #sbNavHost .vtabs{flex-direction:column;width:100%;gap:2px;
+    position:static;overflow:visible;border:none;border-bottom:none;padding:0;margin:0;}
+  #sbNavHost .vtab{width:100%;text-align:left;padding:11px 12px;font-size:12.5px;
+    border-radius:10px;background:transparent;border:1px solid transparent;color:var(--ink2);}
+  #sbNavHost .vtab.active{background:var(--surface2);color:var(--ink);font-weight:700;
+    border-color:transparent;box-shadow:inset 0 0 0 1px rgba(232,163,61,.25);}
+
+  /* 4) drawer: หัวเมนู/รายการ ให้ระยะห่างแบบดีไซน์ */
+  .sidebar{background:var(--surface);}
+  .sb-lbl{font-size:10px;letter-spacing:.6px;color:var(--ink3);}
+  .branch-item{border-radius:10px;border-left-width:1px;border-left-color:transparent;}
+  .branch-item.active{background:var(--surface2);border-color:transparent;
+    border-left-color:transparent;box-shadow:inset 0 0 0 1px rgba(232,163,61,.25);}
+  .branch-name{font-size:12.5px;}
+  .pill{border-radius:10px;border-left-width:1px;border-left-color:transparent;}
+  .pill.active{background:var(--surface2);border-left-color:transparent;
+    box-shadow:inset 0 0 0 1px rgba(232,163,61,.25);}
+  .pbtn{border-radius:9px;}
+
+  /* 5) หัวเว็บ + ปุ่ม ให้เข้าชุดกัน */
+  .header{background:var(--bg);border-bottom-color:var(--border);box-shadow:none;}
+  .mnav-btn{background:var(--surface);border-radius:10px;}
+  .rfbtn{border-radius:9px;background:var(--surface);}
+  .prof-av{background:var(--surface2);color:var(--gold);
+    border:1px solid rgba(232,163,61,.35);}
+}
+
+@media(max-width:420px){
+  /* ขอบจอคง 20px ตาม handoff (เดิม 10px — แคบกว่าดีไซน์) */
+  .content{padding:10px 20px calc(14px + env(safe-area-inset-bottom));}
+  .brand-name{font-size:12px;}
+  .ch-main{height:260px;}
+  .ch-sm,.ch-md{height:210px;}
+}
+

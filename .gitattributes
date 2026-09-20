@@ -1,0 +1,12 @@
+# ให้ไฟล์ข้อความเก็บใน git เป็น LF เสมอ ไม่ว่าจะแก้จากเครื่องไหน
+# กัน diff บวม "ทั้งไฟล์เปลี่ยน" เวลาสลับระหว่าง Windows กับ Mac/Linux
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff  binary
+*.woff2 binary

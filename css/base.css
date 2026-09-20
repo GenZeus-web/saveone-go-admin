@@ -1,0 +1,31 @@
+/* ============================================================
+   base.css — ตัวแปรสี (design tokens), โหมดสว่าง/มืด, reset, body   [index.html เดิม 195-222]
+   ============================================================ */
+:root {
+  --bg:#1a1f2e; --surface:#242938; --surface2:#2d3347; --surface3:#363d55;
+  --border:#3a4260; --ink:#e8ecf5; --ink2:#9aa3bc; --ink3:#5c6480;
+  --gold:#f0a500; --gold2:#ffd166; --green:#3dd68c; --green2:#27ae60;
+  --orange:#f07a35; --red:#e05c5c; --blue:#4a9eff; --purple:#a78bfa;
+  --shadow:0 2px 8px rgba(0,0,0,.3);
+}
+body.light-mode {
+  --bg:#f5f6fa; --surface:#ffffff; --surface2:#eef0f7; --surface3:#e2e5f0;
+  --border:#d0d4e8; --ink:#1a1f2e; --ink2:#3a4260; --ink3:#6b7399;
+  --gold:#c47f00; --green:#1a9e5c; --orange:#d4600a; --red:#c0392b;
+  --blue:#2563eb; --purple:#7c3aed;
+  --shadow:0 2px 8px rgba(0,0,0,.1);
+}
+body.light-mode .brand-name{color:#1a1f2e!important;}
+/* ล็อกเฉพาะหน้าโหลด (splash) ให้พื้นมืดเสมอ ไม่ตามโหมดสว่าง */
+body.light-mode .splash{
+  --bg:#1a1f2e; --surface:#242938; --surface2:#2d3347; --surface3:#363d55;
+  --border:#3a4260; --ink:#e8ecf5; --ink2:#9aa3bc; --ink3:#5c6480;
+  background:#0a0a0a!important;
+}
+/* หน้า login ตามโหมดปกติ */
+body.light-mode .login-logo-text{color:#1a1f2e!important;}
+body.no-rev .col-rev{display:none!important;}
+body.no-elec .col-elec{display:none!important;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-serif;font-size:13px;line-height:1.5;display:flex;flex-direction:column;height:100vh;overflow:hidden;}#appWrapper_removed{display:flex;flex-direction:column;height:100%;}
+
