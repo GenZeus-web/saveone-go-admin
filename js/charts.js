@@ -23,14 +23,17 @@ function animateChartReveal(chart,duration=1200){
   chart._revealProgress=0;
   const start=performance.now();
   function step(now){
+    // กราฟถูก destroy ไปแล้ว (Chart.js เคลียร์ ctx/canvas เป็น null) หรือ canvas หลุด DOM
+    // เช่นโดน innerHTML เขียนทับ → หยุดเงียบๆ ไม่ต้องวาดต่อ
+    if(!chart.ctx||!chart.canvas||!chart.canvas.isConnected){chart._revealRAF=null;return;}
     const t=Math.min((now-start)/duration,1);
     const ease=t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2; // easeInOutQuad
     chart._revealProgress=ease;
     chart.draw();
-    if(t<1) requestAnimationFrame(step);
-    else chart._revealProgress=undefined;
+    if(t<1) chart._revealRAF=requestAnimationFrame(step);
+    else{chart._revealProgress=undefined;chart._revealRAF=null;}
   }
-  requestAnimationFrame(step);
+  chart._revealRAF=requestAnimationFrame(step);
 }
 
 // สีของกราฟ (tick/legend/เส้นกริด) ปรับตามธีม — โหมดสว่างจะไม่จมหาย
@@ -49,6 +52,10 @@ function cOpts(){
 // v2.6.2 CHT-01: destroy อาจ throw ถ้า canvas หลุด DOM ไปแล้ว → ห่อ try/catch ไม่ให้ล้มทั้งการ render
 function dChart(id){
   if(charts[id]){
+    // v2.11.2 CHT-02: ยกเลิก rAF ของ reveal ก่อน destroy
+    // ไม่งั้น callback ที่จองคิวไว้จะตื่นมาเรียก chart.draw() กับกราฟที่ถูกทำลายแล้ว
+    // → โยน error ทุกครั้งที่เปลี่ยนตัวกรองระหว่างกราฟยัง animate ไม่จบ (1.2 วิ)
+    if(charts[id]._revealRAF) cancelAnimationFrame(charts[id]._revealRAF);
     try{charts[id].destroy();}catch(e){console.warn('dChart: destroy #'+id+' ไม่ได้',e.message);}
     delete charts[id];
   }
