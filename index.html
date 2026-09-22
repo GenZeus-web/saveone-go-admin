@@ -308,15 +308,13 @@
       <div id="revSection">
         <div class="kpi-sec-title">💰 รายรับ</div>
         <div class="kpi-row">
+          <!-- v2.11.3 KPI-02: ใบเดียวใช้ร่วมกันทั้ง 3 โซน ป้ายเปลี่ยนตามโซนที่เลือก
+               เดิมแยกเป็น 2 ใบ (รวม + ST) ซึ่งพอเลือกโซนเดียวจะโชว์เลขซ้ำกัน
+               เพราะ applyZone() ล้างยอดอีกโซนเป็น 0 อยู่แล้ว -->
           <div class="kpi blue kpi-hero kpi-lead">
-            <div class="kpi-lbl">รายรับสุทธิรวม (ST+Non)</div>
+            <div class="kpi-lbl" id="k-revtotal-lbl">รายรับสุทธิรวม (ST+Non)</div>
             <div class="kpi-val" id="k-revtotal">—</div>
             <div class="kpi-sub">บาท</div>
-          </div>
-          <div class="kpi green">
-            <div class="kpi-lbl" id="k-revst-lbl">รายรับสุทธิ ST</div>
-            <div class="kpi-val" id="k-revst">—</div>
-            <div class="kpi-sub" id="k-revst-sub">บาท</div>
           </div>
           <div class="kpi gold">
             <div class="kpi-lbl">รายรับก่อนหักส่วนลด</div>

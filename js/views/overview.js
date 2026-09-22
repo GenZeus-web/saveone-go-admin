@@ -123,15 +123,16 @@ function renderOverview(d){
   animateNumber(document.getElementById('k-revbefore'),revNormal);
   animateNumber(document.getElementById('k-disc'),disc);
   document.getElementById('k-disc-sub').textContent=`${fdays} วัน FreeDay`;
-  /* v2.11.3 KPI-02: การ์ดใบที่ 2 เปลี่ยนตามโซนที่เลือก
-     applyZone() ล้างยอดของโซนที่ไม่ได้เลือกเป็น 0 — เลือกโซน Car/Non แล้ว
-     การ์ดนี้เคยโชว์ "รายรับสุทธิ ST" = 0 เสมอ ซึ่งไม่มีประโยชน์
+  /* v2.11.3 KPI-02: การ์ดรายรับสุทธิใบเดียว ใช้ร่วมกันทั้ง 3 โซน
+     ค่าที่แสดงไม่ต้องแยกเคส — applyZone() ล้างยอดโซนที่ไม่ได้เลือกเป็น 0 แล้ว
+     revSTsum+revNonSum จึงถูกต้องทั้ง 3 กรณี เปลี่ยนแค่ป้ายชื่อ
      ชื่อโซนต่างกันตามสาขา: SS เรียก Non · BG/BN เรียก Car (ตาม updateZoneLabel) */
   const _nonName=activeBranch==='SS'?'Non':'Car';
-  const _isNonZone=zone==='non';
-  const _lbl=document.getElementById('k-revst-lbl');
-  if(_lbl) _lbl.textContent=_isNonZone?`รายรับสุทธิ ${_nonName}`:'รายรับสุทธิ ST';
-  animateNumber(document.getElementById('k-revst'),_isNonZone?revNonSum:revSTsum);
+  const _revLbl=document.getElementById('k-revtotal-lbl');
+  if(_revLbl) _revLbl.textContent=
+      zone==='st'  ? 'รายรับสุทธิ ST'
+    : zone==='non' ? `รายรับสุทธิ ${_nonName}`
+    :                `รายรับสุทธิรวม (ST+${_nonName})`;
   animateNumber(document.getElementById('k-revtotal'),revSTsum+revNonSum);
   animateNumber(document.getElementById('k-elec'),l1+l2);
   document.getElementById('k-elec-sub').textContent=`L1: ${fmtN(l1)} | L2: ${fmtN(l2)} ฿`;
