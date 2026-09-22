@@ -276,12 +276,21 @@ function writeSheet_(branch, dateStr, z) {
     Logger.log('   ถ้าตัวเลขถูกต้องแล้ว แก้บรรทัด  var DRY_RUN = true;  เป็น false');
     return;
   }
-  if (!id) {
-    Logger.log('❌ ยังไม่ได้ตั้ง SG_SHEET_' + branch + ' (id ของไฟล์ชีต) ใน Script Properties');
-    return;
+  /* ถ้าไม่ได้ตั้ง SG_SHEET_* ให้ใช้ชีตที่สคริปต์นี้ผูกอยู่แทน
+     (เปิด Apps Script จากในชีตไหน ก็ผูกกับชีตนั้น)
+     ลดขั้นตอนตั้งค่าไป 1 อย่าง แต่ยังตั้งเองได้ถ้าอยากเขียนข้ามไฟล์ */
+  var ss;
+  if (id) {
+    ss = SpreadsheetApp.openById(id);
+  } else {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) {
+      Logger.log('❌ ไม่ได้ตั้ง SG_SHEET_' + branch + ' และสคริปต์นี้ก็ไม่ได้ผูกกับชีตไหน');
+      Logger.log('   → ใส่ id ของไฟล์ชีตใน Script Properties (ดูจาก URL ของชีต)');
+      return;
+    }
+    Logger.log('ℹ️ ไม่ได้ตั้ง SG_SHEET_' + branch + ' — ใช้ชีตที่สคริปต์ผูกอยู่: ' + ss.getName());
   }
-
-  var ss = SpreadsheetApp.openById(id);
   [[cfg.sheetFood, z.st], [cfg.sheetCar, z.car]].forEach(function (pair) {
     var sh = ss.getSheetByName(pair[0]);
     if (!sh) { Logger.log('❌ ไม่เจอชีตชื่อ "' + pair[0] + '"'); return; }
