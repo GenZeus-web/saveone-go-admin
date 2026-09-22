@@ -310,7 +310,6 @@ function renderFreeday(d){
   }).join('');
 }
 
-
 /* ══════════════════════════════════════════════════════════════
    v2.11.4 DAY-01: กดจุด/แท่งบนกราฟหลัก → กล่องรายละเอียดของวันนั้น
    ══════════════════════════════════════════════════════════════
@@ -321,8 +320,12 @@ function renderFreeday(d){
    ⚠️ ทุกสูตรในนี้ copy มาจาก renderRaw() ตรงๆ ห้ามคิดใหม่
       ไม่งั้นเลขในกล่องกับในตารางข้อมูลดิบจะไม่ตรงกัน
    ⚠️ เงิน/ค่าไฟ ใส่คลาส col-rev / col-elec — CSS ซ่อนตามสิทธิ์ให้เอง
-      อย่าเช็ค userPerms ซ้ำ จะกลายเป็นสองแหล่งความจริง */
+      อย่าเช็ค userPerms ซ้ำ จะกลายเป็นสองแหล่งความจริง
+
+   สี: ยืมภาษาเดิมของแอป ทอง=ล็อก เขียว=ราย/รายรับ ม่วง=Car/Non
+       แดง=ไม่มา/ลา ส้ม=ค่าไฟ — ผู้ใช้ไม่ต้องเรียนรู้ชุดสีใหม่ */
 let _dayRows=[];                       // แถวที่กราฟหลักใช้อยู่รอบล่าสุด
+
 function openDayModal(i){
   const r=_dayRows[i];
   if(!r) return;
@@ -338,46 +341,57 @@ function openDayModal(i){
   const rv=revST(r)+revNon(r);
   const cancelShow = zone==='st' ? r.cancelLock : zone==='non' ? (r.nonCancelLock||0) : (r.cancelLock||0)+(r.nonCancelLock||0);
   const absentShow = zone==='st' ? r.absentLock : zone==='non' ? (r.nonAbsentLock||0) : (r.absentLock||0)+(r.nonAbsentLock||0);
-  const elec=(r.l1||0)+(r.l1n||0)+(r.l2||0)+(r.l2n||0);
+  const l1=(r.l1||0)+(r.l1n||0), l2=(r.l2||0)+(r.l2n||0);
   const nonName=activeBranch==='SS'?'Non':'Car';
 
+  // ── หัวกล่อง ──
   document.getElementById('dayTitle').textContent=fmtD(r.date);
-  const tag = fd?'🌧 วันฝน (FreeDay)' : wk?'วันหยุด ศ–อา' : 'วันธรรมดา';
-  document.getElementById('daySub').textContent=`${DAYS[r.date.getDay()]} · ${tag}`;
+  const chip = fd ? '<span class="day-chip fd">🌧 วันฝน</span>'
+             : wk ? '<span class="day-chip wk">วันหยุด ศ–อา</span>'
+                  : '<span class="day-chip nm">วันธรรมดา</span>';
+  document.getElementById('daySub').innerHTML=`<span>${DAYS[r.date.getDay()]}</span>${chip}`;
 
   document.getElementById('dayBig').innerHTML=`
-    <div><div class="v" style="color:var(--gold)">${fmtN(getLock(r,group))}</div><div class="k">ล็อก</div></div>
-    <div><div class="v" style="color:var(--green)">${fmtN(getRai(r,group))}</div><div class="k">ราย</div></div>`;
+    <div><div class="v" style="color:var(--gold)">${fmtN(getLock(r,group))}</div><div class="k">🔒 ล็อก</div></div>
+    <div><div class="v" style="color:var(--green)">${fmtN(getRai(r,group))}</div><div class="k">👥 ราย</div></div>`;
 
-  const row=(k,v,cls='')=>`<div class="r ${cls}"><span>${k}</span><span>${v}</span></div>`;
-  let html='';
+  // ── รายการย่อย ──
+  const sec=(icon,txt,color)=>`<div class="day-sec" style="color:${color}">${icon} ${txt}</div>`;
+  const row=(k,v,u='',cls='')=>`<div class="day-r ${cls}"><span>${k}</span><span>${v}${u?`<span class="u">${u}</span>`:''}</span></div>`;
+  let h='';
+
   if(zone!=='non'){
-    html+='<div class="sep">ST · Street Food</div>';
-    html+=row('ออนไลน์สุทธิ',fmtN(net)+' ล็อก');
-    html+=row('วอล์กอิน',fmtN(r.walkInLock)+' ล็อก');
-    if(r.extraLock) html+=row('ล็อกเสริม',fmtN(r.extraLock)+' ล็อก');
+    h+=sec('🍜','ST · Street Food','var(--gold)')+'<div class="day-grp st">';
+    h+=row('ออนไลน์สุทธิ',fmtN(net),'ล็อก');
+    h+=row('วอล์กอิน',fmtN(r.walkInLock),'ล็อก');
+    if(r.extraLock) h+=row('ล็อกเสริม',fmtN(r.extraLock),'ล็อก');
+    h+='</div>';
   }
   if(zone!=='st'&&r.nonLock){
-    html+=`<div class="sep">${nonName} · Boot Sale</div>`;
-    html+=row('ล็อก',fmtN(r.nonLock)+' ล็อก');
-    if(r.nonExtraLock) html+=row('ล็อกเสริม',fmtN(r.nonExtraLock)+' ล็อก');
+    h+=sec(activeBranch==='SS'?'🧺':'🚗',`${nonName} · Boot Sale`,'var(--purple)')+'<div class="day-grp non">';
+    h+=row('ล็อก',fmtN(r.nonLock),'ล็อก');
+    if(r.nonExtraLock) h+=row('ล็อกเสริม',fmtN(r.nonExtraLock),'ล็อก');
+    h+='</div>';
   }
   if(cancelShow||absentShow){
-    html+='<div class="sep">ไม่ได้ขาย</div>';
-    if(cancelShow) html+=row('ไม่มา (ยกเลิก)',fmtN(cancelShow)+' ล็อก');
-    if(absentShow) html+=row('ลา',fmtN(absentShow)+' ล็อก');
+    h+=sec('⚠️','ไม่ได้ขาย','var(--red)')+'<div class="day-grp bad">';
+    if(cancelShow) h+=row('ไม่มา (ยกเลิก)',fmtN(cancelShow),'ล็อก');
+    if(absentShow) h+=row('ลา',fmtN(absentShow),'ล็อก');
+    h+='</div>';
   }
-  html+='<div class="sep col-rev">รายรับ</div>';
-  html+=row('ราคา/ล็อก (ออนไลน์/วอล์กอิน)', fd?`${po/2} / ${activeBranch==='SS'?pw:pw/2}`:`${po} / ${pw}`,'col-rev');
-  html+=row('รายรับรวม',fmtN(rv)+' ฿','col-rev');
-  if(elec>0){
-    html+='<div class="sep col-elec">ค่าไฟ</div>';
-    html+=row('L1',fmtN((r.l1||0)+(r.l1n||0))+' ฿','col-elec');
-    html+=row('L2',fmtN((r.l2||0)+(r.l2n||0))+' ฿','col-elec');
+  h+=`<div class="col-rev">${sec('💰','รายรับ','var(--green)')}<div class="day-grp rev">`
+    +row('ราคา/ล็อก', fd?`${po/2} / ${activeBranch==='SS'?pw:pw/2}`:`${po} / ${pw}`,'฿ ออนไลน์/วอล์กอิน')
+    +row('รายรับรวม',fmtN(rv),'฿','hi')
+    +'</div></div>';
+  if(l1+l2>0){
+    h+=`<div class="col-elec">${sec('⚡','ค่าไฟ','var(--orange)')}<div class="day-grp elec">`
+      +row('L1',fmtN(l1),'฿')+row('L2',fmtN(l2),'฿')
+      +'</div></div>';
   }
-  document.getElementById('dayRows').innerHTML=html;
+  document.getElementById('dayRows').innerHTML=h;
   document.getElementById('dayModal').style.display='flex';
 }
+
 function closeDayModal(){
   const m=document.getElementById('dayModal');
   if(m) m.style.display='none';

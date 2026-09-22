@@ -177,30 +177,47 @@
 .admin-only{display:block;}
 body.manager-mode .admin-only{display:none!important;}
 
-
 /* ── v2.11.4 DAY-01: กล่องรายละเอียดรายวัน (กดจุดบนกราฟ) ──
-   ตัวเลขเงิน/ค่าไฟ ใช้ .col-rev / .col-elec เหมือนตารางข้อมูลดิบ
-   body.no-rev / body.no-elec ใน base.css ซ่อนให้เองตามสิทธิ์ */
-.day-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;
-  width:340px;max-width:100%;max-height:85vh;overflow-y:auto;
-  box-shadow:0 20px 60px rgba(0,0,0,.45);}
+   ใช้ภาษาสีเดิมของแอป ผู้ใช้ไม่ต้องเรียนรู้ใหม่:
+     ทอง=ล็อก · เขียว=ราย/รายรับ · ม่วง=Car/Non · แดง=ไม่มา/ลา · ส้ม=ค่าไฟ
+   แต่ละหมวดมีไอคอน + แถบสีซ้าย ให้กวาดตาหาได้โดยไม่ต้องอ่านทุกบรรทัด
+   ตัวเลขเงิน/ค่าไฟ ใช้ .col-rev / .col-elec — base.css ซ่อนตามสิทธิ์ให้เอง */
+.day-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  width:360px;max-width:100%;max-height:86vh;overflow-y:auto;
+  box-shadow:0 24px 70px rgba(0,0,0,.5);}
 .day-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;
-  padding:14px 16px 10px;border-bottom:1px solid var(--border);}
-.day-date{font-size:15px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace;}
-.day-sub{font-size:11px;color:var(--ink3);margin-top:3px;}
+  padding:15px 17px 12px;border-bottom:1px solid var(--border);}
+.day-date{font-size:16px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace;letter-spacing:.3px;}
+.day-sub{font-size:11px;color:var(--ink3);margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.day-chip{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700;}
+.day-chip.fd{background:rgba(240,165,0,.15);color:var(--gold);}
+.day-chip.wk{background:rgba(61,214,140,.13);color:var(--green);}
+.day-chip.nm{background:var(--surface2);color:var(--ink3);}
 .day-x{background:var(--surface2);border:1px solid var(--border);color:var(--ink2);
-  width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;}
+  width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;}
 .day-x:hover{color:var(--ink);border-color:var(--ink3);}
-.day-big{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px;}
-.day-big>div{text-align:center;}
-.day-big .v{font-size:26px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;}
-.day-big .k{font-size:10px;color:var(--ink3);margin-top:4px;}
-.day-rows{padding:0 16px 14px;}
-.day-rows .r{display:flex;justify-content:space-between;gap:12px;padding:7px 0;
-  border-bottom:1px solid var(--border);font-size:12px;}
-.day-rows .r:last-child{border-bottom:none;}
-.day-rows .r>span:first-child{color:var(--ink3);}
-.day-rows .r>span:last-child{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--ink);}
-.day-rows .sep{margin:8px 0 2px;font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.6px;}
-/* จุดบนกราฟกดได้ — บอกผู้ใช้ด้วยเคอร์เซอร์ */
+
+/* สองตัวเลขหลัก — ใหญ่พอให้เห็นก่อนอย่างอื่น */
+.day-big{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:15px 17px 13px;}
+.day-big>div{text-align:center;background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;padding:11px 6px;}
+.day-big .v{font-size:27px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;}
+.day-big .k{font-size:10px;color:var(--ink3);margin-top:5px;}
+
+/* หมวด — ไอคอน + แถบสีซ้าย */
+.day-rows{padding:0 17px 16px;}
+.day-sec{display:flex;align-items:center;gap:6px;margin:13px 0 5px;
+  font-size:11px;font-weight:700;letter-spacing:.2px;}
+.day-sec::after{content:'';flex:1;height:1px;background:var(--border);}
+.day-grp{border-left:2px solid var(--border);padding-left:10px;}
+.day-grp.st{border-left-color:var(--gold);}
+.day-grp.non{border-left-color:var(--purple);}
+.day-grp.bad{border-left-color:var(--red);}
+.day-grp.rev{border-left-color:var(--green);}
+.day-grp.elec{border-left-color:var(--orange);}
+.day-r{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:5px 0;font-size:12px;}
+.day-r>span:first-child{color:var(--ink2);}
+.day-r>span:last-child{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ink);white-space:nowrap;}
+.day-r .u{font-size:10px;color:var(--ink3);font-weight:400;margin-left:3px;}
+.day-r.hi>span:last-child{font-size:15px;}
 #cMain{cursor:pointer;}
