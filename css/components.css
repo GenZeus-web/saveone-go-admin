@@ -25,6 +25,15 @@
 .kpi.purple{border-left-color:var(--purple);}
 .kpi.kpi-hero{border-left-width:5px;box-shadow:0 0 0 1px rgba(74,158,255,.25),var(--shadow);position:relative;}
 .kpi-hero-tag{display:inline-block;font-size:9px;font-weight:700;color:var(--blue);background:rgba(74,158,255,.12);padding:1px 6px;border-radius:4px;margin-bottom:4px;}
+/* v2.11.3 KPI-01 (แบบ B): ตัวเลขสรุปของแต่ละแถวกินกว้าง 2 ช่อง + เลขใหญ่ขึ้น
+   ลำดับความสำคัญอ่านออกจาก "ขนาด" ไม่ต้องพึ่งป้ายกำกับ
+   จอแคบ (<=560px) คืนเป็น 1 ช่องเหมือนใบอื่น ไม่งั้นการ์ดเดียวกินทั้งแถว */
+.kpi.kpi-lead{grid-column:span 2;}
+/* ขอบเรืองแสงของ kpi-hero ฝังสีฟ้าไว้ตายตัว — การ์ดสีทองต้องใช้ขอบสีทอง */
+.kpi.gold.kpi-hero{box-shadow:0 0 0 1px rgba(240,165,0,.3),var(--shadow);}
+.kpi.kpi-lead .kpi-val{font-size:30px;}
+.kpi.kpi-lead .kpi-lbl{font-size:11px;}
+@media(max-width:560px){.kpi.kpi-lead{grid-column:span 1;}.kpi.kpi-lead .kpi-val{font-size:22px;}}
 .kpi-lbl{font-size:10px;color:var(--ink2);margin-bottom:5px;font-weight:500;}
 .kpi-val{font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;margin-bottom:3px;}
 .kpi-sub{font-size:10px;color:var(--ink3);}
