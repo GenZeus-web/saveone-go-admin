@@ -123,7 +123,15 @@ function renderOverview(d){
   animateNumber(document.getElementById('k-revbefore'),revNormal);
   animateNumber(document.getElementById('k-disc'),disc);
   document.getElementById('k-disc-sub').textContent=`${fdays} วัน FreeDay`;
-  animateNumber(document.getElementById('k-revst'),revSTsum);
+  /* v2.11.3 KPI-02: การ์ดใบที่ 2 เปลี่ยนตามโซนที่เลือก
+     applyZone() ล้างยอดของโซนที่ไม่ได้เลือกเป็น 0 — เลือกโซน Car/Non แล้ว
+     การ์ดนี้เคยโชว์ "รายรับสุทธิ ST" = 0 เสมอ ซึ่งไม่มีประโยชน์
+     ชื่อโซนต่างกันตามสาขา: SS เรียก Non · BG/BN เรียก Car (ตาม updateZoneLabel) */
+  const _nonName=activeBranch==='SS'?'Non':'Car';
+  const _isNonZone=zone==='non';
+  const _lbl=document.getElementById('k-revst-lbl');
+  if(_lbl) _lbl.textContent=_isNonZone?`รายรับสุทธิ ${_nonName}`:'รายรับสุทธิ ST';
+  animateNumber(document.getElementById('k-revst'),_isNonZone?revNonSum:revSTsum);
   animateNumber(document.getElementById('k-revtotal'),revSTsum+revNonSum);
   animateNumber(document.getElementById('k-elec'),l1+l2);
   document.getElementById('k-elec-sub').textContent=`L1: ${fmtN(l1)} | L2: ${fmtN(l2)} ฿`;
