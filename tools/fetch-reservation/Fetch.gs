@@ -70,9 +70,66 @@ var SHEETS = {
   }
 };
 
-// ── จุดเริ่ม ──
+// ── จุดเริ่ม (กดรันเอง) ──
 function fetchBG() { fetchBranch_('BG', null); }
 function fetchBN() { fetchBranch_('BN', null); }
+
+/* ══════════ ตั้งเวลาทำงานอัตโนมัติ 3 รอบ/วัน ══════════
+   15:00  รอบแรก — ให้ฝ่ายบริหารเห็นความเคลื่อนไหวก่อน (ตัวเลขยังไม่นิ่ง)
+   18:00  รอบสอง — วอล์กอินเข้าครบแล้วตามที่เจ้าของบอก
+   22:00  รอบสุดท้าย — ปิดยอดของวัน
+
+   รอบหลังจะ "อัปเดตทับ" แถวเดิมของวันนั้น ไม่ใช่เพิ่มแถวใหม่
+   และไม่แตะช่องที่กรอกมือ (ดู upsert_)
+
+   ⚠️ Apps Script ตั้งเวลาได้แค่ "ช่วงชั่วโมง" ไม่ใช่นาทีเป๊ะ
+      atHour(15) = รันสักช่วงระหว่าง 15:00-16:00 ไม่ใช่ 15:00:00 ตรง
+      เป็นข้อจำกัดของ Google เอง ไม่ใช่โค้ด
+
+   วิธีใช้: รัน setupTriggersBG ครั้งเดียว (หรือ BN) แล้วมันทำงานเองทุกวัน
+            ยกเลิกด้วย removeTriggers · ดูว่ามีอะไรอยู่ด้วย listTriggers  */
+var RUN_HOURS = [15, 18, 22];
+
+function setupTriggersBG() { setupTriggers_('BG'); }
+function setupTriggersBN() { setupTriggers_('BN'); }
+
+/** ฟังก์ชันที่ตัวตั้งเวลาเรียก — ต้องไม่รับพารามิเตอร์ */
+function scheduledBG() { fetchBranch_('BG', null); }
+function scheduledBN() { fetchBranch_('BN', null); }
+
+function setupTriggers_(branch) {
+  var handler = 'scheduled' + branch;
+  if (DRY_RUN) {
+    Logger.log('⚠️ ตอนนี้ DRY_RUN = true — ตั้งเวลาไปก็จะไม่เขียนอะไรลงชีต');
+    Logger.log('   ตั้งได้ แต่อย่าลืมเปลี่ยนเป็น false ตอนพร้อมใช้จริง\n');
+  }
+  // ลบของเดิมก่อน กันตั้งซ้ำแล้วรันวันละ 6 รอบโดยไม่รู้ตัว
+  var removed = 0;
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === handler) { ScriptApp.deleteTrigger(t); removed++; }
+  });
+  if (removed) Logger.log('ลบตัวตั้งเวลาเดิมของ ' + handler + ' ออก ' + removed + ' ตัว');
+
+  RUN_HOURS.forEach(function (h) {
+    ScriptApp.newTrigger(handler).timeBased().atHour(h).nearMinute(0).everyDays(1).create();
+    Logger.log('✅ ตั้งเวลา ' + handler + ' รอบ ' + h + ':00 แล้ว');
+  });
+  Logger.log('\nเสร็จ — จะทำงานเองทุกวัน ' + RUN_HOURS.join(':00 · ') + ':00');
+  Logger.log('เวลาที่รันจริงอาจคลาดจากนี้ได้ถึง 1 ชม. (ข้อจำกัดของ Apps Script)');
+}
+
+function listTriggers() {
+  var ts = ScriptApp.getProjectTriggers();
+  if (!ts.length) { Logger.log('ยังไม่มีตัวตั้งเวลา'); return; }
+  Logger.log('ตัวตั้งเวลาที่มีอยู่ ' + ts.length + ' ตัว:');
+  ts.forEach(function (t) { Logger.log('  • ' + t.getHandlerFunction() + ' (' + t.getEventType() + ')'); });
+}
+
+function removeTriggers() {
+  var ts = ScriptApp.getProjectTriggers(), n = 0;
+  ts.forEach(function (t) { ScriptApp.deleteTrigger(t); n++; });
+  Logger.log('ลบตัวตั้งเวลาออกทั้งหมด ' + n + ' ตัว');
+}
 
 /**
  * อ่านหัวคอลัมน์ของชีตปลายทาง — รันก่อนเปิดโหมดเขียนจริง
@@ -215,26 +272,79 @@ function writeSheet_(branch, dateStr, z) {
   }
 
   var ss = SpreadsheetApp.openById(id);
-  [[cfg.sheetFood, rowFood], [cfg.sheetCar, rowCar]].forEach(function (pair) {
+  [[cfg.sheetFood, z.st], [cfg.sheetCar, z.car]].forEach(function (pair) {
     var sh = ss.getSheetByName(pair[0]);
     if (!sh) { Logger.log('❌ ไม่เจอชีตชื่อ "' + pair[0] + '"'); return; }
-    // กันเขียนซ้ำ — สำคัญมากเมื่อตั้งเวลารันอัตโนมัติ เผลอรัน 2 รอบยอดจะเบิ้ล
-    if (hasDate_(sh, dateStr)) {
-      Logger.log('⏭ ข้าม "' + pair[0] + '" — มีแถววันที่ ' + dateStr + ' อยู่แล้ว');
-      return;
-    }
-    sh.appendRow(pair[1]);
-    Logger.log('✅ เขียนลง "' + pair[0] + '" แล้ว');
+    upsert_(sh, dateStr, pair[1], cfg.name, pair[0]);
   });
 }
 
-/** มีแถวของวันที่นี้อยู่แล้วไหม (ดูคอลัมน์ A) */
-function hasDate_(sheet, dateStr) {
-  var n = sheet.getLastRow();
-  if (n < 1) return false;
-  var col = sheet.getRange(1, 1, n, 1).getDisplayValues();
-  for (var i = 0; i < col.length; i++) if (String(col[i][0]).trim() === dateStr) return true;
-  return false;
+/* ── เขียน/อัปเดตแถวของวันนั้น ──────────────────────────────
+   รัน 3 รอบต่อวัน (15:00 · 18:00 · 22:00) แถวเดิมจึงต้อง "อัปเดตทับ"
+   ไม่ใช่ "ข้าม" ไม่งั้นผู้บริหารจะเห็นตัวเลขรอบ 15:00 ค้างทั้งวัน
+
+   ⚠️ แต่ห้ามเขียนทับทั้งแถว — คอลัมน์ WalkIn / ล็อกเสริม / Cancel /
+      ตัดไม่มาทำการค้า / Absent / FreeDay เจ้าของกรอกมือเอง
+      เขียนทับเมื่อไหร่ข้อมูลที่กรอกหายทันที
+   จึงแตะเฉพาะช่องที่สคริปต์เป็นเจ้าของ: Online_Rai · Online_Lock · L1 · L2
+   อ้างด้วย "ชื่อหัวคอลัมน์" ไม่ใช่ตำแหน่ง — ถ้าวันหน้ามีคนแทรกคอลัมน์
+   จะได้ไม่เขียนผิดช่องแบบเงียบๆ */
+function upsert_(sh, dateStr, c, branchName, label) {
+  var lastRow = sh.getLastRow(), lastCol = sh.getLastColumn();
+  var head = sh.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+
+  var col = {};
+  head.forEach(function (h, i) { col[String(h).trim()] = i + 1; });
+  var cDate = col['วันที่'];
+  var cRai  = col['Online_Rai'];
+  var cLock = col['Online_Lock'];
+  var cL1   = findCol_(col, /^L1_/);
+  var cL2   = findCol_(col, /^L2_/);
+  if (!cDate || !cRai || !cLock || !cL1 || !cL2) {
+    Logger.log('❌ "' + label + '" หาหัวคอลัมน์ไม่ครบ — เจอ: ' + head.join(','));
+    return;
+  }
+
+  // หาแถวของวันนี้
+  var found = 0;
+  if (lastRow > 1) {
+    var colVals = sh.getRange(1, cDate, lastRow, 1).getDisplayValues();
+    for (var i = 1; i < colVals.length; i++) {
+      if (String(colVals[i][0]).trim() === dateStr) { found = i + 1; break; }
+    }
+  }
+
+  if (!found) {
+    var row = new Array(lastCol).fill('');
+    row[cDate - 1] = dateStr;
+    row[cRai  - 1] = c.rai;
+    row[cLock - 1] = c.lock;
+    row[cL1   - 1] = c.elec;
+    row[cL2   - 1] = c.tool;
+    var cBranch = col['Branch'];
+    if (cBranch) row[cBranch - 1] = branchName;
+    // ช่องที่เหลือใส่ 0 ให้เหมือนรูปแบบเดิมของชีต
+    for (var k = 0; k < row.length; k++) if (row[k] === '') row[k] = 0;
+    sh.appendRow(row);
+    Logger.log('✅ "' + label + '" เพิ่มแถวใหม่ ' + dateStr + ' (ราย ' + c.rai + ' · ล็อก ' + c.lock + ')');
+    return;
+  }
+
+  // มีแถวแล้ว — แตะเฉพาะ 4 ช่องที่สคริปต์เป็นเจ้าของ
+  var before = sh.getRange(found, 1, 1, lastCol).getDisplayValues()[0];
+  sh.getRange(found, cRai).setValue(c.rai);
+  sh.getRange(found, cLock).setValue(c.lock);
+  sh.getRange(found, cL1).setValue(c.elec);
+  sh.getRange(found, cL2).setValue(c.tool);
+  Logger.log('🔄 "' + label + '" อัปเดตแถว ' + found + ' (' + dateStr + ')');
+  Logger.log('     ราย ' + before[cRai - 1] + ' → ' + c.rai +
+             ' · ล็อก ' + before[cLock - 1] + ' → ' + c.lock);
+  Logger.log('     ช่องที่กรอกมือไม่ถูกแตะ (WalkIn/ล็อกเสริม/Cancel/Absent/FreeDay)');
+}
+
+function findCol_(col, re) {
+  for (var k in col) if (re.test(k)) return col[k];
+  return 0;
 }
 
 /** ตรวจว่าไฟล์ที่ได้ถูกวัน ถูกโซน แล้วสรุปตัวเลขที่ชีตต้องใช้ */
