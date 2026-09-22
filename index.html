@@ -747,6 +747,26 @@
       </div>
     </div>
 
+    <!-- ══════════ v2.11.4 DAY-01: รายละเอียดรายวัน ══════════
+         กดจุด/แท่งบนกราฟหลัก แล้วเด้งกล่องนี้ขึ้นมา
+         ตัวเลขเงิน/ค่าไฟ ใช้คลาส col-rev / col-elec เหมือนตารางข้อมูลดิบ
+         → body.no-rev / body.no-elec ซ่อนให้เองตามสิทธิ์ ไม่ต้องเช็คซ้ำใน JS -->
+    <div id="dayModal" onclick="if(event.target===this)closeDayModal()"
+         style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8600;
+                align-items:center;justify-content:center;padding:16px;">
+      <div class="day-card" role="dialog" aria-modal="true" aria-labelledby="dayTitle">
+        <div class="day-head">
+          <div>
+            <div class="day-date" id="dayTitle">—</div>
+            <div class="day-sub" id="daySub">—</div>
+          </div>
+          <button class="day-x" onclick="closeDayModal()" aria-label="ปิด">✕</button>
+        </div>
+        <div class="day-big" id="dayBig"></div>
+        <div class="day-rows" id="dayRows"></div>
+      </div>
+    </div>
+
     <!-- ══════════ USR-01: จัดการผู้ใช้ (admin เท่านั้น) — เปิดจากเมนูโปรไฟล์ ══════════ -->
     <div id="usersModal" onclick="if(event.target===this)closeUsersPanel()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8500;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto">
       <div class="mc-panel" style="width:900px;max-width:100%;margin:0;box-shadow:0 20px 60px rgba(0,0,0,.45)">
