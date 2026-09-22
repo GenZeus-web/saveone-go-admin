@@ -93,16 +93,16 @@ function renderBenchmark(){
   if(kpiRow){
     kpiRow.innerHTML=branches.map(b=>{
       const d=getBranchMerged(b);
-      if(!d.length) return `<div class="mom-card" style="border-color:${BM_COLORS[b]}"><div class="mom-month" style="color:${BM_COLORS[b]}">${BM_NAMES[b]}</div><div style="font-size:11px;color:var(--ink3)">ยังไม่มีข้อมูล</div></div>`;
+      if(!d.length) return `<div class="mom-card" style="border-color:${sc(BM_COLORS[b])}"><div class="mom-month" style="color:${sc(BM_COLORS[b])}">${BM_NAMES[b]}</div><div style="font-size:11px;color:var(--ink3)">ยังไม่มีข้อมูล</div></div>`;
       const days=d.length||1;
       const totalLock=d.reduce((s,r)=>s+getLock(r,'all'),0);
       const avgLock=(totalLock/days).toFixed(1);
       const totalRev=d.reduce((s,r)=>s+revST(r)+revNon(r),0);
       const fds=d.filter(r=>r.freeDay).length;
       const canSeeRev=window.userPerms?.showRevenue;
-      return `<div class="mom-card" style="border-color:${BM_COLORS[b]}">
-        <div class="mom-month" style="color:${BM_COLORS[b]};font-weight:700">${BM_NAMES[b]}</div>
-        <div class="mom-val" style="color:${BM_COLORS[b]}">${fmtN(avgLock,1)}</div>
+      return `<div class="mom-card" style="border-color:${sc(BM_COLORS[b])}">
+        <div class="mom-month" style="color:${sc(BM_COLORS[b])};font-weight:700">${BM_NAMES[b]}</div>
+        <div class="mom-val" style="color:${sc(BM_COLORS[b])}">${fmtN(avgLock,1)}</div>
         <div style="font-size:10px;color:var(--ink3)">ล็อกเฉลี่ย/วัน</div>
         <div style="font-size:10px;color:var(--ink2);margin-top:4px">รายรับรวม ${canSeeRev ? fmtN(totalRev)+' ฿' : '—'}</div>
         <div style="font-size:10px;color:var(--gold);margin-top:2px">วันฝน ${fds} วัน</div>
@@ -115,7 +115,7 @@ function renderBenchmark(){
   if(alertBox){
     alertBox.innerHTML=branches.map(b=>{
       const t=bmTrend(b);
-      const nm=`<strong style="color:${BM_COLORS[b]}">${BM_NAMES[b]}</strong>`;
+      const nm=`<strong style="color:${sc(BM_COLORS[b])}">${BM_NAMES[b]}</strong>`;
       if(!t) return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:12px;color:var(--ink3)">⚪ ${nm} — ข้อมูลยังไม่พอประเมินเทรนด์ (ต้องมีอย่างน้อย 2 เดือนที่มีข้อมูล ≥ ${BM_MIN_DAYS} วัน)</div>`;
       let ic,txt,col,bg;
       if(t.streak>=BM_ALERT_N){ ic='🔴'; col='var(--red)'; bg='rgba(255,77,79,.12)'; txt=`<strong>ไหลลงไม่หยุด</strong> — ตกต่อเนื่อง ${t.streak} เดือนติด`; }

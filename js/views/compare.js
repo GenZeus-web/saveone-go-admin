@@ -2,7 +2,11 @@
 // views/compare.js — หน้าเปรียบเทียบเดือน                                          [เดิม 3517-3628]
 // ============================================================
 // ── COMPARE ──
-const MONTH_COLORS=['rgba(240,165,0,.85)','rgba(74,158,255,.85)','rgba(61,214,140,.8)','rgba(224,92,92,.8)','rgba(167,139,250,.8)','rgba(240,122,53,.8)','rgba(255,200,60,.8)','rgba(100,200,180,.8)'];
+/* v2.11.3 CHT-03: สลับลำดับ + เปลี่ยนสีที่ 7
+   - แดงกับเขียวเคยอยู่ติดกัน (ลำดับ 3-4) คนตาบอดสีแยกไม่ออก → คั่นด้วยม่วง
+   - 'rgba(100,200,180)' อิ่มสีต่ำกว่าเกณฑ์ อ่านเป็นสีเทา → เปลี่ยนเป็น 45,212,191
+   ค่าที่เขียนไว้คือสีโหมดมืด · โหมดสว่าง sc() ใน charts.js แปลงให้เอง */
+const MONTH_COLORS=['rgba(240,165,0,.85)','rgba(74,158,255,.85)','rgba(224,92,92,.8)','rgba(167,139,250,.8)','rgba(61,214,140,.8)','rgba(240,122,53,.8)','rgba(45,212,191,.8)','rgba(255,200,60,.8)'];
 
 function renderCompare(){
   const mks=[...selMonths].sort();
@@ -88,7 +92,7 @@ function renderCompare(){
       chgHtml=`<div class="mom-chg"><span class="${cls}">${arrow} ${Math.abs(pct)}%</span><span style="color:var(--ink3)">vs เดือนก่อน</span></div>`;
     }
     return`<div class="mom-card">
-      <div class="mom-month" style="color:${MONTH_COLORS[i%MONTH_COLORS.length]}">${lbl}</div>
+      <div class="mom-month" style="color:${sc(MONTH_COLORS[i%MONTH_COLORS.length])}">${lbl}</div>
       <div class="mom-val">${fmtN(total)}</div>
       <div style="font-size:12px;color:var(--ink3)">เฉลี่ย ${avg} ล็อก/วัน</div>
       ${chgHtml}
