@@ -256,12 +256,16 @@ function writeSheet_(branch, dateStr, z) {
   Logger.log('\n──────── บันทึกลงชีต ────────');
   if (!cfg) { Logger.log('❌ ไม่รู้จักสาขา ' + branch); return; }
 
-  var mk = function (c) { return [dateStr, c.rai, c.lock, 0,0,0,0,0,0,0,0,0,0,0, c.elec, c.tool, cfg.name]; };
-  var rowFood = mk(z.st), rowCar = mk(z.car);
-  Logger.log(cfg.sheetFood + ' ← ' + JSON.stringify(rowFood));
-  Logger.log(cfg.sheetCar  + ' ← ' + JSON.stringify(rowCar));
-
   if (DRY_RUN) {
+    ['st', 'car'].forEach(function (k) {
+      var b = z[k], nm = (k === 'st' ? cfg.sheetFood : cfg.sheetCar);
+      Logger.log(nm + ' ←');
+      Logger.log('   Online  ' + b.online.rai + ' / ' + b.online.lock +
+                 '   WalkIn ' + b.walkin.rai + ' / ' + b.walkin.lock +
+                 '   Cancel ' + b.cancel.rai + ' / ' + b.cancel.lock +
+                 '   Absent ' + b.absent.rai + ' / ' + b.absent.lock +
+                 '   L1 ' + b.elec + '  L2 ' + b.tool);
+    });
     Logger.log('\n🟡 โหมดซ้อม — ยังไม่ได้เขียนจริง');
     Logger.log('   ถ้าตัวเลขถูกต้องแล้ว แก้บรรทัด  var DRY_RUN = true;  เป็น false');
     return;
@@ -283,63 +287,75 @@ function writeSheet_(branch, dateStr, z) {
    รัน 3 รอบต่อวัน (15:00 · 18:00 · 22:00) แถวเดิมจึงต้อง "อัปเดตทับ"
    ไม่ใช่ "ข้าม" ไม่งั้นผู้บริหารจะเห็นตัวเลขรอบ 15:00 ค้างทั้งวัน
 
-   ⚠️ แต่ห้ามเขียนทับทั้งแถว — คอลัมน์ WalkIn / ล็อกเสริม / Cancel /
-      ตัดไม่มาทำการค้า / Absent / FreeDay เจ้าของกรอกมือเอง
-      เขียนทับเมื่อไหร่ข้อมูลที่กรอกหายทันที
-   จึงแตะเฉพาะช่องที่สคริปต์เป็นเจ้าของ: Online_Rai · Online_Lock · L1 · L2
+   ── ช่องที่สคริปต์เป็นเจ้าของ (เขียน/อัปเดตทุกรอบ) ──
+     Online_Rai · Online_Lock     = ทั้งหมด − วอล์กอิน
+     WalkIn_Rai · WalkIn_Lock     = สถานะ "จองหน้าเคาท์เตอร์"
+     Cancel_Rai · Cancel_Lock     = สถานะ "ไม่มาขาย"   (ไม่คืนเงิน)
+     Absent_Rai · Absent_Lock     = สถานะ "ลาคืนล็อค"  (ไม่คืนเงิน)
+     L1_* = ค่าไฟ · L2_* = ค่าอุปกรณ์
+
+   ── ช่องที่ยังต้องกรอกมือ (ห้ามแตะ) ──
+     ล็อกเสริม_Rai · ล็อกเสริม-Lock
+     ตัดไม่มาทำการค้า_Rai · ตัดไม่มาทำการค้า_Lock   (เว็บไม่ได้อ่านช่องนี้)
+     FreeDay
+   เขียนทับเมื่อไหร่ข้อมูลที่กรอกหายทันที
+
    อ้างด้วย "ชื่อหัวคอลัมน์" ไม่ใช่ตำแหน่ง — ถ้าวันหน้ามีคนแทรกคอลัมน์
-   จะได้ไม่เขียนผิดช่องแบบเงียบๆ */
+   จะได้ไม่เขียนผิดช่องแบบเงียบๆ  */
 function upsert_(sh, dateStr, c, branchName, label) {
   var lastRow = sh.getLastRow(), lastCol = sh.getLastColumn();
   var head = sh.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
-
   var col = {};
   head.forEach(function (h, i) { col[String(h).trim()] = i + 1; });
+
+  // ช่องที่สคริปต์เขียน → ค่าที่จะใส่
+  var owned = [
+    ['Online_Rai',  c.online.rai],  ['Online_Lock', c.online.lock],
+    ['WalkIn_Rai',  c.walkin.rai],  ['WalkIn_Lock', c.walkin.lock],
+    ['Cancel_Rai',  c.cancel.rai],  ['Cancel_Lock', c.cancel.lock],
+    ['Absent_Rai',  c.absent.rai],  ['Absent_Lock', c.absent.lock]
+  ];
   var cDate = col['วันที่'];
-  var cRai  = col['Online_Rai'];
-  var cLock = col['Online_Lock'];
-  var cL1   = findCol_(col, /^L1_/);
-  var cL2   = findCol_(col, /^L2_/);
-  if (!cDate || !cRai || !cLock || !cL1 || !cL2) {
-    Logger.log('❌ "' + label + '" หาหัวคอลัมน์ไม่ครบ — เจอ: ' + head.join(','));
+  var cL1 = findCol_(col, /^L1_/), cL2 = findCol_(col, /^L2_/);
+  var missing = owned.filter(function (o) { return !col[o[0]]; }).map(function (o) { return o[0]; });
+  if (!cDate || !cL1 || !cL2 || missing.length) {
+    Logger.log('❌ "' + label + '" หาหัวคอลัมน์ไม่ครบ: ' + (missing.join(',') || '') +
+               (!cDate ? ' วันที่' : '') + (!cL1 ? ' L1_*' : '') + (!cL2 ? ' L2_*' : ''));
+    Logger.log('   หัวที่เจอจริง: ' + head.join(','));
     return;
   }
+  owned.push(['__L1', c.elec]); owned.push(['__L2', c.tool]);
+  var colOf = function (key) { return key === '__L1' ? cL1 : key === '__L2' ? cL2 : col[key]; };
 
   // หาแถวของวันนี้
   var found = 0;
   if (lastRow > 1) {
-    var colVals = sh.getRange(1, cDate, lastRow, 1).getDisplayValues();
-    for (var i = 1; i < colVals.length; i++) {
-      if (String(colVals[i][0]).trim() === dateStr) { found = i + 1; break; }
+    var dv = sh.getRange(1, cDate, lastRow, 1).getDisplayValues();
+    for (var i = 1; i < dv.length; i++) {
+      if (String(dv[i][0]).trim() === dateStr) { found = i + 1; break; }
     }
   }
 
   if (!found) {
-    var row = new Array(lastCol).fill('');
+    var row = [];
+    for (var k = 0; k < lastCol; k++) row.push(0);
     row[cDate - 1] = dateStr;
-    row[cRai  - 1] = c.rai;
-    row[cLock - 1] = c.lock;
-    row[cL1   - 1] = c.elec;
-    row[cL2   - 1] = c.tool;
-    var cBranch = col['Branch'];
-    if (cBranch) row[cBranch - 1] = branchName;
-    // ช่องที่เหลือใส่ 0 ให้เหมือนรูปแบบเดิมของชีต
-    for (var k = 0; k < row.length; k++) if (row[k] === '') row[k] = 0;
+    owned.forEach(function (o) { row[colOf(o[0]) - 1] = o[1]; });
+    if (col['Branch']) row[col['Branch'] - 1] = branchName;
     sh.appendRow(row);
-    Logger.log('✅ "' + label + '" เพิ่มแถวใหม่ ' + dateStr + ' (ราย ' + c.rai + ' · ล็อก ' + c.lock + ')');
+    Logger.log('✅ "' + label + '" เพิ่มแถวใหม่ ' + dateStr +
+               ' — Online ' + c.online.rai + '/' + c.online.lock +
+               ' · WalkIn ' + c.walkin.rai + '/' + c.walkin.lock);
     return;
   }
 
-  // มีแถวแล้ว — แตะเฉพาะ 4 ช่องที่สคริปต์เป็นเจ้าของ
   var before = sh.getRange(found, 1, 1, lastCol).getDisplayValues()[0];
-  sh.getRange(found, cRai).setValue(c.rai);
-  sh.getRange(found, cLock).setValue(c.lock);
-  sh.getRange(found, cL1).setValue(c.elec);
-  sh.getRange(found, cL2).setValue(c.tool);
+  owned.forEach(function (o) { sh.getRange(found, colOf(o[0])).setValue(o[1]); });
   Logger.log('🔄 "' + label + '" อัปเดตแถว ' + found + ' (' + dateStr + ')');
-  Logger.log('     ราย ' + before[cRai - 1] + ' → ' + c.rai +
-             ' · ล็อก ' + before[cLock - 1] + ' → ' + c.lock);
-  Logger.log('     ช่องที่กรอกมือไม่ถูกแตะ (WalkIn/ล็อกเสริม/Cancel/Absent/FreeDay)');
+  Logger.log('     Online ล็อก ' + before[col['Online_Lock'] - 1] + ' → ' + c.online.lock +
+             ' · WalkIn ' + before[col['WalkIn_Lock'] - 1] + ' → ' + c.walkin.lock +
+             ' · ไม่มา ' + before[col['Cancel_Lock'] - 1] + ' → ' + c.cancel.lock);
+  Logger.log('     ไม่แตะ: ล็อกเสริม · ตัดไม่มาทำการค้า · FreeDay');
 }
 
 function findCol_(col, re) {
@@ -367,29 +383,58 @@ function verify_(rows, wantDate, cfg) {
   }
   Logger.log('✅ วันที่ตรงกับที่ขอ (' + wantDate + ')');
 
-  // แยกโซนจากตัวอักษรนำหน้ารหัสล็อค — GA-GT อาหาร · GW-GZ เปิดท้าย
-  var z = { st: { rai: 0, lock: 0, elec: 0, tool: 0 }, car: { rai: 0, lock: 0, elec: 0, tool: 0 }, other: 0 };
+  /* แยกโซนจากตัวอักษรนำหน้ารหัสล็อค แล้วแยกสถานะในแต่ละโซนอีกชั้น
+
+     กติกาที่เจ้าของยืนยัน (22 ก.ย. 2569):
+       จองหน้าเคาท์เตอร์  = วอล์กอิน  (นับล็อกจากคอลัมน์ ล็อค เหมือนกัน)
+       Online            = ยอดรวมทั้งหมด − วอล์กอิน   ไม่ใช่นับสถานะ "มาขาย" ตรงๆ
+                           เพราะคนไม่มา/ลา ก็จองออนไลน์มาเหมือนกัน แค่ไม่มาขาย
+       ไม่มาขาย          → Cancel  (ไม่คืนเงิน เงินเข้าเราแล้ว)
+       ลาคืนล็อค         → Absent  (ไม่คืนเงินเหมือนกัน)
+     Cancel/Absent เป็น "ส่วนหนึ่งของ Online" ไม่ได้แยกออกมา
+     เว็บเอาไปลบเองทีหลัง: net = Online_Lock − Cancel_Lock − Absent_Lock
+
+     ทุกตัวต้องแยก Food / Car เพราะเจ้าของต้องรู้ว่าคนไม่มาอยู่โซนไหน */
+  var mkz = function () {
+    return { total: { rai: 0, lock: 0 }, walkin: { rai: 0, lock: 0 },
+             cancel: { rai: 0, lock: 0 }, absent: { rai: 0, lock: 0 }, elec: 0, tool: 0 };
+  };
+  var z = { st: mkz(), car: mkz(), other: 0 };
   var stat = {};
   data.forEach(function (r) {
-    var s = String(r[iStat] || '(ว่าง)'); stat[s] = (stat[s] || 0) + 1;
+    var st = String(r[iStat] || '(ว่าง)'); stat[st] = (stat[st] || 0) + 1;
     var codes = String(r[iLock] || '').split(':').filter(function (x) { return x.trim(); });
     if (!codes.length) return;
     var p = (codes[0].match(/^[A-Za-z]+/) || [''])[0].toUpperCase();
     // กติกาแยกโซนต่างกันต่อสาขา — BG ใช้ 2 ตัวอักษร · BN ใช้ตัวเดียว
     var bucket = cfg.food.test(p) ? 'st' : cfg.car.test(p) ? 'car' : null;
     if (!bucket) { z.other += codes.length; return; }
-    z[bucket].rai += 1;
-    z[bucket].lock += codes.length;
-    z[bucket].elec += num_(r[iElec]);
-    z[bucket].tool += num_(r[iTool]);
+    var b = z[bucket], n = codes.length;
+    b.total.rai += 1; b.total.lock += n;
+    b.elec += num_(r[iElec]); b.tool += num_(r[iTool]);
+    if (st === 'จองหน้าเคาท์เตอร์') { b.walkin.rai += 1; b.walkin.lock += n; }
+    else if (st === 'ไม่มาขาย')      { b.cancel.rai += 1; b.cancel.lock += n; }
+    else if (st === 'ลาคืนล็อค')     { b.absent.rai += 1; b.absent.lock += n; }
+  });
+  // Online = ทั้งหมด − วอล์กอิน
+  ['st', 'car'].forEach(function (k) {
+    z[k].online = { rai: z[k].total.rai - z[k].walkin.rai,
+                    lock: z[k].total.lock - z[k].walkin.lock };
   });
 
   Logger.log('\nสถานะ: ' + Object.keys(stat).map(function (k) { return k + ' ' + stat[k]; }).join(' · '));
   Logger.log('\n──────── ตัวเลขที่ชีตต้องใช้ ────────');
-  Logger.log('ST อาหาร (GA-GT)   ราย ' + z.st.rai + ' · ล็อก ' + z.st.lock + ' · ค่าไฟ ' + z.st.elec + ' · อุปกรณ์ ' + z.st.tool);
-  Logger.log('Car เปิดท้าย (GW-GZ) ราย ' + z.car.rai + ' · ล็อก ' + z.car.lock + ' · ค่าไฟ ' + z.car.elec + ' · อุปกรณ์ ' + z.car.tool);
+  ['st', 'car'].forEach(function (k) {
+    var b = z[k];
+    Logger.log('\n── ' + (k === 'st' ? 'Food' : 'Car') + ' ──');
+    Logger.log('  ทั้งหมด    ราย ' + b.total.rai + ' · ล็อก ' + b.total.lock);
+    Logger.log('  − วอล์กอิน ราย ' + b.walkin.rai + ' · ล็อก ' + b.walkin.lock);
+    Logger.log('  = Online   ราย ' + b.online.rai + ' · ล็อก ' + b.online.lock);
+    Logger.log('  ไม่มา      ราย ' + b.cancel.rai + ' · ล็อก ' + b.cancel.lock);
+    Logger.log('  ลา         ราย ' + b.absent.rai + ' · ล็อก ' + b.absent.lock);
+    Logger.log('  ค่าไฟ ' + b.elec + ' · อุปกรณ์ ' + b.tool);
+  });
   if (z.other) Logger.log('⚠️ มีล็อค ' + z.other + ' ตัวที่รหัสไม่เข้าทั้ง 2 โซน — ต้องดูว่าเป็นอะไร');
-  Logger.log('รวม ราย ' + (z.st.rai + z.car.rai) + ' · ล็อก ' + (z.st.lock + z.car.lock));
   return z;
 }
 
