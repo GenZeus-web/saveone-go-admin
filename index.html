@@ -308,6 +308,17 @@
       <div id="revSection">
         <div class="kpi-sec-title">💰 รายรับ</div>
         <div class="kpi-row">
+          <div class="kpi blue kpi-hero">
+            <div class="kpi-hero-tag">ตัวเลขสรุป</div>
+            <div class="kpi-lbl">รายรับสุทธิรวม (ST+Non)</div>
+            <div class="kpi-val" id="k-revtotal">—</div>
+            <div class="kpi-sub">บาท</div>
+          </div>
+          <div class="kpi green">
+            <div class="kpi-lbl">รายรับสุทธิ ST</div>
+            <div class="kpi-val" id="k-revst">—</div>
+            <div class="kpi-sub">บาท</div>
+          </div>
           <div class="kpi gold">
             <div class="kpi-lbl">รายรับก่อนหักส่วนลด</div>
             <div class="kpi-val" id="k-revbefore">—</div>
@@ -317,17 +328,6 @@
             <div class="kpi-lbl">ส่วนลดวันฝน (FreeDay)</div>
             <div class="kpi-val" id="k-disc">—</div>
             <div class="kpi-sub" id="k-disc-sub">บาท</div>
-          </div>
-          <div class="kpi green">
-            <div class="kpi-lbl">รายรับสุทธิ ST</div>
-            <div class="kpi-val" id="k-revst">—</div>
-            <div class="kpi-sub">บาท</div>
-          </div>
-          <div class="kpi blue kpi-hero">
-            <div class="kpi-hero-tag">ตัวเลขสรุป</div>
-            <div class="kpi-lbl">รายรับสุทธิรวม (ST+Non)</div>
-            <div class="kpi-val" id="k-revtotal">—</div>
-            <div class="kpi-sub">บาท</div>
           </div>
           <div class="kpi orange" id="k-elec-card">
             <div class="kpi-lbl">ค่าไฟ (L1+L2)</div>
@@ -341,25 +341,14 @@
       <div id="statsSection">
         <div class="kpi-sec-title">📊 สถิติการจอง</div>
         <div class="kpi-row">
-          <div class="kpi orange">
-            <div class="kpi-lbl">จำนวนวันฝน</div>
-            <div class="kpi-val" id="k-fdays">—</div>
-            <div class="kpi-sub">วัน FreeDay</div>
-          </div>
-          <div class="kpi red">
-            <div class="kpi-lbl">ลา (ล็อก)</div>
-            <div class="kpi-val" id="k-absent">—</div>
-            <div class="kpi-sub">Absent Lock</div>
-          </div>
-          <div class="kpi red">
-            <div class="kpi-lbl">ไม่มา (ล็อก)</div>
-            <div class="kpi-val" id="k-cancel">—</div>
-            <div class="kpi-sub">Cancel Lock</div>
-          </div>
-          <div class="kpi purple">
-            <div class="kpi-lbl">ล็อกเสริม</div>
-            <div class="kpi-val" id="k-extra">—</div>
-            <div class="kpi-sub">Lock</div>
+          <div class="kpi gold">
+            <div class="kpi-lbl">จำนวนล็อก <span style="color:var(--ink3);font-size:9px">/ เฉลี่ย/วัน ↓</span></div>
+            <div class="kpi-val" id="k-lock">—</div>
+            <div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:rgba(20,15,0,.5);border:1px solid rgba(240,165,0,.4);padding:5px 12px;border-radius:8px;">
+              <span style="font-size:11px;color:rgba(255,255,255,.5)">เฉลี่ย/วัน</span>
+              <span id="k-lock-sub" style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#ffd166;">—</span>
+              <span style="font-size:11px;color:rgba(255,255,255,.5)">ล็อก</span>
+            </div>
           </div>
           <div class="kpi green">
             <div class="kpi-lbl">จำนวนราย <span style="color:var(--ink3);font-size:9px">/ เฉลี่ย/วัน ↓</span></div>
@@ -370,14 +359,25 @@
               <span style="font-size:11px;color:rgba(255,255,255,.5)">ราย</span>
             </div>
           </div>
-          <div class="kpi gold">
-            <div class="kpi-lbl">จำนวนล็อก <span style="color:var(--ink3);font-size:9px">/ เฉลี่ย/วัน ↓</span></div>
-            <div class="kpi-val" id="k-lock">—</div>
-            <div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:rgba(20,15,0,.5);border:1px solid rgba(240,165,0,.4);padding:5px 12px;border-radius:8px;">
-              <span style="font-size:11px;color:rgba(255,255,255,.5)">เฉลี่ย/วัน</span>
-              <span id="k-lock-sub" style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#ffd166;">—</span>
-              <span style="font-size:11px;color:rgba(255,255,255,.5)">ล็อก</span>
-            </div>
+          <div class="kpi purple">
+            <div class="kpi-lbl">ล็อกเสริม</div>
+            <div class="kpi-val" id="k-extra">—</div>
+            <div class="kpi-sub">Lock</div>
+          </div>
+          <div class="kpi red">
+            <div class="kpi-lbl">ไม่มา (ล็อก)</div>
+            <div class="kpi-val" id="k-cancel">—</div>
+            <div class="kpi-sub">Cancel Lock</div>
+          </div>
+          <div class="kpi red">
+            <div class="kpi-lbl">ลา (ล็อก)</div>
+            <div class="kpi-val" id="k-absent">—</div>
+            <div class="kpi-sub">Absent Lock</div>
+          </div>
+          <div class="kpi orange">
+            <div class="kpi-lbl">จำนวนวันฝน</div>
+            <div class="kpi-val" id="k-fdays">—</div>
+            <div class="kpi-sub">วัน FreeDay</div>
           </div>
         </div>
       </div><!-- /statsSection -->
