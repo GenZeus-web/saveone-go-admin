@@ -25,7 +25,6 @@
 
 var BASE   = 'https://services.saveone.co.th/SaveoneGoAdmin/';
 var SIGNIN = BASE + 'Signin.aspx';
-var REPORT = BASE + 'ReportRefundZone6_1.aspx';
 
 var F = {                              // ชื่อช่องบนหน้ารายงาน (สำรวจมาแล้ว)
   start  : 'ctl00$CONTENTContentPlaceHolder$StartDateTextBox',
@@ -44,12 +43,31 @@ var FORBIDDEN = ['RefundButton', 'Type0Button', 'Type1Button', 'Type2Button', 'O
    ตั้ง true ไว้ก่อน ให้ดูของจริงก่อนว่าถูกต้อง แล้วค่อยเปลี่ยนเอง */
 var DRY_RUN = true;
 
-/* ชีตปลายทาง — ฟอร์แมตเดียวกับที่สคริปต์คำนวณเดิมใช้
-   id ของไฟล์ชีตอ่านจาก Script Properties (SG_SHEET_BG / SG_SHEET_BN)
-   ไม่เขียนลงโค้ด เพราะ repo นี้เป็น public */
+/* ── ตั้งค่าต่อสาขา ──
+   โค้ดไฟล์นี้ใช้ได้ทั้ง 2 สาขา วางไว้ใน Apps Script ของแต่ละชีตได้เลย
+   ต่างกันแค่ Script Properties (SG_USER_* / SG_PASS_* / SG_SHEET_*)
+   ทำแบบนี้แทนการเขียนโค้ดแยก 2 เวอร์ชัน เพราะแยกแล้วแก้บั๊กทีหลังจะลืมแก้อีกฝั่ง
+
+   ⚠️ กติกาแยกโซนไม่เหมือนกัน (ยืนยันจาก 5_revenue-calculator.md + หน้าเว็บ)
+      BG ใช้ 2 ตัวอักษร: GA-GT อาหาร · GW-GZ เปิดท้าย
+      BN ใช้ตัวเดียว:    A-J  อาหาร · U-Z  เปิดท้าย
+      ถ้าเอา regex ของ BG ไปใช้กับ BN จะไม่เข้าทั้งคู่ = ได้ 0 ทุกโซน
+
+   id ของไฟล์ชีตอ่านจาก Script Properties ไม่เขียนลงโค้ด (repo นี้ public) */
 var SHEETS = {
-  BG: { food: 'Report SaveOne Go', car: 'Report-Car Boot',   name: 'ประตูกรุงเทพ' },
-  BN: { food: 'Report Bangna',     car: 'Bangna - Car Boot', name: 'บางนา' }
+  BG: {
+    name: 'ประตูกรุงเทพ',
+    report: 'ReportRefundZone6_1.aspx',      // ยืนยันแล้ว
+    food: /^G[A-T]$/, car: /^G[W-Z]$/,
+    sheetFood: 'Report SaveOne Go', sheetCar: 'Report-Car Boot'
+  },
+  BN: {
+    name: 'บางนา',
+    report: '',                              // ⬅ ยังไม่รู้ — BN อาจเป็นโซนอื่น ไม่ใช่ Zone6
+                                             //    รัน exploreBN ด้วยบัญชี BN เพื่อหา
+    food: /^[A-J]$/, car: /^[U-Z]$/,
+    sheetFood: 'Report Bangna', sheetCar: 'Bangna - Car Boot'
+  }
 };
 
 // ── จุดเริ่ม ──
@@ -76,7 +94,7 @@ function showHeaders_(branch) {
   var ss = SpreadsheetApp.openById(id);
   Logger.log('ไฟล์ชีต: ' + ss.getName());
   Logger.log('ชีตที่มีทั้งหมด: ' + ss.getSheets().map(function (s) { return s.getName(); }).join(' · '));
-  [cfg.food, cfg.car].forEach(function (nm) {
+  [cfg.sheetFood, cfg.sheetCar].forEach(function (nm) {
     var sh = ss.getSheetByName(nm);
     Logger.log('\n──── ' + nm + ' ────');
     if (!sh) { Logger.log('❌ ไม่เจอชีตนี้'); return; }
@@ -96,6 +114,14 @@ function colName_(i) { var s = ''; i++; while (i > 0) { var m = (i - 1) % 26; s 
  * @param {Date=}  when    วันขายที่ต้องการ (null = วันนี้)
  */
 function fetchBranch_(branch, when) {
+  var cfg = SHEETS[branch];
+  if (!cfg) { Logger.log('❌ ไม่รู้จักสาขา ' + branch); return; }
+  if (!cfg.report) {
+    Logger.log('❌ ยังไม่รู้ URL หน้ารายงานของสาขา ' + branch);
+    Logger.log('   หน้าของ BG ชื่อ ReportRefundZone6_1.aspx (Zone6) — BN น่าจะเป็นโซนอื่น');
+    Logger.log('   → รัน exploreBN (ใน Explore.gs) ด้วยบัญชี BN เพื่อหา แล้วเติมที่ SHEETS.BN.report');
+    return;
+  }
   var d = when || new Date();
   var ceStr = fmtCE_(d);                       // 22/09/2026 — ใช้ตรวจไฟล์ที่ได้
   var beStr = fmtBE_(d);                       // 22/09/2569 — เว็บรับแบบนี้
@@ -114,6 +140,7 @@ function fetchBranch_(branch, when) {
   Logger.log('✅ login ผ่าน');
 
   // 1) เปิดหน้ารายงาน เก็บ VIEWSTATE
+  var REPORT = BASE + cfg.report;
   var r1 = UrlFetchApp.fetch(REPORT, { headers: { Cookie: cookie }, muteHttpExceptions: true });
   if (r1.getResponseCode() !== 200) { Logger.log('❌ เปิดหน้ารายงานไม่ได้ HTTP ' + r1.getResponseCode()); return; }
   Logger.log('✅ เปิดหน้ารายงานแล้ว');
@@ -158,7 +185,7 @@ function fetchBranch_(branch, when) {
   if (!rows.length) { Logger.log('❌ แกะไฟล์แล้วไม่เจอข้อมูล'); return; }
   Logger.log('✅ แกะไฟล์ได้ ' + (rows.length - 1) + ' แถวข้อมูล');
 
-  var z = verify_(rows, ceStr);
+  var z = verify_(rows, ceStr, cfg);
   if (!z) return;                       // วันที่ไม่ตรง — verify_ แจ้งแล้ว
   writeSheet_(branch, ceStr, z);
 }
@@ -174,8 +201,8 @@ function writeSheet_(branch, dateStr, z) {
 
   var mk = function (c) { return [dateStr, c.rai, c.lock, 0,0,0,0,0,0,0,0,0,0,0, c.elec, c.tool, cfg.name]; };
   var rowFood = mk(z.st), rowCar = mk(z.car);
-  Logger.log(cfg.food + ' ← ' + JSON.stringify(rowFood));
-  Logger.log(cfg.car  + ' ← ' + JSON.stringify(rowCar));
+  Logger.log(cfg.sheetFood + ' ← ' + JSON.stringify(rowFood));
+  Logger.log(cfg.sheetCar  + ' ← ' + JSON.stringify(rowCar));
 
   if (DRY_RUN) {
     Logger.log('\n🟡 โหมดซ้อม — ยังไม่ได้เขียนจริง');
@@ -188,7 +215,7 @@ function writeSheet_(branch, dateStr, z) {
   }
 
   var ss = SpreadsheetApp.openById(id);
-  [[cfg.food, rowFood], [cfg.car, rowCar]].forEach(function (pair) {
+  [[cfg.sheetFood, rowFood], [cfg.sheetCar, rowCar]].forEach(function (pair) {
     var sh = ss.getSheetByName(pair[0]);
     if (!sh) { Logger.log('❌ ไม่เจอชีตชื่อ "' + pair[0] + '"'); return; }
     // กันเขียนซ้ำ — สำคัญมากเมื่อตั้งเวลารันอัตโนมัติ เผลอรัน 2 รอบยอดจะเบิ้ล
@@ -211,7 +238,7 @@ function hasDate_(sheet, dateStr) {
 }
 
 /** ตรวจว่าไฟล์ที่ได้ถูกวัน ถูกโซน แล้วสรุปตัวเลขที่ชีตต้องใช้ */
-function verify_(rows, wantDate) {
+function verify_(rows, wantDate, cfg) {
   var H = rows[0], data = rows.slice(1);
   var iDate = H.indexOf('วันที่ขาย'), iLock = H.indexOf('ล็อค');
   var iElec = H.indexOf('ค่าไฟฟ้า'), iTool = H.indexOf('ค่าอุปกรณ์');
@@ -238,7 +265,8 @@ function verify_(rows, wantDate) {
     var codes = String(r[iLock] || '').split(':').filter(function (x) { return x.trim(); });
     if (!codes.length) return;
     var p = (codes[0].match(/^[A-Za-z]+/) || [''])[0].toUpperCase();
-    var bucket = /^G[A-T]$/.test(p) ? 'st' : /^G[W-Z]$/.test(p) ? 'car' : null;
+    // กติกาแยกโซนต่างกันต่อสาขา — BG ใช้ 2 ตัวอักษร · BN ใช้ตัวเดียว
+    var bucket = cfg.food.test(p) ? 'st' : cfg.car.test(p) ? 'car' : null;
     if (!bucket) { z.other += codes.length; return; }
     z[bucket].rai += 1;
     z[bucket].lock += codes.length;
