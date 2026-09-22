@@ -38,9 +38,58 @@ var F = {                              // ชื่อช่องบนหน�
 /** ชื่อปุ่มที่ห้ามปรากฏใน payload เด็ดขาด — ทุกตัวสั่งคืนเงินจริง */
 var FORBIDDEN = ['RefundButton', 'Type0Button', 'Type1Button', 'Type2Button', 'OnlyLogeAmountButton'];
 
+/* ── โหมดซ้อม ──
+   true  = แสดงว่า "จะ" เขียนอะไรลงชีต แต่ยังไม่เขียนจริง
+   false = เขียนจริง
+   ตั้ง true ไว้ก่อน ให้ดูของจริงก่อนว่าถูกต้อง แล้วค่อยเปลี่ยนเอง */
+var DRY_RUN = true;
+
+/* ชีตปลายทาง — ฟอร์แมตเดียวกับที่สคริปต์คำนวณเดิมใช้
+   id ของไฟล์ชีตอ่านจาก Script Properties (SG_SHEET_BG / SG_SHEET_BN)
+   ไม่เขียนลงโค้ด เพราะ repo นี้เป็น public */
+var SHEETS = {
+  BG: { food: 'Report SaveOne Go', car: 'Report-Car Boot',   name: 'ประตูกรุงเทพ' },
+  BN: { food: 'Report Bangna',     car: 'Bangna - Car Boot', name: 'บางนา' }
+};
+
 // ── จุดเริ่ม ──
 function fetchBG() { fetchBranch_('BG', null); }
 function fetchBN() { fetchBranch_('BN', null); }
+
+/**
+ * อ่านหัวคอลัมน์ของชีตปลายทาง — รันก่อนเปิดโหมดเขียนจริง
+ * เว็บอ่านชีตด้วย "ชื่อหัวคอลัมน์" (Online_Lock, Cancel_Lock, …) ไม่ใช่ตำแหน่ง
+ * ต้องเห็นของจริงก่อนถึงจะแมปได้ถูก ไม่งั้นเขียนผิดช่องแล้วยอดเพี้ยนเงียบๆ
+ * ต้องตั้ง SG_SHEET_BG (id ของไฟล์ชีต) ใน Script Properties ก่อน
+ */
+function showSheetHeadersBG() { showHeaders_('BG'); }
+function showSheetHeadersBN() { showHeaders_('BN'); }
+
+function showHeaders_(branch) {
+  var cfg = SHEETS[branch];
+  var id = PropertiesService.getScriptProperties().getProperty('SG_SHEET_' + branch);
+  if (!id) {
+    Logger.log('❌ ยังไม่ได้ตั้ง SG_SHEET_' + branch + ' ใน Script Properties');
+    Logger.log('   ค่าคือ id ของไฟล์ชีต — ดูจาก URL: docs.google.com/spreadsheets/d/<ตรงนี้>/edit');
+    return;
+  }
+  var ss = SpreadsheetApp.openById(id);
+  Logger.log('ไฟล์ชีต: ' + ss.getName());
+  Logger.log('ชีตที่มีทั้งหมด: ' + ss.getSheets().map(function (s) { return s.getName(); }).join(' · '));
+  [cfg.food, cfg.car].forEach(function (nm) {
+    var sh = ss.getSheetByName(nm);
+    Logger.log('\n──── ' + nm + ' ────');
+    if (!sh) { Logger.log('❌ ไม่เจอชีตนี้'); return; }
+    var lastCol = sh.getLastColumn(), lastRow = sh.getLastRow();
+    var head = sh.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+    head.forEach(function (h, i) { Logger.log('  ' + colName_(i) + ' = ' + (h || '(ว่าง)')); });
+    if (lastRow > 1) {
+      var last = sh.getRange(lastRow, 1, 1, lastCol).getDisplayValues()[0];
+      Logger.log('  แถวล่าสุด (แถว ' + lastRow + '): ' + JSON.stringify(last));
+    }
+  });
+}
+function colName_(i) { var s = ''; i++; while (i > 0) { var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = (i - m - 1) / 26; } return s; }
 
 /**
  * @param {string} branch  'BG' | 'BN'
@@ -108,7 +157,57 @@ function fetchBranch_(branch, when) {
   var rows = parseXlsx_(blob);
   if (!rows.length) { Logger.log('❌ แกะไฟล์แล้วไม่เจอข้อมูล'); return; }
   Logger.log('✅ แกะไฟล์ได้ ' + (rows.length - 1) + ' แถวข้อมูล');
-  verify_(rows, ceStr);
+
+  var z = verify_(rows, ceStr);
+  if (!z) return;                       // วันที่ไม่ตรง — verify_ แจ้งแล้ว
+  writeSheet_(branch, ceStr, z);
+}
+
+/** เขียนลงชีต ฟอร์แมตเดียวกับ saveDataByBranch ของสคริปต์คำนวณเดิมเป๊ะ
+ *  [วันที่, ราย, ล็อก, 0×11, ค่าไฟ, อุปกรณ์, สาขา]  ← 17 ช่อง
+ *  11 ช่องกลางเว้นไว้ให้กรอกมือทีหลัง (วอล์กอิน/ไม่มา/ลา/ล็อกเสริม/วันฝน) */
+function writeSheet_(branch, dateStr, z) {
+  var cfg = SHEETS[branch];
+  var id = PropertiesService.getScriptProperties().getProperty('SG_SHEET_' + branch);
+  Logger.log('\n──────── บันทึกลงชีต ────────');
+  if (!cfg) { Logger.log('❌ ไม่รู้จักสาขา ' + branch); return; }
+
+  var mk = function (c) { return [dateStr, c.rai, c.lock, 0,0,0,0,0,0,0,0,0,0,0, c.elec, c.tool, cfg.name]; };
+  var rowFood = mk(z.st), rowCar = mk(z.car);
+  Logger.log(cfg.food + ' ← ' + JSON.stringify(rowFood));
+  Logger.log(cfg.car  + ' ← ' + JSON.stringify(rowCar));
+
+  if (DRY_RUN) {
+    Logger.log('\n🟡 โหมดซ้อม — ยังไม่ได้เขียนจริง');
+    Logger.log('   ถ้าตัวเลขถูกต้องแล้ว แก้บรรทัด  var DRY_RUN = true;  เป็น false');
+    return;
+  }
+  if (!id) {
+    Logger.log('❌ ยังไม่ได้ตั้ง SG_SHEET_' + branch + ' (id ของไฟล์ชีต) ใน Script Properties');
+    return;
+  }
+
+  var ss = SpreadsheetApp.openById(id);
+  [[cfg.food, rowFood], [cfg.car, rowCar]].forEach(function (pair) {
+    var sh = ss.getSheetByName(pair[0]);
+    if (!sh) { Logger.log('❌ ไม่เจอชีตชื่อ "' + pair[0] + '"'); return; }
+    // กันเขียนซ้ำ — สำคัญมากเมื่อตั้งเวลารันอัตโนมัติ เผลอรัน 2 รอบยอดจะเบิ้ล
+    if (hasDate_(sh, dateStr)) {
+      Logger.log('⏭ ข้าม "' + pair[0] + '" — มีแถววันที่ ' + dateStr + ' อยู่แล้ว');
+      return;
+    }
+    sh.appendRow(pair[1]);
+    Logger.log('✅ เขียนลง "' + pair[0] + '" แล้ว');
+  });
+}
+
+/** มีแถวของวันที่นี้อยู่แล้วไหม (ดูคอลัมน์ A) */
+function hasDate_(sheet, dateStr) {
+  var n = sheet.getLastRow();
+  if (n < 1) return false;
+  var col = sheet.getRange(1, 1, n, 1).getDisplayValues();
+  for (var i = 0; i < col.length; i++) if (String(col[i][0]).trim() === dateStr) return true;
+  return false;
 }
 
 /** ตรวจว่าไฟล์ที่ได้ถูกวัน ถูกโซน แล้วสรุปตัวเลขที่ชีตต้องใช้ */
@@ -127,7 +226,7 @@ function verify_(rows, wantDate) {
   if (keys.length !== 1 || keys[0] !== wantDate) {
     Logger.log('🔴 หยุด — ขอวันที่ ' + wantDate + ' แต่ไฟล์เป็น ' + keys.join(','));
     Logger.log('   อย่าเอาข้อมูลนี้ไปใช้ ต้องแก้ก่อน');
-    return false;
+    return null;
   }
   Logger.log('✅ วันที่ตรงกับที่ขอ (' + wantDate + ')');
 
@@ -153,8 +252,7 @@ function verify_(rows, wantDate) {
   Logger.log('Car เปิดท้าย (GW-GZ) ราย ' + z.car.rai + ' · ล็อก ' + z.car.lock + ' · ค่าไฟ ' + z.car.elec + ' · อุปกรณ์ ' + z.car.tool);
   if (z.other) Logger.log('⚠️ มีล็อค ' + z.other + ' ตัวที่รหัสไม่เข้าทั้ง 2 โซน — ต้องดูว่าเป็นอะไร');
   Logger.log('รวม ราย ' + (z.st.rai + z.car.rai) + ' · ล็อก ' + (z.st.lock + z.car.lock));
-  Logger.log('\n👉 เทียบตัวเลขนี้กับที่เห็นบนเว็บ ถ้าตรง บอกได้เลย เดี๋ยวต่อส่วนเขียนลงชีต');
-  return true;
+  return z;
 }
 
 /** แกะ .xlsx (เป็น zip) อ่าน sheet แรกออกมาเป็นตาราง — ไม่ต้องใช้สิทธิ์ Drive */
