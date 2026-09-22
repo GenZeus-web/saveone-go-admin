@@ -104,18 +104,108 @@ function fetchBranch_(branch, when) {
     return;
   }
 
-  // 4) เก็บลง Drive แล้วให้คนตรวจ — ยังไม่เขียนลงชีตในรอบนี้
-  var name = 'SaveoneGo_' + branch + '_' + ceStr.replace(/\//g, '-') + '.xlsx';
-  var file = DriveApp.createFile(blob.setName(name));
-  Logger.log('✅ บันทึกไฟล์แล้ว: ' + name);
-  Logger.log('   ลิงก์: ' + file.getUrl());
-  Logger.log('');
-  Logger.log('👉 เปิดไฟล์ตรวจ 3 อย่าง:');
-  Logger.log('   1. คอลัมน์ "วันที่ขาย" เป็น ' + ceStr + ' ทุกแถวไหม');
-  Logger.log('   2. มีทั้งล็อค GA-GT (อาหาร) และ GW-GZ (เปิดท้าย) ไหม');
-  Logger.log('   3. จำนวนแถวใกล้เคียงกับที่เห็นบนเว็บไหม');
-  Logger.log('   ถ้าครบ 3 ข้อ บอกได้เลย เดี๋ยวต่อส่วนเขียนลงชีตให้');
+  // 4) แกะไฟล์อ่านในหน่วยความจำแล้วตรวจ — ไม่ต้องใช้สิทธิ์ Drive
+  var rows = parseXlsx_(blob);
+  if (!rows.length) { Logger.log('❌ แกะไฟล์แล้วไม่เจอข้อมูล'); return; }
+  Logger.log('✅ แกะไฟล์ได้ ' + (rows.length - 1) + ' แถวข้อมูล');
+  verify_(rows, ceStr);
 }
+
+/** ตรวจว่าไฟล์ที่ได้ถูกวัน ถูกโซน แล้วสรุปตัวเลขที่ชีตต้องใช้ */
+function verify_(rows, wantDate) {
+  var H = rows[0], data = rows.slice(1);
+  var iDate = H.indexOf('วันที่ขาย'), iLock = H.indexOf('ล็อค');
+  var iElec = H.indexOf('ค่าไฟฟ้า'), iTool = H.indexOf('ค่าอุปกรณ์');
+  var iStat = H.indexOf('มาขาย/ลา/ไม่มาขาย');
+  Logger.log('\n──────── ตรวจไฟล์ ────────');
+
+  // ด่านวันที่ — สำคัญที่สุด กัน VIEWSTATE เพี้ยนแล้วได้ข้อมูลผิดวันเงียบๆ
+  var dates = {};
+  data.forEach(function (r) { var d = String(r[iDate] || '').slice(0, 10); if (d) dates[d] = (dates[d] || 0) + 1; });
+  var keys = Object.keys(dates);
+  Logger.log('วันที่ขายในไฟล์: ' + keys.map(function (k) { return k + ' (' + dates[k] + ' แถว)'; }).join(' · '));
+  if (keys.length !== 1 || keys[0] !== wantDate) {
+    Logger.log('🔴 หยุด — ขอวันที่ ' + wantDate + ' แต่ไฟล์เป็น ' + keys.join(','));
+    Logger.log('   อย่าเอาข้อมูลนี้ไปใช้ ต้องแก้ก่อน');
+    return false;
+  }
+  Logger.log('✅ วันที่ตรงกับที่ขอ (' + wantDate + ')');
+
+  // แยกโซนจากตัวอักษรนำหน้ารหัสล็อค — GA-GT อาหาร · GW-GZ เปิดท้าย
+  var z = { st: { rai: 0, lock: 0, elec: 0, tool: 0 }, car: { rai: 0, lock: 0, elec: 0, tool: 0 }, other: 0 };
+  var stat = {};
+  data.forEach(function (r) {
+    var s = String(r[iStat] || '(ว่าง)'); stat[s] = (stat[s] || 0) + 1;
+    var codes = String(r[iLock] || '').split(':').filter(function (x) { return x.trim(); });
+    if (!codes.length) return;
+    var p = (codes[0].match(/^[A-Za-z]+/) || [''])[0].toUpperCase();
+    var bucket = /^G[A-T]$/.test(p) ? 'st' : /^G[W-Z]$/.test(p) ? 'car' : null;
+    if (!bucket) { z.other += codes.length; return; }
+    z[bucket].rai += 1;
+    z[bucket].lock += codes.length;
+    z[bucket].elec += num_(r[iElec]);
+    z[bucket].tool += num_(r[iTool]);
+  });
+
+  Logger.log('\nสถานะ: ' + Object.keys(stat).map(function (k) { return k + ' ' + stat[k]; }).join(' · '));
+  Logger.log('\n──────── ตัวเลขที่ชีตต้องใช้ ────────');
+  Logger.log('ST อาหาร (GA-GT)   ราย ' + z.st.rai + ' · ล็อก ' + z.st.lock + ' · ค่าไฟ ' + z.st.elec + ' · อุปกรณ์ ' + z.st.tool);
+  Logger.log('Car เปิดท้าย (GW-GZ) ราย ' + z.car.rai + ' · ล็อก ' + z.car.lock + ' · ค่าไฟ ' + z.car.elec + ' · อุปกรณ์ ' + z.car.tool);
+  if (z.other) Logger.log('⚠️ มีล็อค ' + z.other + ' ตัวที่รหัสไม่เข้าทั้ง 2 โซน — ต้องดูว่าเป็นอะไร');
+  Logger.log('รวม ราย ' + (z.st.rai + z.car.rai) + ' · ล็อก ' + (z.st.lock + z.car.lock));
+  Logger.log('\n👉 เทียบตัวเลขนี้กับที่เห็นบนเว็บ ถ้าตรง บอกได้เลย เดี๋ยวต่อส่วนเขียนลงชีต');
+  return true;
+}
+
+/** แกะ .xlsx (เป็น zip) อ่าน sheet แรกออกมาเป็นตาราง — ไม่ต้องใช้สิทธิ์ Drive */
+function parseXlsx_(blob) {
+  var parts = Utilities.unzip(blob.setContentType('application/zip'));
+  var shared = '', sheet = '';
+  parts.forEach(function (f) {
+    var n = f.getName();
+    if (n.indexOf('sharedStrings.xml') !== -1) shared = f.getDataAsString();
+    else if (n.indexOf('worksheets/sheet1.xml') !== -1) sheet = f.getDataAsString();
+  });
+  if (!sheet) return [];
+
+  // ตารางคำที่ Excel เก็บแยกไว้ (cell ที่ t="s" อ้างด้วยเลขลำดับ)
+  var SS = [];
+  String(shared).split('<si>').slice(1).forEach(function (chunk) {
+    var txt = '', m, re = /<t[^>]*>([\s\S]*?)<\/t>/g;
+    while ((m = re.exec(chunk)) !== null) txt += m[1];
+    SS.push(unesc_(txt));
+  });
+
+  var out = [], rowRe = /<row[^>]*>([\s\S]*?)<\/row>/g, rm;
+  while ((rm = rowRe.exec(sheet)) !== null) {
+    /* ⚠️ ลำดับใน regex นี้สำคัญ: ต้องลอง <c .../> (เซลล์ว่างปิดในตัว) ก่อน
+       ถ้าเขียนเป็น /<c([^>]*)>([\s\S]*?)<\/c>|<c([^>]*)\/>/ แบบตรงๆ
+       ตัว [^>]* จะกิน "/" ของ /> เข้าไปด้วย แล้ว <\/c> ไปเจอของเซลล์ถัดไป
+       = กลืนเซลล์ที่อยู่หลังเซลล์ว่างหายไป
+       ไฟล์จริงมีเซลล์ว่างแบบนี้ 555 จุด ใน 190 จาก 628 แถว
+       บั๊กนี้ทำให้ล็อกหายไป 421 จาก 1,562 (27%) โดยไม่มี error ให้เห็น */
+    var cells = [], cm, cRe = /<c([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;
+    while ((cm = cRe.exec(rm[1])) !== null) {
+      var attr = cm[1] || '', body = cm[2] || '';
+      var ref = (attr.match(/r="([A-Z]+)/) || [])[1] || '';
+      var idx = colIdx_(ref);
+      var isStr = /t="s"/.test(attr);
+      var v = (body.match(/<v>([\s\S]*?)<\/v>/) || [])[1];
+      var val = v === undefined ? '' : (isStr ? (SS[parseInt(v, 10)] || '') : v);
+      if (val === '' && /t="inlineStr"/.test(attr)) val = unesc_((body.match(/<t[^>]*>([\s\S]*?)<\/t>/) || [])[1] || '');
+      while (cells.length < idx) cells.push('');
+      cells[idx] = val;
+    }
+    out.push(cells);
+  }
+  return out;
+}
+function colIdx_(ref) { var n = 0; for (var i = 0; i < ref.length; i++) n = n * 26 + (ref.charCodeAt(i) - 64); return n - 1; }
+function unesc_(s) {
+  return String(s).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+                  .replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/_x000D_/g, '');
+}
+function num_(x) { var n = parseFloat(String(x || '').replace(/,/g, '')); return isNaN(n) ? 0 : n; }
 
 /** ด่านกันพลาด — ห้ามมีชื่อปุ่มคืนเงินใน payload เด็ดขาด */
 function assertSafe_(payload) {
