@@ -20,6 +20,12 @@
  *
  *  โค้ดนี้จึงส่งได้เฉพาะ ExportTable1Button และมีด่าน assertSafe_()
  *  ตรวจ payload ก่อนยิงทุกครั้ง — ห้ามถอดด่านนี้ออกไม่ว่ากรณีใด
+ *
+ *  ด่านทั้งหมด (ผิดข้อเดียว = throw ไม่ยิงต่อ):
+ *    1) blacklist ชื่อปุ่มคืนเงิน (FORBIDDEN)
+ *    2) whitelist ช่องที่ส่งได้ต่อขั้นตอน (ALLOW) + ตรวจค่า + __EVENTTARGET ต้องว่าง
+ *    3) ลายนิ้วมือหน้าเว็บ — หน้าเปลี่ยนจากที่อนุมัติ = หยุด (checkPage_)
+ *  ติดตั้งครั้งแรก / หลังเว็บเปลี่ยน: ตรวจหน้าเว็บด้วยตา แล้วรัน approvePageBG
  *  ══════════════════════════════════════
  */
 
@@ -36,6 +42,25 @@ var F = {                              // ชื่อช่องบนหน�
 
 /** ชื่อปุ่มที่ห้ามปรากฏใน payload เด็ดขาด — ทุกตัวสั่งคืนเงินจริง */
 var FORBIDDEN = ['RefundButton', 'Type0Button', 'Type1Button', 'Type2Button', 'OnlyLogeAmountButton'];
+
+/* ── ด่านที่ 2: whitelist ──
+   FORBIDDEN ข้างบนคือ blacklist — กันได้แค่ชื่อที่รู้จัก ถ้าโปรแกรมเมอร์เปลี่ยนชื่อปุ่มคืนเงิน
+   blacklist จะไม่รู้ตัว ด่านนี้กลับด้าน: payload ส่งได้ "เฉพาะช่องในรายการนี้" อย่างอื่นหยุดหมด */
+var HIDDEN = ['__VIEWSTATE', '__VIEWSTATEGENERATOR', '__EVENTVALIDATION', '__EVENTTARGET', '__EVENTARGUMENT'];
+var ALLOW = {
+  signin: HIDDEN.concat(['UsernameTextBox', 'PasswordTextBox', 'SignInButton']),
+  search: HIDDEN.concat([F.start, F.effect, F.search]),
+  export: HIDDEN.concat([F.start, F.effect, F.export1])
+};
+/** ปุ่มที่ต้องเจอบนหน้า พร้อมข้อความบนปุ่มตรงเป๊ะ — ถ้าข้อความเปลี่ยน = ปุ่มอาจถูกสลับหน้าที่ */
+var REQUIRED_BUTTONS = {};
+REQUIRED_BUTTONS[F.search]  = 'ค้นหา';
+REQUIRED_BUTTONS[F.export1] = 'Export (เรียงเลขล็อค)';
+
+/* ── ด่านที่ 3: ลายนิ้วมือหน้าเว็บ ──
+   ก่อนยิงทุกครั้ง อ่านทุกช่อง/ปุ่มบนหน้า (ชื่อ · id · ชนิด · ข้อความบนปุ่ม · ปลายทาง postback)
+   แล้วเทียบกับชุดที่เจ้าของอนุมัติไว้ (approvePageBG) — ต่างกันแม้ตัวเดียว = throw หยุดทันที
+   ไม่ยิงอะไรต่อ · Apps Script จะนับเป็น "ล้มเหลว" และส่งอีเมลแจ้งเจ้าของทริกเกอร์เอง */
 
 /* ── โหมดซ้อม ──
    true  = แสดงว่า "จะ" เขียนอะไรลงชีต แต่ยังไม่เขียนจริง
@@ -189,7 +214,7 @@ function fetchBranch_(branch, when) {
   if (!cfg.report) {
     Logger.log('❌ ยังไม่รู้ URL หน้ารายงานของสาขา ' + branch);
     Logger.log('   หน้าของ BG ชื่อ ReportRefundZone6_1.aspx (Zone6) — BN น่าจะเป็นโซนอื่น');
-    Logger.log('   → รัน exploreBN (ใน Explore.gs) ด้วยบัญชี BN เพื่อหา แล้วเติมที่ SHEETS.BN.report');
+    Logger.log('   → เปิดหน้ารายงานด้วยบัญชี BN ในเบราว์เซอร์ ก๊อป URL มาเติมที่ SHEETS.BN.report');
     return;
   }
   var d = when || new Date();
@@ -214,13 +239,14 @@ function fetchBranch_(branch, when) {
   var r1 = UrlFetchApp.fetch(REPORT, { headers: { Cookie: cookie }, muteHttpExceptions: true });
   if (r1.getResponseCode() !== 200) { Logger.log('❌ เปิดหน้ารายงานไม่ได้ HTTP ' + r1.getResponseCode()); return; }
   Logger.log('✅ เปิดหน้ารายงานแล้ว');
+  checkPage_(branch, 1, r1.getContentText());      // หน้าเปลี่ยน = throw ก่อนยิงอะไร
 
   // 2) กด "ค้นหา" ด้วยวันที่ที่ต้องการ (เลียนแบบคนกดจริง)
   var p2 = readHidden_(r1.getContentText());
   p2[F.start] = beStr;
   p2[F.effect] = beStr;
   p2[F.search] = 'ค้นหา';
-  assertSafe_(p2);
+  assertSafe_(p2, 'search');
   var r2 = UrlFetchApp.fetch(REPORT, {
     method: 'post', payload: p2, headers: { Cookie: cookie },
     followRedirects: true, muteHttpExceptions: true
@@ -229,11 +255,12 @@ function fetchBranch_(branch, when) {
   Logger.log('✅ ค้นหาวันที่ ' + beStr + ' แล้ว');
 
   // 3) กด "Export (เรียงเลขล็อค)" — ปุ่มเดียวที่อนุญาต
+  checkPage_(branch, 2, r2.getContentText());      // หน้าหลังค้นหามีตารางด้วย จึงแยกลายนิ้วมือ
   var p3 = readHidden_(r2.getContentText());
   p3[F.start] = beStr;
   p3[F.effect] = beStr;
   p3[F.export1] = 'Export (เรียงเลขล็อค)';
-  assertSafe_(p3);
+  assertSafe_(p3, 'export');
   var r3 = UrlFetchApp.fetch(REPORT, {
     method: 'post', payload: p3, headers: { Cookie: cookie },
     followRedirects: true, muteHttpExceptions: true
@@ -510,16 +537,137 @@ function unesc_(s) {
 }
 function num_(x) { var n = parseFloat(String(x || '').replace(/,/g, '')); return isNaN(n) ? 0 : n; }
 
-/** ด่านกันพลาด — ห้ามมีชื่อปุ่มคืนเงินใน payload เด็ดขาด */
-function assertSafe_(payload) {
-  var keys = Object.keys(payload);
-  for (var i = 0; i < keys.length; i++) {
-    for (var j = 0; j < FORBIDDEN.length; j++) {
-      if (keys[i].indexOf(FORBIDDEN[j]) !== -1) {
-        throw new Error('🔴 หยุด: payload มีปุ่มคืนเงิน "' + keys[i] + '" — ห้ามส่งเด็ดขาด');
-      }
-    }
+/** ด่านกันพลาด — ตรวจ payload ก่อนยิงทุกครั้ง ผิดข้อเดียว = throw ไม่ส่ง
+ *  step = 'signin' | 'search' | 'export' (ดู ALLOW) */
+function assertSafe_(payload, step) {
+  var allow = ALLOW[step];
+  if (!allow) throw new Error('🔴 หยุด: ไม่รู้จักขั้นตอน "' + step + '"');
+  var stop = function (why) { throw new Error('🔴 หยุด [' + step + ']: ' + why + ' — ไม่ส่งคำขอนี้'); };
+
+  Object.keys(payload).forEach(function (k) {
+    // 1) blacklist เดิม — ชื่อปุ่มคืนเงินที่รู้จัก
+    FORBIDDEN.forEach(function (f) { if (k.indexOf(f) !== -1) stop('มีปุ่มคืนเงิน "' + k + '"'); });
+    // 2) whitelist — ช่องที่ไม่อยู่ในรายการ ห้ามส่ง ต่อให้ชื่อดูไม่อันตราย
+    if (allow.indexOf(k) === -1) stop('มีช่องนอกรายการที่อนุญาต "' + k + '"');
+    // 3) ตรวจ "ค่า" ด้วย ไม่ใช่แค่ชื่อ — ข้าม VIEWSTATE (base64 ยาว) กับรหัสผ่าน
+    if (/^(__VIEWSTATE|__EVENTVALIDATION|PasswordTextBox)$/.test(k)) return;
+    var v = String(payload[k]);
+    FORBIDDEN.forEach(function (f) { if (v.indexOf(f) !== -1) stop('ค่าของ "' + k + '" อ้างถึง ' + f); });
+    if (/refund|คืนเงิน/i.test(v)) stop('ค่าของ "' + k + '" มีคำว่าคืนเงิน');
+  });
+
+  /* 4) __EVENTTARGET ต้องว่าง — ASP.NET ถือว่าช่องนี้ = "กดปุ่มชื่อนี้"
+        ถ้ามีชื่อปุ่มคืนเงินอยู่ในนี้ จะคืนเงินทั้งที่ payload ไม่มีชื่อปุ่มเลย
+        ค่านี้ก๊อปมาจากหน้าเว็บ ปกติว่างเสมอ ถ้าไม่ว่าง = หน้าเว็บผิดปกติ หยุดเลยไม่ล้างให้ */
+  ['__EVENTTARGET', '__EVENTARGUMENT'].forEach(function (k) {
+    if (payload[k]) stop(k + ' ไม่ว่าง ("' + payload[k] + '")');
+  });
+
+  // 5) ต้องมีปุ่มกด "ตัวเดียว" และต้องเป็นตัวที่ขั้นตอนนี้ตั้งใจกด
+  var btn = allow.filter(function (k) { return k.indexOf('Button') !== -1 && k in payload; });
+  if (btn.length !== 1) stop('ต้องกดปุ่มเดียวพอดี แต่เจอ ' + btn.length + ' ปุ่ม');
+}
+
+/* ══════════ ลายนิ้วมือหน้าเว็บ ══════════ */
+
+/** อ่านทุกช่อง/ปุ่มบนหน้า คืนเป็นบรรทัดเรียงแล้ว ไม่ซ้ำ
+ *  ไม่เก็บ "ค่า" ของช่องกรอก/ช่องซ่อน เพราะเปลี่ยนทุกวัน (วันที่ · VIEWSTATE)
+ *  เก็บข้อความบนปุ่ม เพราะนั่นคือสิ่งที่บอกว่าปุ่มทำอะไร
+ *  ไม่เก็บ class — class เปลี่ยนแค่หน้าตา ไม่เปลี่ยนสิ่งที่ส่งไปเซิร์ฟเวอร์ เก็บไว้จะหยุดบ่อยโดยไม่จำเป็น */
+function pageControls_(html) {
+  var lines = {}, m;
+  var norm = function (s) { return String(s || '').replace(/\$ctl\d+\$/g, '$ctl#$').replace(/_ctl\d+_/g, '_ctl#_'); };
+  var re = /<(input|select|textarea|button)\b[^>]*>/gi;
+  while ((m = re.exec(html)) !== null) {
+    var tag = m[0], kind = m[1].toLowerCase();
+    var type = (tagAttr_(tag, 'type') || (kind === 'input' ? 'text' : kind)).toLowerCase();
+    var isBtn = /^(submit|button|image|reset)$/.test(type);
+    lines[[kind, type, norm(tagAttr_(tag, 'name')), norm(tagAttr_(tag, 'id')),
+           isBtn ? tagAttr_(tag, 'value') : ''].join(' | ')] = 1;
   }
+  // ปลายทาง postback จากลิงก์/ปุ่มที่ใช้ JavaScript — ทางลัดไปกดปุ่มได้โดยไม่ผ่าน submit
+  var pb = /(?:__doPostBack\(|WebForm_PostBackOptions\()\s*(?:&#39;|&quot;|['"])([^'"&]+)/g;
+  while ((m = pb.exec(html)) !== null) lines['postback | ' + norm(m[1])] = 1;
+  var fa = html.match(/<form\b[^>]*>/i);
+  if (fa) lines['form | ' + tagAttr_(fa[0], 'action')] = 1;
+  return Object.keys(lines).sort();
+}
+
+/** อ่าน attribute แล้วถอด entity ให้ด้วย — ASP.NET บางทีส่งภาษาไทยมาเป็น &#3588; */
+function tagAttr_(tag, name) {
+  var m = String(tag).match(new RegExp('\\s' + name + '\\s*=\\s*"([^"]*)"', 'i'));
+  if (!m) return '';
+  return unesc_(m[1].replace(/&#x([0-9a-f]+);/gi, function (_, h) { return String.fromCharCode(parseInt(h, 16)); })
+                    .replace(/&#(\d+);/g, function (_, d) { return String.fromCharCode(+d); }));
+}
+
+/** เทียบหน้าเว็บกับชุดที่อนุมัติไว้ · ไม่ตรง = throw (ไม่ใช่ return เงียบๆ) */
+function checkPage_(branch, stage, html) {
+  var now = pageControls_(html);
+  var where = 'หน้ารายงาน ' + branch + ' ขั้น ' + stage;
+
+  // ปุ่มที่ต้องใช้ ต้องมี และข้อความบนปุ่มต้องตรงเป๊ะ — เช็คทุกครั้ง แม้ยังไม่เคยอนุมัติ
+  Object.keys(REQUIRED_BUTTONS).forEach(function (name) {
+    var want = REQUIRED_BUTTONS[name];
+    var hit = now.filter(function (l) { return l.split(' | ')[2] === name; });
+    if (hit.length !== 1 || hit[0].split(' | ')[4] !== want) {
+      throw new Error('🔴 หยุด: ' + where + ' — ปุ่ม ' + name + ' หายหรือข้อความเปลี่ยน (ต้องเป็น "' + want + '")');
+    }
+  });
+
+  var key = 'SG_PAGE_' + branch + '_' + stage;
+  var saved = PropertiesService.getScriptProperties().getProperty(key);
+  if (!saved) {
+    throw new Error('🔴 หยุด: ยังไม่เคยอนุมัติหน้าตาของ' + where + ' — รัน approvePage' + branch + ' ก่อน');
+  }
+  saved = JSON.parse(saved);
+  var added = now.filter(function (l) { return saved.indexOf(l) === -1; });
+  var gone  = saved.filter(function (l) { return now.indexOf(l) === -1; });
+  if (added.length || gone.length) {
+    Logger.log('🔴 ' + where + ' เปลี่ยนไปจากที่อนุมัติไว้:');
+    added.forEach(function (l) { Logger.log('   + ' + l); });
+    gone.forEach(function (l) { Logger.log('   − ' + l); });
+    throw new Error('🔴 หยุด: ' + where + ' ไม่ตรงกับที่อนุมัติ (+' + added.length + ' −' + gone.length +
+                    ') — ให้คนตรวจหน้าเว็บก่อน แล้วค่อยรัน approvePage' + branch + ' ใหม่');
+  }
+  Logger.log('✅ ' + where + ' ตรงกับที่อนุมัติ (' + now.length + ' รายการ)');
+}
+
+/* ══════════ อนุมัติหน้าตาหน้าเว็บ (กดรันเอง) ══════════
+   เปิดหน้ารายงาน + กดค้นหาวันนี้ (ไม่กด Export) แล้วพิมพ์ทุกปุ่ม/ช่องที่เจอลง log
+   และจำไว้เป็น "ชุดที่อนุมัติ" — หลังจากนี้ตัวดึงข้อมูลจะรันได้เฉพาะเมื่อหน้าตาตรงกับชุดนี้
+
+   ⚠️ อ่าน log ก่อนเชื่อ: ปุ่ม Export ต้องมีข้อความ "Export (เรียงเลขล็อค)"
+      ถ้าเจอปุ่มแปลกหรือชื่อไม่คุ้น อย่าเพิ่งใช้ ให้เปิดหน้าเว็บดูด้วยตาก่อน */
+function approvePageBG() { approvePage_('BG'); }
+function approvePageBN() { approvePage_('BN'); }
+
+function approvePage_(branch) {
+  var cfg = SHEETS[branch];
+  if (!cfg || !cfg.report) { Logger.log('❌ ยังไม่รู้ URL หน้ารายงานของสาขา ' + branch); return; }
+  var P = PropertiesService.getScriptProperties();
+  var cookie = login_(P.getProperty('SG_USER_' + branch), P.getProperty('SG_PASS_' + branch));
+  if (!cookie) return;
+  var REPORT = BASE + cfg.report, beStr = fmtBE_(new Date());
+
+  var r1 = UrlFetchApp.fetch(REPORT, { headers: { Cookie: cookie }, muteHttpExceptions: true });
+  if (r1.getResponseCode() !== 200) { Logger.log('❌ เปิดหน้ารายงานไม่ได้ HTTP ' + r1.getResponseCode()); return; }
+  var p2 = readHidden_(r1.getContentText());
+  p2[F.start] = beStr; p2[F.effect] = beStr; p2[F.search] = 'ค้นหา';
+  assertSafe_(p2, 'search');                        // กดแค่ "ค้นหา" — ไม่กด Export ไม่กดอย่างอื่น
+  var r2 = UrlFetchApp.fetch(REPORT, {
+    method: 'post', payload: p2, headers: { Cookie: cookie }, followRedirects: true, muteHttpExceptions: true
+  });
+  if (r2.getResponseCode() !== 200) { Logger.log('❌ ค้นหาไม่สำเร็จ HTTP ' + r2.getResponseCode()); return; }
+
+  [r1, r2].forEach(function (res, i) {
+    var stage = i + 1, list = pageControls_(res.getContentText());
+    Logger.log('\n════════ ' + branch + ' ขั้น ' + stage + (stage === 1 ? ' (เปิดหน้า)' : ' (หลังกดค้นหา)') +
+               ' · ' + list.length + ' รายการ ════════');
+    list.forEach(function (l) { Logger.log('  ' + l); });
+    P.setProperty('SG_PAGE_' + branch + '_' + stage, JSON.stringify(list));   // เกิน 9KB = throw เอง ไม่บันทึกครึ่งๆ
+  });
+  Logger.log('\n✅ อนุมัติหน้าตาหน้าเว็บ ' + branch + ' แล้ว — ตัวดึงข้อมูลจะหยุดเองถ้าหน้าตาเปลี่ยนจากนี้');
 }
 
 function login_(user, pass) {
@@ -529,7 +677,7 @@ function login_(user, pass) {
   form['UsernameTextBox'] = user;
   form['PasswordTextBox'] = pass;
   form['SignInButton'] = 'Sign In';
-  assertSafe_(form);
+  assertSafe_(form, 'signin');
   var r2 = UrlFetchApp.fetch(SIGNIN, {
     method: 'post', payload: form, headers: cookie ? { Cookie: cookie } : {},
     followRedirects: false, muteHttpExceptions: true
