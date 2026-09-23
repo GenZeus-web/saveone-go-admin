@@ -747,6 +747,26 @@ function verify_(rows, wantDate, cfg) {
   var iStat = H.indexOf("มาขาย/ลา/ไม่มาขาย");
   Logger.log("\n──────── ตรวจไฟล์ ────────");
 
+  /* ด่านหัวคอลัมน์ — ถ้าบริษัทเปลี่ยนชื่อคอลัมน์ indexOf ได้ -1 แล้วโค้ดไม่ error
+     แต่เขียนเลขผิดเงียบๆ: ไม่มี "ล็อค" = 0 ทุกช่อง · ไม่มีสถานะ = Online เท่ากับยอดรวม
+     ไม่แน่ใจ = หยุด เหมือนด่านอื่น */
+  var need = {
+    วันที่ขาย: iDate,
+    ล็อค: iLock,
+    ค่าไฟฟ้า: iElec,
+    ค่าอุปกรณ์: iTool,
+    "มาขาย/ลา/ไม่มาขาย": iStat,
+  };
+  var lost = Object.keys(need).filter(function (k) {
+    return need[k] < 0;
+  });
+  if (lost.length) {
+    Logger.log("🔴 หยุด — ไฟล์ Export ไม่มีคอลัมน์: " + lost.join(" · "));
+    Logger.log("   หัวคอลัมน์ที่เจอจริง: " + H.join(" | "));
+    Logger.log("   ไม่เขียนชีต — ต้องแก้ชื่อคอลัมน์ใน verify_ ก่อน");
+    return null;
+  }
+
   // ด่านวันที่ — สำคัญที่สุด กัน VIEWSTATE เพี้ยนแล้วได้ข้อมูลผิดวันเงียบๆ
   var dates = {};
   data.forEach(function (r) {
@@ -861,6 +881,15 @@ function verify_(rows, wantDate, cfg) {
         z.other +
         " ตัวที่รหัสไม่เข้าทั้ง 2 โซน — ต้องดูว่าเป็นอะไร",
     );
+  /* ไม่มีล็อคเข้าโซนไหนเลย = รหัสล็อคเปลี่ยนรูปแบบ หรือกติกาโซนผิดสาขา
+     เขียนไปจะได้ 0 ทับของจริงทั้งแถว — หยุดดีกว่า */
+  if (!z.st.total.rai && !z.car.total.rai) {
+    Logger.log(
+      "🔴 หยุด — ไฟล์มี " + data.length + " แถว แต่ไม่มีล็อคเข้าโซนอาหาร/รถเลย",
+    );
+    Logger.log("   ไม่เขียนชีต — ตรวจรูปแบบรหัสล็อคกับ SHEETS.*.food / .car");
+    return null;
+  }
   return z;
 }
 
