@@ -34,7 +34,6 @@ saveone-go-admin/
     │   ├── settings.js         หน้าตั้งค่า ราคา · ฤดูกาล · เป้ายอด · ประวัติการแก้ (admin)
     │   └── user-admin.js       เมนูโปรไฟล์ + จัดการผู้ใช้ (admin)
     │
-    ├── config.js               URL Apps Script, ค่าคงที่, state, เป้ารายวัน
     ├── utils.js                ตัวแปลงรูปแบบ, ชุดราคา/ฤดูกาล/รายรับ, แปลงแถว CSV
     ├── data-fetch.js           token, fetch + timeout/retry, คุมท่อขนาน
     ├── data-cache.js           เก็บ CSV ใน localStorage + สิทธิ์สาขา
@@ -113,5 +112,3 @@ index.html · manifest.webmanifest · css/ · js/ · assets/
 **ไม่ใช่ความลับ** ด่านป้องกันจริงคือ Firebase Auth + Firestore Security Rules
 ห้ามเอา service account / private key ฝั่ง server มาไว้ในโปรเจกต์นี้
 (`.gitignore` กันไว้แล้วชั้นหนึ่ง)
-
-รายละเอียดงาน Security Hardening อยู่ใน [CHANGELOG.md](CHANGELOG.md)
