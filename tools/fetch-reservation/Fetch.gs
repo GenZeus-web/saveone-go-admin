@@ -29,8 +29,7 @@
  *  ══════════════════════════════════════
  */
 
-var BASE   = 'https://services.saveone.co.th/SaveoneGoAdmin/';
-var SIGNIN = BASE + 'Signin.aspx';
+/* ที่อยู่เว็บแยกต่อสาขา — BG กับ BN เป็นคนละระบบ (คนละ path) ดู SHEETS.*.base */
 
 var F = {                              // ชื่อช่องบนหน้ารายงาน (สำรวจมาแล้ว)
   start  : 'ctl00$CONTENTContentPlaceHolder$StartDateTextBox',
@@ -74,6 +73,9 @@ REQUIRED_BUTTONS[F.export1] = 'Export (เรียงเลขล็อค)';
    แต่ถ้าไม่มีใครสังเกต เลขผิดจะไหลเข้าเว็บไปเรื่อยๆ */
 var DRY_RUN = false;
 
+/** ซ้อมรายสาขา — สาขาใหม่ตั้ง dryRun: true ใน SHEETS จนกว่าจะตรวจตัวเลขกับของจริงแล้ว */
+function isDry_(branch) { return DRY_RUN || !!(SHEETS[branch] && SHEETS[branch].dryRun); }
+
 /* ── ตั้งค่าต่อสาขา ──
    โค้ดไฟล์นี้ใช้ได้ทั้ง 2 สาขา วางไว้ใน Apps Script ของแต่ละชีตได้เลย
    ต่างกันแค่ Script Properties (SG_USER_* / SG_PASS_* / SG_SHEET_*)
@@ -88,16 +90,22 @@ var DRY_RUN = false;
 var SHEETS = {
   BG: {
     name: 'ประตูกรุงเทพ',
+    base: 'https://services.saveone.co.th/SaveoneGoAdmin/',
     report: 'ReportRefundZone6_1.aspx',      // ยืนยันแล้ว
     food: /^G[A-T]$/, car: /^G[W-Z]$/,
     sheetFood: 'Report SaveOne Go', sheetCar: 'Report-Car Boot'
   },
   BN: {
     name: 'บางนา',
-    report: '',                              // ⬅ ยังไม่รู้ — BN อาจเป็นโซนอื่น ไม่ใช่ Zone6
-                                             //    รัน exploreBN ด้วยบัญชี BN เพื่อหา
+    /* BN เป็นระบบแยก (SGAdminBangna) ไม่ใช่ SaveoneGoAdmin — เจ้าของให้ลิงก์มา 23 ก.ย. 2569
+       เว็บให้มาสองแบบ SGAdminBangna / SGAdminBangNa · IIS ไม่สนตัวพิมพ์ ใช้ตัวเดียวทั้ง login และรายงาน
+       ปุ่ม ExportTable1Button ชื่อเดียวกับ BG (ยืนยันจาก element ที่เจ้าของส่งมา) */
+    base: 'https://services.saveone.co.th/SGAdminBangna/',
+    report: 'ReportRefundZone9_1.aspx',      // Zone9 — ของ BG เป็น Zone6
     food: /^[A-J]$/, car: /^[U-Z]$/,
-    sheetFood: 'Report Bangna', sheetCar: 'Bangna - Car Boot'
+    sheetFood: 'Report Bangna', sheetCar: 'Bangna - Car Boot',   // ชื่อเดา ใช้สำรองเท่านั้น
+    gidFood: 1594662584, gidCar: 299461870,   // จากลิงก์ที่เจ้าของส่งมา — เปลี่ยนชื่อแท็บก็ยังเจอ
+    dryRun: true   // ⬅ ยังไม่เคยตรวจตัวเลขกับของจริง — ตรวจผ่านแล้วค่อยลบบรรทัดนี้
   }
 };
 
@@ -130,9 +138,9 @@ function scheduledBN() { fetchBranch_('BN', null); }
 
 function setupTriggers_(branch) {
   var handler = 'scheduled' + branch;
-  if (DRY_RUN) {
-    Logger.log('⚠️ ตอนนี้ DRY_RUN = true — ตั้งเวลาไปก็จะไม่เขียนอะไรลงชีต');
-    Logger.log('   ตั้งได้ แต่อย่าลืมเปลี่ยนเป็น false ตอนพร้อมใช้จริง\n');
+  if (isDry_(branch)) {
+    Logger.log('⚠️ ตอนนี้สาขา ' + branch + ' อยู่โหมดซ้อม — ตั้งเวลาไปก็จะไม่เขียนอะไรลงชีต');
+    Logger.log('   ตั้งได้ แต่อย่าลืมลบ dryRun: true ออกจาก SHEETS.' + branch + ' ตอนพร้อมใช้จริง\n');
   }
   // ลบของเดิมก่อน กันตั้งซ้ำแล้วรันวันละ 6 รอบโดยไม่รู้ตัว
   var removed = 0;
@@ -180,18 +188,17 @@ function showSheetHeadersBN() { showHeaders_('BN'); }
 
 function showHeaders_(branch) {
   var cfg = SHEETS[branch];
-  var id = PropertiesService.getScriptProperties().getProperty('SG_SHEET_' + branch);
-  if (!id) {
-    Logger.log('❌ ยังไม่ได้ตั้ง SG_SHEET_' + branch + ' ใน Script Properties');
+  var ss = openBook_(branch);
+  if (!ss) {
+    Logger.log('❌ ไม่ได้ตั้ง SG_SHEET_' + branch + ' และสคริปต์นี้ก็ไม่ได้ผูกกับชีตไหน');
     Logger.log('   ค่าคือ id ของไฟล์ชีต — ดูจาก URL: docs.google.com/spreadsheets/d/<ตรงนี้>/edit');
     return;
   }
-  var ss = SpreadsheetApp.openById(id);
   Logger.log('ไฟล์ชีต: ' + ss.getName());
-  Logger.log('ชีตที่มีทั้งหมด: ' + ss.getSheets().map(function (s) { return s.getName(); }).join(' · '));
-  [cfg.sheetFood, cfg.sheetCar].forEach(function (nm) {
-    var sh = ss.getSheetByName(nm);
-    Logger.log('\n──── ' + nm + ' ────');
+  Logger.log('ชีตที่มีทั้งหมด: ' + ss.getSheets().map(function (s) { return s.getName() + ' (gid ' + s.getSheetId() + ')'; }).join(' · '));
+  [[cfg.sheetFood, cfg.gidFood], [cfg.sheetCar, cfg.gidCar]].forEach(function (t) {
+    var sh = sheetOf_(ss, t[0], t[1]);
+    Logger.log('\n──── ' + (sh ? sh.getName() : t[0]) + ' ────');
     if (!sh) { Logger.log('❌ ไม่เจอชีตนี้'); return; }
     var lastCol = sh.getLastColumn(), lastRow = sh.getLastRow();
     var head = sh.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
@@ -230,12 +237,12 @@ function fetchBranch_(branch, when) {
   var user = P.getProperty('SG_USER_' + branch), pass = P.getProperty('SG_PASS_' + branch);
   if (!user || !pass) { Logger.log('❌ ยังไม่ได้ตั้ง SG_USER_' + branch + ' / SG_PASS_' + branch); return; }
 
-  var cookie = login_(user, pass);
+  var cookie = login_(cfg, user, pass);
   if (!cookie) return;
   Logger.log('✅ login ผ่าน');
 
   // 1) เปิดหน้ารายงาน เก็บ VIEWSTATE
-  var REPORT = BASE + cfg.report;
+  var REPORT = cfg.base + cfg.report;
   var r1 = UrlFetchApp.fetch(REPORT, { headers: { Cookie: cookie }, muteHttpExceptions: true });
   if (r1.getResponseCode() !== 200) { Logger.log('❌ เปิดหน้ารายงานไม่ได้ HTTP ' + r1.getResponseCode()); return; }
   Logger.log('✅ เปิดหน้ารายงานแล้ว');
@@ -296,7 +303,7 @@ function writeSheet_(branch, dateStr, z) {
   Logger.log('\n──────── บันทึกลงชีต ────────');
   if (!cfg) { Logger.log('❌ ไม่รู้จักสาขา ' + branch); return; }
 
-  if (DRY_RUN) {
+  if (isDry_(branch)) {
     ['st', 'car'].forEach(function (k) {
       var b = z[k], nm = (k === 'st' ? cfg.sheetFood : cfg.sheetCar);
       Logger.log(nm + ' ←');
@@ -307,7 +314,7 @@ function writeSheet_(branch, dateStr, z) {
                  '   L1 ' + b.elec + '  L2 ' + b.tool);
     });
     Logger.log('\n🟡 โหมดซ้อม — ยังไม่ได้เขียนจริง');
-    Logger.log('   ถ้าตัวเลขถูกต้องแล้ว แก้บรรทัด  var DRY_RUN = true;  เป็น false');
+    Logger.log('   ถ้าตัวเลขถูกต้องแล้ว ลบ dryRun: true ออกจาก SHEETS.' + branch + ' (หรือ DRY_RUN เป็น false)');
     return;
   }
   /* ถ้าไม่ได้ตั้ง SG_SHEET_* ให้ใช้ชีตที่สคริปต์นี้ผูกอยู่แทน
@@ -325,11 +332,26 @@ function writeSheet_(branch, dateStr, z) {
     }
     Logger.log('ℹ️ ไม่ได้ตั้ง SG_SHEET_' + branch + ' — ใช้ชีตที่สคริปต์ผูกอยู่: ' + ss.getName());
   }
-  [[cfg.sheetFood, z.st], [cfg.sheetCar, z.car]].forEach(function (pair) {
-    var sh = ss.getSheetByName(pair[0]);
-    if (!sh) { Logger.log('❌ ไม่เจอชีตชื่อ "' + pair[0] + '"'); return; }
-    upsert_(sh, dateStr, pair[1], cfg.name, pair[0]);
+  [[cfg.sheetFood, cfg.gidFood, z.st], [cfg.sheetCar, cfg.gidCar, z.car]].forEach(function (t) {
+    var sh = sheetOf_(ss, t[0], t[1]);
+    if (!sh) { Logger.log('❌ ไม่เจอชีต "' + t[0] + '"' + (t[1] ? ' (gid ' + t[1] + ')' : '')); return; }
+    upsert_(sh, dateStr, t[2], cfg.name, sh.getName());
   });
+}
+
+/** หาแท็บจาก gid ก่อน (ไม่พังเมื่อมีคนเปลี่ยนชื่อแท็บ) ไม่มี gid ค่อยหาจากชื่อ */
+function sheetOf_(ss, name, gid) {
+  if (gid) {
+    var hit = ss.getSheets().filter(function (s) { return s.getSheetId() === gid; })[0];
+    if (hit) return hit;
+  }
+  return ss.getSheetByName(name);
+}
+
+/** ไฟล์ชีตของสาขา: SG_SHEET_* ถ้าตั้งไว้ ไม่งั้นใช้ชีตที่สคริปต์ผูกอยู่ */
+function openBook_(branch) {
+  var id = PropertiesService.getScriptProperties().getProperty('SG_SHEET_' + branch);
+  return id ? SpreadsheetApp.openById(id) : SpreadsheetApp.getActiveSpreadsheet();
 }
 
 /* ── เขียน/อัปเดตแถวของวันนั้น ──────────────────────────────
@@ -607,19 +629,22 @@ function tagAttr_(tag, name) {
                     .replace(/&#(\d+);/g, function (_, d) { return String.fromCharCode(+d); }));
 }
 
-/** เทียบหน้าเว็บกับชุดที่อนุมัติไว้ · ไม่ตรง = throw (ไม่ใช่ return เงียบๆ) */
-function checkPage_(branch, stage, html) {
-  var now = pageControls_(html);
-  var where = 'หน้ารายงาน ' + branch + ' ขั้น ' + stage;
-
-  // ปุ่มที่ต้องใช้ ต้องมี และข้อความบนปุ่มต้องตรงเป๊ะ — เช็คทุกครั้ง แม้ยังไม่เคยอนุมัติ
+/** ปุ่มที่ต้องใช้ ต้องมีตัวเดียว และข้อความบนปุ่มต้องตรงเป๊ะ · ไม่ตรง = throw */
+function requireButtons_(controls, where) {
   Object.keys(REQUIRED_BUTTONS).forEach(function (name) {
     var want = REQUIRED_BUTTONS[name];
-    var hit = now.filter(function (l) { return l.split(' | ')[2] === name; });
+    var hit = controls.filter(function (l) { return l.split(' | ')[2] === name; });
     if (hit.length !== 1 || hit[0].split(' | ')[4] !== want) {
       throw new Error('🔴 หยุด: ' + where + ' — ปุ่ม ' + name + ' หายหรือข้อความเปลี่ยน (ต้องเป็น "' + want + '")');
     }
   });
+}
+
+/** เทียบหน้าเว็บกับชุดที่อนุมัติไว้ · ไม่ตรง = throw (ไม่ใช่ return เงียบๆ) */
+function checkPage_(branch, stage, html) {
+  var now = pageControls_(html);
+  var where = 'หน้ารายงาน ' + branch + ' ขั้น ' + stage;
+  requireButtons_(now, where);           // เช็คทุกครั้ง แม้ยังไม่เคยอนุมัติ
 
   var key = 'SG_PAGE_' + branch + '_' + stage;
   var saved = PropertiesService.getScriptProperties().getProperty(key);
@@ -652,12 +677,16 @@ function approvePage_(branch) {
   var cfg = SHEETS[branch];
   if (!cfg || !cfg.report) { Logger.log('❌ ยังไม่รู้ URL หน้ารายงานของสาขา ' + branch); return; }
   var P = PropertiesService.getScriptProperties();
-  var cookie = login_(P.getProperty('SG_USER_' + branch), P.getProperty('SG_PASS_' + branch));
+  var user = P.getProperty('SG_USER_' + branch), pass = P.getProperty('SG_PASS_' + branch);
+  if (!user || !pass) { Logger.log('❌ ยังไม่ได้ตั้ง SG_USER_' + branch + ' / SG_PASS_' + branch); return; }
+  var cookie = login_(cfg, user, pass);
   if (!cookie) return;
-  var REPORT = BASE + cfg.report, beStr = fmtBE_(new Date());
+  var REPORT = cfg.base + cfg.report, beStr = fmtBE_(new Date());
 
   var r1 = UrlFetchApp.fetch(REPORT, { headers: { Cookie: cookie }, muteHttpExceptions: true });
   if (r1.getResponseCode() !== 200) { Logger.log('❌ เปิดหน้ารายงานไม่ได้ HTTP ' + r1.getResponseCode()); return; }
+  // หน้าที่ยังไม่เคยเห็น (เช่น BN ครั้งแรก) — ต้องเจอปุ่มค้นหา/Export ชื่อและข้อความตรงก่อน ถึงจะกดค้นหา
+  requireButtons_(pageControls_(r1.getContentText()), 'หน้ารายงาน ' + branch + ' ก่อนอนุมัติ');
   var p2 = readHidden_(r1.getContentText());
   p2[F.start] = beStr; p2[F.effect] = beStr; p2[F.search] = 'ค้นหา';
   assertSafe_(p2, 'search');                        // กดแค่ "ค้นหา" — ไม่กด Export ไม่กดอย่างอื่น
@@ -676,7 +705,8 @@ function approvePage_(branch) {
   Logger.log('\n✅ อนุมัติหน้าตาหน้าเว็บ ' + branch + ' แล้ว — ตัวดึงข้อมูลจะหยุดเองถ้าหน้าตาเปลี่ยนจากนี้');
 }
 
-function login_(user, pass) {
+function login_(cfg, user, pass) {
+  var SIGNIN = cfg.base + 'Signin.aspx';
   var r1 = UrlFetchApp.fetch(SIGNIN, { muteHttpExceptions: true, followRedirects: false });
   var cookie = pickCookie_(r1);
   var form = readHidden_(r1.getContentText());
