@@ -166,9 +166,7 @@ function calcWhatIf(){
     revPerDay=(onlineWd*wdDays+onlineWk*wkndDays+walkWd*wdDays+walkWk*wkndDays)/days;
   } else {
     const m=new Date().getMonth()+1;
-    const isHigh=(m>=11||m<=2);
-    const p_wd=activeBranch==='BG'?(isHigh?300:250):(isHigh?250:200);
-    const p_wk=activeBranch==='BG'?(isHigh?350:300):(isHigh?300:250);
+    const p_wd=nonPriceAt(activeBranch,m,false), p_wk=nonPriceAt(activeBranch,m,true); // PRICE-01: ตารางราคาเดียวกับ utils.js
     revPerDay=(p_wd*wdDays+p_wk*wkndDays)/days*lockPerDay;
   }
 

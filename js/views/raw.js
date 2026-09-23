@@ -7,11 +7,7 @@ function renderRaw(d){
   document.getElementById('rawTbl').innerHTML=d.slice(0,200).map(r=>{
     const wk=isWknd(r.date),fd=r.freeDay;
     const net=Math.max(0,r.onlineLock-r.absentLock-r.cancelLock);
-    let po=wk?130:100,pw=wk?160:130; // ST default (และ zone=all)
-    if(zone==='non'){
-      const base=getNonPrice(r.date);
-      po=base; pw=(activeBranch==='SS')?base:base+50; // Car: WalkIn +50 (SS Non=30 ไม่บวก)
-    }
+    const{po,pw}=lockPrices(r.date,zone); // ST (และ zone=all) หรือ Car/Non ตามโซน
     const rv=revST(r)+revNon(r);
     const cancelShow = zone==='st' ? r.cancelLock : zone==='non' ? (r.nonCancelLock||0) : (r.cancelLock||0)+(r.nonCancelLock||0);
     const absentShow = zone==='st' ? r.absentLock : zone==='non' ? (r.nonAbsentLock||0) : (r.absentLock||0)+(r.nonAbsentLock||0);
@@ -24,7 +20,7 @@ function renderRaw(d){
       <td class="num" style="color:var(--purple)">${r.nonLock||'—'}</td>
       <td class="num" style="color:var(--red)">${cancelShow||'—'}</td>
       <td class="num" style="color:var(--red)">${absentShow||'—'}</td>
-      <td class="num col-rev" style="color:var(--ink3);font-size:10px">${fd?`${po/2}/${activeBranch==='SS'?pw:pw/2}`:`${po}/${pw}`}</td>
+      <td class="num col-rev" style="color:var(--ink3);font-size:10px">${fd?`${po/2}/${rainHalvesWalkIn()?pw/2:pw}`:`${po}/${pw}`}</td>
       <td class="num col-rev" style="font-weight:700;color:var(--green)">${fmtN(rv)}</td>
       <td class="num col-elec">${r.l1+r.l1n>0?fmtN(r.l1+r.l1n):'—'}</td>
       <td class="num col-elec">${r.l2+r.l2n>0?fmtN(r.l2+r.l2n):'—'}</td>

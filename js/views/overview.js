@@ -295,14 +295,9 @@ function renderFreeday(d){
   document.getElementById('fdTbl').innerHTML=fds.sort((a,b)=>b.date-a.date).map(r=>{
     // FD-02/FD-03: ล็อค/ลา/ไม่มา/ราคา ต้องตามทั้งโซน (ST/Non) และกลุ่ม (online/walkin/extra) ที่เลือกจริง
     const lockTot=getLock(r,g),absentTot=(r.absentLock||0)+(r.nonAbsentLock||0),cancelTot=(r.cancelLock||0)+(r.nonCancelLock||0);
-    const wk=isWknd(r.date);
-    let po=wk?130:100, pw=wk?160:130; // ST default
-    if(zone==='non'){
-      const base=getNonPrice(r.date);
-      po=base; pw=(activeBranch==='SS')?base:base+50; // Car: WalkIn/เสริม +50 (SS Non=ราคาเดียว ไม่บวก)
-    }
+    const{po,pw}=lockPrices(r.date,zone);
     const isWalkGroup=(g==='walkin'||g==='extra');
-    const walkDiscounted=activeBranch!=='SS'; // SS ไม่ลดราคาวันฝนให้ WalkIn/ล็อกเสริม
+    const walkDiscounted=rainHalvesWalkIn(); // SS ไม่ลดราคาวันฝนให้ WalkIn/ล็อกเสริม
     const priceFrom=isWalkGroup?pw:po;
     const priceTo=isWalkGroup?(walkDiscounted?pw/2:pw):po/2;
     const dc=calcDiscount(r,g),ac=revST(r,g)+revNon(r,g),nm=revSTNormal(r,g)+revNonNormal(r,g);
@@ -333,11 +328,7 @@ function openDayModal(i){
 
   // ── สูตรเดียวกับ renderRaw() ──
   const net=Math.max(0,r.onlineLock-r.absentLock-r.cancelLock);
-  let po=wk?130:100, pw=wk?160:130;
-  if(zone==='non'){
-    const base=getNonPrice(r.date);
-    po=base; pw=(activeBranch==='SS')?base:base+50;
-  }
+  const{po,pw}=lockPrices(r.date,zone);
   const rv=revST(r)+revNon(r);
   const cancelShow = zone==='st' ? r.cancelLock : zone==='non' ? (r.nonCancelLock||0) : (r.cancelLock||0)+(r.nonCancelLock||0);
   const absentShow = zone==='st' ? r.absentLock : zone==='non' ? (r.nonAbsentLock||0) : (r.absentLock||0)+(r.nonAbsentLock||0);
@@ -380,7 +371,7 @@ function openDayModal(i){
     h+='</div>';
   }
   h+=`<div class="col-rev">${sec('💰','รายรับ','var(--green)')}<div class="day-grp rev">`
-    +row('ราคา/ล็อก', fd?`${po/2} / ${activeBranch==='SS'?pw:pw/2}`:`${po} / ${pw}`,'฿ ออนไลน์/วอล์กอิน')
+    +row('ราคา/ล็อก', fd?`${po/2} / ${rainHalvesWalkIn()?pw/2:pw}`:`${po} / ${pw}`,'฿ ออนไลน์/วอล์กอิน')
     +row('รายรับรวม',fmtN(rv),'฿','hi')
     +'</div></div>';
   if(l1+l2>0){

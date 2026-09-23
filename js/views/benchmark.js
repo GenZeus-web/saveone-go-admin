@@ -97,7 +97,7 @@ function renderBenchmark(){
       const days=d.length||1;
       const totalLock=d.reduce((s,r)=>s+getLock(r,'all'),0);
       const avgLock=(totalLock/days).toFixed(1);
-      const totalRev=d.reduce((s,r)=>s+revST(r)+revNon(r),0);
+      const totalRev=d.reduce((s,r)=>s+revST(r,'all',b)+revNon(r,'all',b),0); // PRICE-01: ใช้ราคาของสาขา b ไม่ใช่สาขาที่เปิดดูอยู่
       const fds=d.filter(r=>r.freeDay).length;
       const canSeeRev=window.userPerms?.showRevenue;
       return `<div class="mom-card" style="border-color:${sc(BM_COLORS[b])}">
