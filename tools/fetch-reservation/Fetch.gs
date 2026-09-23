@@ -131,10 +131,17 @@ function listTriggers() {
   ts.forEach(function (t) { Logger.log('  • ' + t.getHandlerFunction() + ' (' + t.getEventType() + ')'); });
 }
 
+/* ลบเฉพาะตัวตั้งเวลาของไฟล์นี้ (scheduledBG / scheduledBN)
+   ⚠️ ห้ามลบทุกตัว — โปรเจกต์ "ประตูกรุงเทพ" มี pushToFirestore (ซิงก์ขึ้นเว็บทุก 10 นาที)
+      อยู่ด้วย ถ้าหายไป เว็บจะค้างข้อมูลเก่าเงียบๆ จนกว่าจะมีคนสังเกต */
 function removeTriggers() {
-  var ts = ScriptApp.getProjectTriggers(), n = 0;
-  ts.forEach(function (t) { ScriptApp.deleteTrigger(t); n++; });
-  Logger.log('ลบตัวตั้งเวลาออกทั้งหมด ' + n + ' ตัว');
+  var mine = { scheduledBG: 1, scheduledBN: 1 }, n = 0, kept = [];
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    var h = t.getHandlerFunction();
+    if (mine[h]) { ScriptApp.deleteTrigger(t); n++; } else kept.push(h);
+  });
+  Logger.log('ลบตัวตั้งเวลาของตัวดึงข้อมูลออก ' + n + ' ตัว');
+  if (kept.length) Logger.log('ไม่แตะตัวอื่น: ' + kept.join(', '));
 }
 
 /**
