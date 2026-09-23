@@ -78,3 +78,9 @@ old/
 # ── ไฟล์ที่ผู้ใช้ export จากหน้าเว็บแล้วเผลอเซฟลงโฟลเดอร์นี้ ──
 #  ปุ่ม "ส่งออก CSV" (js/export.js) จะดาวน์โหลดเป็นไฟล์ .csv
 *.csv
+
+# ── Agent skills (เฉพาะเครื่อง) ─────────────────────────────
+#  .claude/skills เป็น junction ชี้ไป .agents/skills — ขึ้น git ไม่ได้
+#  .scratch/ = issue/spec ภายใน · repo เปิด Pages ขึ้นไปแล้วใครก็อ่านได้
+.claude/
+.scratch/

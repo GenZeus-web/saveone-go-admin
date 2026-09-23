@@ -130,3 +130,19 @@
 - **เวอร์ชันในโค้ด:** v2.11.2
 - **เวอร์ชันบนเว็บจริง:** v2.11.2 ✅ ตรงกัน (ยืนยัน 20 ก.ย. 2569 — เทียบ md5 ของ `index.html` กับในเครื่องแล้วตรงเป๊ะ · ไฟล์ย่อย css/ js/ assets/ เสิร์ฟครบทุกตัว)
 - **ผัง 3D:** v0.14.0 (20 ส.ค. 2569)
+
+---
+
+## Agent skills
+
+### Issue tracker
+
+เก็บเป็นไฟล์ markdown ใต้ `.scratch/<feature>/` ในเครื่อง (ไม่ใช้ GitHub Issues). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+ใช้ชื่อ label ค่าตั้งต้น 5 ตัว (`needs-triage` `needs-info` `ready-for-agent` `ready-for-human` `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+single-context — `CONTEXT.md` + `docs/adr/` ที่ root (สร้างเมื่อจำเป็น). See `docs/agents/domain.md`.
