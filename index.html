@@ -93,7 +93,7 @@
     <button class="mnav-btn" id="mnavBtn" onclick="toggleMobileNav()" aria-label="เปิดเมนู" aria-expanded="false" aria-controls="sidebar">&#9776;</button>
     <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.11.5</span></div>
+      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v2.12.0</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -118,8 +118,11 @@
             <div id="profRole" style="font-size:10px;color:var(--ink3)"></div>
           </div>
         </div>
+        <button class="prof-item" id="profSettings" onclick="openSettings()" style="display:none">
+          <span style="width:16px;display:inline-block">&#9881;&#65039;</span> ตั้งค่าราคา · ฤดูกาล · เป้ายอด
+        </button>
         <button class="prof-item" id="profUsers" onclick="openUsersPanel()" style="display:none">
-          <span style="width:16px;display:inline-block">&#9881;&#65039;</span> จัดการผู้ใช้
+          <span style="width:16px;display:inline-block">&#128101;</span> จัดการผู้ใช้
         </button>
         <button class="prof-item" onclick="toggleTheme();closeProfMenu()">
           <span style="width:16px;display:inline-block">&#127769;</span> สลับธีม สว่าง/มืด
@@ -245,7 +248,7 @@
         onchange="setTargetZone('non',this.value)">
     </div>
     <div style="font-size:9px;color:var(--ink3);margin-top:5px" id="tgtZoneNote">โซนที่ดูอยู่: ทั้งหมด → ใช้เป้า 400 ล็อก/วัน</div>
-    <div style="font-size:9px;color:var(--ink3);margin-top:3px">เป้าเก็บในเครื่องนี้ (แยกสาขา)</div>
+    <div style="font-size:9px;color:var(--ink3);margin-top:3px" id="tgtShareNote">เป้าใช้ร่วมกันทุกคน</div>
   </div>
 
 </div><!-- /sidebar -->
@@ -258,6 +261,9 @@
   </div>
 
   <div id="mainContent" style="display:none">
+    <div id="priceFailBanner" style="display:none;background:rgba(224,92,92,.12);border:1px solid var(--red);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--red)">
+      ⚠️ โหลดราคาจากหน้าตั้งค่าไม่ได้ — ซ่อนตัวเลขรายรับไว้ก่อน (ยอดล็อกยังถูกต้อง) · ลองรีเฟรชหน้าเว็บ
+    </div>
 
     <!-- v2.6.2 NET-03: แบนเนอร์เตือนข้อมูลโหลดไม่ครบ (ว่างไว้ renderDataHealth เติมเอง) -->
     <div id="dataHealth" style="display:none"></div>
@@ -522,121 +528,15 @@
       <div class="pn-panel">
         <div class="pn-title" id="pnTitle">📋 หมายเหตุลอจิกราคา</div>
 
-        <!-- ===== ST ทุกสาขา ===== -->
-        <div id="pn-ST-section" style="margin-bottom:20px">
-          <div style="font-size:12px;font-weight:700;color:var(--gold);padding:8px 12px;background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.3);border-radius:8px;margin-bottom:10px">
-            📦 โซน Street Food (ST) — ราคาเหมือนกันทุกสาขา
-          </div>
-          <div class="pn-grid">
-            <div class="pn-zone">
-              <table class="pn-tbl">
-                <thead><tr><th>ประเภท</th><th>จ–พฤ</th><th>ศ–อา</th><th>วันฝน</th></tr></thead>
-                <tbody>
-                  <tr><td>วอคอิน / ล็อกเสริม</td><td class="price-num">130 ฿</td><td class="price-num">160 ฿</td><td class="fd-mark">ราคาเต็ม (ไม่ลด)</td></tr>
-                  <tr><td>ออนไลน์ (มาจริง)</td><td class="price-num">100 ฿</td><td class="price-num">130 ฿</td><td class="fd-mark">× 0.5 (ลด 50%)</td></tr>
-                  <tr><td>ลา (Absent)</td><td class="price-num">100 ฿</td><td class="price-num">130 ฿</td><td class="fd-mark">× 0.5 (ลด 50%)</td></tr>
-                  <tr><td>ไม่มา (Cancel)</td><td class="price-num">100 ฿</td><td class="price-num">130 ฿</td><td class="fd-mark">× 0.5 (ลด 50%)</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="pn-zone">
-              <div class="formula-box">
-                <strong>ออนไลน์สุทธิ:</strong><br>
-                <code>= Online_Lock − Absent_Lock − Cancel_Lock</code><br><br>
-                <strong>รายรับ ST:</strong><br>
-                <code>= (Online Net × ราคา × FD?) + (Absent × ราคา × FD?) + (Cancel × ราคา × FD?) + (WalkIn × ราคาวอค) + (Extra × ราคาวอค)</code><br><br>
-                <span style="font-size:10px;color:var(--ink3)">FD? = ×0.5 ถ้าวันฝน | ราคาวอค = 130/160 ฿</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ===== SS Non ===== -->
-        <div id="pn-SS" style="margin-bottom:20px;padding:12px;border-radius:8px;border:1px solid var(--border)">
-          <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:10px">🏪 ศรีสมาน (SS) — โซน Non · Boot Seller</div>
-          <div class="pn-grid">
-            <div class="pn-zone">
-              <table class="pn-tbl">
-                <thead><tr><th>ประเภท</th><th>ทุกวัน</th><th>วันฝน</th></tr></thead>
-                <tbody>
-                  <tr><td>ทุกประเภท</td><td class="price-num">30 ฿</td><td class="fd-mark">Online/ลา/ไม่มา × 0.5 เท่านั้น</td></tr>
-                  <tr><td>วอคอิน</td><td class="price-num">30 ฿</td><td class="fd-mark">ราคาเต็ม (ยังไม่เข้าระบบ)</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="pn-zone">
-              <div class="formula-box">
-                <code>รายรับ = (Online Net + Absent + Cancel) × 30 × (FD ? 0.5 : 1) + WalkIn × 30</code><br>
-                <span style="font-size:10px;color:var(--ink3)">WalkIn SS Non ยังไม่เข้าระบบ → ไม่ได้ส่วนลดวันฝน</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ===== BG Car ===== -->
-        <div id="pn-BG" style="margin-bottom:20px;padding:12px;border-radius:8px;border:1px solid var(--border)">
-          <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:10px">🏙 ประตูกรุงเทพ (BG) — โซน Car · Boot Sale</div>
-          <div class="pn-grid">
-            <div class="pn-zone">
-              <div style="font-size:10px;color:var(--ink3);margin-bottom:6px;font-weight:600">Low Season (มี.ค.–ต.ค.)</div>
-              <table class="pn-tbl">
-                <thead><tr><th>ประเภท</th><th>จ–พฤ</th><th>ศ–อา</th><th>วันฝน</th></tr></thead>
-                <tbody>
-                  <tr><td>ทุกประเภท</td><td class="price-num">250 ฿</td><td class="price-num">300 ฿</td><td class="fd-mark">× 0.5 ทุกประเภท</td></tr>
-                </tbody>
-              </table>
-              <div style="font-size:10px;color:var(--ink3);margin:8px 0 6px;font-weight:600">High Season (พ.ย.–ก.พ.)</div>
-              <table class="pn-tbl">
-                <thead><tr><th>ประเภท</th><th>จ–พฤ</th><th>ศ–อา</th><th>วันฝน</th></tr></thead>
-                <tbody>
-                  <tr><td>ทุกประเภท</td><td class="price-num">300 ฿</td><td class="price-num">350 ฿</td><td class="fd-mark">× 0.5 ทุกประเภท</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="pn-zone">
-              <div class="formula-box">
-                <code>รายรับ = (Online Net + Absent + Cancel + WalkIn + Extra) × ราคา × (FD ? 0.5 : 1)</code><br>
-                <span style="font-size:10px;color:var(--ink3)">WalkIn BG เข้าระบบแล้ว → ได้ส่วนลดวันฝนด้วย</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ===== BN Car ===== -->
-        <div id="pn-BN" style="margin-bottom:20px;padding:12px;border-radius:8px;border:1px solid var(--border)">
-          <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:10px">🌿 บางนา (BN) — โซน Car · Boot Sale</div>
-          <div class="pn-grid">
-            <div class="pn-zone">
-              <div style="font-size:10px;color:var(--ink3);margin-bottom:6px;font-weight:600">Low Season (มี.ค.–ต.ค.)</div>
-              <table class="pn-tbl">
-                <thead><tr><th>ประเภท</th><th>จ–พฤ</th><th>ศ–อา</th><th>วันฝน</th></tr></thead>
-                <tbody>
-                  <tr><td>ทุกประเภท</td><td class="price-num">200 ฿</td><td class="price-num">250 ฿</td><td class="fd-mark">× 0.5 ทุกประเภท</td></tr>
-                </tbody>
-              </table>
-              <div style="font-size:10px;color:var(--ink3);margin:8px 0 6px;font-weight:600">High Season (พ.ย.–ก.พ.)</div>
-              <table class="pn-tbl">
-                <thead><tr><th>ประเภท</th><th>จ–พฤ</th><th>ศ–อา</th><th>วันฝน</th></tr></thead>
-                <tbody>
-                  <tr><td>ทุกประเภท</td><td class="price-num">250 ฿</td><td class="price-num">300 ฿</td><td class="fd-mark">× 0.5 ทุกประเภท</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="pn-zone">
-              <div class="formula-box">
-                <code>รายรับ = (Online Net + Absent + Cancel + WalkIn + Extra) × ราคา × (FD ? 0.5 : 1)</code><br>
-                <span style="font-size:10px;color:var(--ink3)">WalkIn BN เข้าระบบแล้ว → ได้ส่วนลดวันฝนด้วย</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- SET-01: ราคาทุกสาขาสร้างจากหน้าตั้งค่า (settings.js · renderPriceNote) ไม่เขียนตัวเลขไว้ใน HTML แล้ว -->
+        <div id="pnDynamic"></div>
 
         <!-- ===== Admin Note ===== -->
         <div class="admin-note">
           <strong>หมายเหตุสำหรับผู้บริหาร:</strong><br>
-          • <strong>ST ทุกสาขา</strong> — ราคาเหมือนกัน จ–พฤ ต่ำกว่า ศ–อา เพราะปริมาณลูกค้าต่างกัน<br>
-          • <strong>SS Non</strong> — WalkIn ยังไม่เข้าระบบ ไม่ได้รับส่วนลดวันฝน<br>
-          • <strong>BG/BN Car</strong> — WalkIn เข้าระบบแล้ว ได้รับส่วนลดวันฝน 50% ทุกประเภท<br>
+          • <strong>ราคา</strong> — admin ตั้งในเมนูโปรไฟล์ → ตั้งค่า · เปลี่ยนแล้วมีผลเฉพาะวันข้างหน้า วันที่ผ่านมาคิดราคาเดิมเสมอ<br>
+          • <strong>จ–พฤ</strong> ราคาต่ำกว่า <strong>ศ–อา</strong> เพราะปริมาณลูกค้าต่างกัน<br>
+          • <strong>SS</strong> — วันฝนลดเฉพาะออนไลน์ · <strong>BG/BN</strong> — วันฝนลด 50% ทุกประเภท<br>
           • <strong>วันฝน (FreeDay)</strong> — ลด 50% เป็นนโยบายดูแลพ่อค้าแม่ค้า<br>
           • <strong>ค่าไฟ</strong> — 200W แรก = 30฿, เกิน 100W ละ 10฿ บันทึกจากมิเตอร์จริงรายวัน
         </div>
@@ -862,6 +762,19 @@
         </div>
       </div>
     </div>
+
+    <!-- SET-01: หน้าตั้งค่า (admin) — เนื้อหาวาดโดย js/firebase/settings.js -->
+    <div id="settingsModal" onclick="if(event.target===this)closeSettings()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8500;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto">
+      <div class="mc-panel" style="width:960px;max-width:100%;margin:0;box-shadow:0 20px 60px rgba(0,0,0,.45)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700">&#9881;&#65039; ตั้งค่า</div>
+          <span style="font-size:11px;color:var(--ink3)">ใช้ร่วมกันทุกคน · แก้ได้เฉพาะ admin</span>
+          <button onclick="closeSettings()" title="ปิด" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--ink2);width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:14px;line-height:1;font-family:'Noto Sans Thai',sans-serif">&times;</button>
+        </div>
+        <div id="setBody"></div>
+      </div>
+    </div>
+    <div id="setConfirm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center;padding:16px"></div>
 
 <!-- ┌── JavaScript ──────────────────────────────────────────────────┐
      │ ทั้งหมดเป็น classic script (ไม่ใช่ module) โดยตั้งใจ:           │

@@ -159,14 +159,15 @@ function calcWhatIf(){
   // คำนวณรายรับตามสาขา
   let revPerDay=0;
   if(activeBranch==='SS'){
-    const po_wd=100, po_wk=130, pw_wd=130, pw_wk=160;
+    const st=priceCellFor('SS','st',new Date()); // SET-01: ราคาจากหน้าตั้งค่า (ชุดที่มีผลวันนี้)
+    const po_wd=st.on[0], po_wk=st.on[1], pw_wd=st.wi[0], pw_wk=st.wi[1];
     // สมมติ 70% online 30% walkin
     const onlineWd=lockPerDay*0.7*po_wd, walkWd=lockPerDay*0.3*pw_wd;
     const onlineWk=lockPerDay*0.7*po_wk, walkWk=lockPerDay*0.3*pw_wk;
     revPerDay=(onlineWd*wdDays+onlineWk*wkndDays+walkWd*wdDays+walkWk*wkndDays)/days;
   } else {
-    const m=new Date().getMonth()+1;
-    const p_wd=nonPriceAt(activeBranch,m,false), p_wk=nonPriceAt(activeBranch,m,true); // PRICE-01: ตารางราคาเดียวกับ utils.js
+    const car=priceCellFor(activeBranch,'non',new Date()); // SET-01: ราคาจากหน้าตั้งค่า (ชุดที่มีผลวันนี้)
+    const p_wd=car.on[0], p_wk=car.on[1];
     revPerDay=(p_wd*wdDays+p_wk*wkndDays)/days*lockPerDay;
   }
 

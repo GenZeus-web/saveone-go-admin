@@ -16,6 +16,7 @@
 import { auth, db } from "./init.js";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { loadSettings } from "./settings.js";
 
 // ---- ORIGINAL (index.html) ----
 // เช็ค login state
@@ -122,6 +123,9 @@ onAuthStateChanged(auth, async (user) => {
     // USR-01: เมนูจัดการผู้ใช้ — เฉพาะ admin เท่านั้น
     const usersBtn = document.getElementById('profUsers');
     if (usersBtn) usersBtn.style.display = (role === 'admin') ? '' : 'none';
+    // SET-01: หน้าตั้งค่าราคา/ฤดูกาล/เป้ายอด — เฉพาะ admin (ด่านจริงคือ Firestore Rules)
+    const setBtn = document.getElementById('profSettings');
+    if (setBtn) setBtn.style.display = (role === 'admin') ? '' : 'none';
 
     // ซ่อนสาขาที่ไม่มีสิทธิ์
     document.querySelectorAll('.branch-item[data-branch]').forEach(el => {
@@ -210,6 +214,9 @@ onAuthStateChanged(auth, async (user) => {
 
     // โหลดข้อมูล — แสดง splash ก่อน
     if (typeof showSplash === 'function') showSplash();
+    // SET-01: ราคา + เป้ายอดต้องพร้อมก่อนคำนวณรายรับ
+    //   เคยโหลดแล้ว (มี cache) = ไม่รอ · เครื่องใหม่ = รออ่าน Firestore ก่อน (< 1 วิ)
+    try { await loadSettings(); } catch(e) { console.error('loadSettings:', e); }
     if (typeof loadAll === 'function') loadAll();
 
   } else {

@@ -25,39 +25,100 @@ const isWknd=d=>[0,5,6].includes(d.getDay());
 //   ค่าตั้งต้น = activeBranch เพื่อให้หน้าที่ดูสาขาเดียวเรียกแบบเดิมได้
 //   หน้าที่คิดเงิน "หลายสาขาพร้อมกัน" (Benchmark) ต้องส่ง br เองเสมอ
 //   เดิมอ่าน activeBranch ตรงๆ → Benchmark คิดราคา BG ด้วยราคา SS (ขาด 40%)
-function getBranchPrice(date){
-  // ST ทุกสาขาใช้ราคาเดียวกัน
-  const wk=isWknd(date);
-  return{po:wk?130:100, pw:wk?160:130};
+// ── SET-01: ราคามาจาก "ชุดราคา" ที่ admin ตั้งในหน้าตั้งค่า (Firestore settings/pricing) ──
+//   ชุดราคา 1 ชุด = วันเริ่มใช้ + ฤดูกาลของแต่ละสาขา + ราคาทุกช่อง (snapshot เต็ม ไม่ใช่ส่วนต่าง)
+//   วันไหนก็คิดด้วยชุดที่วันเริ่มใช้ล่าสุด <= วันนั้น → ราคาวันเก่าไม่มีวันเปลี่ยน (ADR 0001)
+//   prices[สาขา][ฤดูกาล][st|non] = { on:[ธรรมดา, ศ–อา], wi:[ธรรมดา, ศ–อา] }  (wi = วอล์กอิน/ล็อกเสริม)
+//   ฤดูกาล = ช่วง [เดือน,วัน] วนทุกปี · ช่วงทับกัน → ช่วงที่สั้นกว่าชนะ
+//   ค่าตั้งต้นข้างล่าง = ราคาที่ใช้จริงก่อนมีหน้าตั้งค่า (ตัวเลขเดิมทุกตัว)
+const PRICE_BRANCHES=['SS','BG','BN'];
+const DEFAULT_SEASONS=()=>[
+  {key:'high',name:'High Season',from:[11,1],to:[2,29]},
+  {key:'low', name:'Low Season', from:[3,1], to:[10,31]},
+];
+const DEFAULT_PRICING=(()=>{
+  const st={on:[100,130],wi:[130,160]};
+  const car=(on)=>({on,wi:[on[0]+50,on[1]+50]});
+  const cp=o=>JSON.parse(JSON.stringify(o));
+  return {versions:[{
+    id:'base', effective:'2000-01-01',
+    seasons:{SS:DEFAULT_SEASONS(),BG:DEFAULT_SEASONS(),BN:DEFAULT_SEASONS()},
+    prices:{
+      SS:{high:{st:cp(st),non:{on:[30,30],wi:[30,30]}}, low:{st:cp(st),non:{on:[30,30],wi:[30,30]}}},
+      BG:{high:{st:cp(st),non:car([300,350])}, low:{st:cp(st),non:car([250,300])}},
+      BN:{high:{st:cp(st),non:car([250,300])}, low:{st:cp(st),non:car([200,250])}},
+    },
+  }]};
+})();
+let PRICING=null;          // เอกสาร settings/pricing ที่โหลดมา (null = ยังไม่มี → ใช้ค่าตั้งต้น)
+let PRICING_STATE='default'; // default | cache | fresh | failed
+const pricingDoc=()=>PRICING||DEFAULT_PRICING;
+// เปลี่ยนชุดราคาที่ใช้คำนวณ (เรียกจาก firebase/settings.js) · doc=null = กลับไปค่าตั้งต้น
+function setPricing(doc,state){
+  PRICING=doc&&Array.isArray(doc.versions)&&doc.versions.length?doc:null;
+  PRICING_STATE=state;
+  _cellMemo={};
 }
-// ── ฤดูกาล (ใช้กับราคา Car เท่านั้น · ST ราคาเดียวทั้งปี) ──
-// high = พ.ย.–ก.พ. (ข้ามปี) · low = มี.ค.–ต.ค.
-const HIGH_SEASON_MONTHS=[11,12,1,2];
-const seasonOf=month=>HIGH_SEASON_MONTHS.includes(month)?'high':'low';
-// ราคา Car ต่อล็อก [วันธรรมดา, ศ–อา] แยกตาม season · SS Non = 30 ทุกวันทุก season
-const NON_PRICE={
-  BG:{high:[300,350], low:[250,300]},
-  BN:{high:[250,300], low:[200,250]},
-};
-function nonPriceAt(br,month,wk){
-  const t=NON_PRICE[br]; if(!t) return 30; // SS Non
-  return t[seasonOf(month)][wk?1:0];
+const isoDate=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+// ชุดราคาที่มีผลในวันนั้น
+function pricingVersionAt(date){
+  const k=isoDate(date);
+  const vs=pricingDoc().versions||[];
+  let hit=null;
+  for(const v of vs){ if(v.effective<=k && (!hit||v.effective>=hit.effective)) hit=v; }
+  return hit||DEFAULT_PRICING.versions[0];
 }
-function getNonPrice(date,br=activeBranch){
-  return nonPriceAt(br,date.getMonth()+1,isWknd(date));
+// ช่วงฤดูกาลครอบวันที่ไหม (รองรับช่วงข้ามปี เช่น 1 พ.ย.–29 ก.พ.)
+const mdNum=(m,d)=>m*100+d;
+function seasonHas(s,m,d){
+  const x=mdNum(m,d),a=mdNum(s.from[0],s.from[1]),b=mdNum(s.to[0],s.to[1]);
+  return a<=b ? (x>=a&&x<=b) : (x>=a||x<=b);
 }
-// ราคาป้าย ออนไลน์/วอล์กอิน ต่อล็อก ของโซนที่ดูอยู่ (zone==='non' = Car/Non · อื่นๆ = ST)
-// Car: วอล์กอิน/ล็อกเสริม = ออนไลน์ +50 · SS Non ราคาเดียว
+const _seasonLenMemo={};
+function seasonLength(s){ // นับวันในปีอธิกสุรทิน (366) ไว้ตัดสินช่วงที่ทับกัน
+  const k=s.from+'-'+s.to;
+  if(_seasonLenMemo[k]!==undefined) return _seasonLenMemo[k];
+  let n=0; for(let t=new Date(2024,0,1);t.getFullYear()===2024;t.setDate(t.getDate()+1)) if(seasonHas(s,t.getMonth()+1,t.getDate())) n++;
+  return (_seasonLenMemo[k]=n);
+}
+function seasonAt(ver,br,date){
+  const m=date.getMonth()+1,d=date.getDate();
+  let best=null,bestLen=1e9;
+  for(const s of (ver.seasons?.[br]||[])){
+    if(!seasonHas(s,m,d)) continue;
+    const len=seasonLength(s);
+    if(len<bestLen){best=s;bestLen=len;}
+  }
+  return best;
+}
+// ราคาทั้งช่อง {on:[ธรรมดา,ศ–อา], wi:[…]} ของ สาขา × โซน ในวันนั้น
+// ถูกเรียกหลายครั้งต่อแถว × หลายร้อยแถว → จำผลไว้ ล้างทุกครั้งที่ชุดราคาเปลี่ยน (setPricing)
+let _cellMemo={};
+function priceCellFor(br,z,date){
+  const mk=br+z+date.getFullYear()+'-'+date.getMonth()+'-'+date.getDate();
+  return _cellMemo[mk]||(_cellMemo[mk]=_priceCell(br,z,date));
+}
+function _priceCell(br,z,date){
+  const ver=pricingVersionAt(date);
+  const s=seasonAt(ver,br,date);
+  const cell=s&&ver.prices?.[br]?.[s.key]?.[z==='non'?'non':'st'];
+  if(cell) return cell;
+  // ชุดราคาไม่ครบ (ไม่ควรเกิด หน้าตั้งค่าตรวจก่อนบันทึก) → ถอยไปค่าตั้งต้น ไม่ให้เว็บพัง
+  const b=DEFAULT_PRICING.versions[0];
+  return b.prices[br]?.[seasonAt(b,br,date)?.key]?.[z==='non'?'non':'st']||{on:[0,0],wi:[0,0]};
+}
+// ราคาป้าย ออนไลน์/วอล์กอิน ต่อล็อก (zone==='non' = Car/Non · อื่นๆ = ST)
 function lockPrices(date,z,br=activeBranch){
-  if(z!=='non') return getBranchPrice(date);
-  const p=getNonPrice(date,br);
-  return{po:p, pw:br==='SS'?p:p+50};
+  const c=priceCellFor(br,z,date), i=isWknd(date)?1:0;
+  return{po:c.on[i], pw:c.wi[i]};
 }
+function getBranchPrice(date,br=activeBranch){ return lockPrices(date,'st',br); }
+function getNonPrice(date,br=activeBranch){ return lockPrices(date,'non',br).po; }
+function getNonWalkPrice(date,br=activeBranch){ return lockPrices(date,'non',br).pw; }
 // วันฝน: SS ลดครึ่งเฉพาะออนไลน์ · BG/BN ลดครึ่งทุกประเภท
 const rainHalvesWalkIn=(br=activeBranch)=>br!=='SS';
 function revST(r,g='all',br=activeBranch){
-  // ST ทุกสาขาใช้ราคาเดียวกัน (100/130 Online, 130/160 WalkIn)
-  const{po,pw}=getBranchPrice(r.date);
+  const{po,pw}=getBranchPrice(r.date,br);
   const fd=r.freeDay;
   // เลือก lock ตาม group
   const online = (g==='all'||g==='online') ? (r.onlineLock||0) : 0;
@@ -72,7 +133,7 @@ function revST(r,g='all',br=activeBranch){
   }
 }
 function revSTNormal(r,g='all',br=activeBranch){
-  const{po,pw}=getBranchPrice(r.date);
+  const{po,pw}=getBranchPrice(r.date,br);
   const online = (g==='all'||g==='online') ? (r.onlineLock||0) : 0;
   const walkin = (g==='all'||g==='walkin') ? (r.walkInLock||0) : 0;
   const extra  = (g==='all'||g==='extra')  ? (r.extraLock||0)  : 0;
@@ -86,10 +147,10 @@ function revNon(r,g='all',br=activeBranch){
   const walkin = (g==='all'||g==='walkin') ? (r.nonWalkInLock||0) : 0;
   const extra  = (g==='all'||g==='extra')  ? (r.nonExtraLock||0)  : 0;
 
+  const pw=getNonWalkPrice(r.date,br); // วอล์กอิน/ล็อกเสริม (ตั้งต้น: Car = ออนไลน์ +50 · SS Non = ราคาเดียว)
   if(br==='SS'){
-    return online*p*(fd?0.5:1) + walkin*p + extra*p;
+    return online*p*(fd?0.5:1) + walkin*pw + extra*pw;
   } else {
-    const pw=p+50; // Car: Walk-in/ล็อกเสริม = ราคาออนไลน์ +50 (ทุก season)
     return (online*p + (walkin+extra)*pw)*(fd?0.5:1);
   }
 }
@@ -99,13 +160,13 @@ function revNonNormal(r,g='all',br=activeBranch){
   const online = (g==='all'||g==='online') ? (r.nonOnlineLock||0) : 0;
   const walkin = (g==='all'||g==='walkin') ? (r.nonWalkInLock||0) : 0;
   const extra  = (g==='all'||g==='extra')  ? (r.nonExtraLock||0)  : 0;
-  const pw=(br==='SS')?p:p+50; // SS Non ไม่บวก / Car +50
+  const pw=getNonWalkPrice(r.date,br);
   return online*p + (walkin+extra)*pw;
 }
 
 function calcDiscount(r,g='all',br=activeBranch){
   if(!r.freeDay) return 0;
-  const{po,pw}=getBranchPrice(r.date);
+  const{po,pw}=getBranchPrice(r.date,br);
   const np=getNonPrice(r.date,br);
   const nonFd=r.nonFree||r.freeDay||false;
   // FD-03: รองรับ filter ตาม "กลุ่มข้อมูล" (online/walkin/extra/cancel/all) เหมือน revST/revNon/getLock
@@ -124,7 +185,7 @@ function calcDiscount(r,g='all',br=activeBranch){
     stDisc=online*(r.onlineLock||0)*po*0.5 + (walkin*(r.walkInLock||0)+extra*(r.extraLock||0))*pw*0.5;
     // BG/BN Car: ทุกประเภทลด
     if(nonFd){
-      const npw=np+50; // Walk-in/ล็อกเสริม รถ +50
+      const npw=getNonWalkPrice(r.date,br); // วอล์กอิน/ล็อกเสริม รถ
       nonDisc=(online*(r.nonOnlineLock||0)*np + (walkin*(r.nonWalkInLock||0)+extra*(r.nonExtraLock||0))*npw)*0.5;
     }
   }

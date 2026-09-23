@@ -10,7 +10,7 @@ function exportCSV(){
     const net=Math.max(0,r.onlineLock-r.absentLock-r.cancelLock);
     const totalLock=getLock(r,group);
     const totalRai=getRai(r,group);
-    const rev=Math.round(revST(r)+revNon(r));
+    const rev=PRICING_STATE==='failed'?'':Math.round(revST(r)+revNon(r)); // SET-01: ไม่รู้ราคาจริง = เว้นว่าง
     const elec=r.l1+r.l1n+r.l2+r.l2n;
     const hitTarget=totalLock>=targetLock?'ใช่':'ไม่';
     return[

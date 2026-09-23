@@ -221,3 +221,46 @@ body.manager-mode .admin-only{display:none!important;}
 .day-r .u{font-size:10px;color:var(--ink3);font-weight:400;margin-left:3px;}
 .day-r.hi>span:last-child{font-size:15px;}
 #cMain{cursor:pointer;}
+
+/* ── SET-01: หน้าตั้งค่า ราคา · ฤดูกาล · เป้ายอด (js/firebase/settings.js) ── */
+#settingsModal>*{min-width:0;} /* flex item: ไม่ให้ตารางกว้างดันหน้าต่างล้นจอมือถือ */
+.set-tabs{margin-bottom:12px;flex-wrap:wrap;max-width:100%;}
+.set-pills{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0;}
+.set-pill{padding:5px 12px;border-radius:14px;border:1px solid var(--border);background:var(--surface2);color:var(--ink2);cursor:pointer;font-size:12px;font-family:'Noto Sans Thai',sans-serif;}
+.set-pill.on{background:var(--gold);border-color:var(--gold);color:#1a1f2e;font-weight:700;}
+.set-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;}
+.set-h{font-size:12px;font-weight:700;margin-bottom:8px;}
+.set-muted{font-size:11px;color:var(--ink3);line-height:1.6;}
+.set-tblwrap{overflow-x:auto;}
+.set-tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.set-tbl th{text-align:left;font-size:10px;color:var(--ink3);font-weight:600;padding:6px;border-bottom:1px solid var(--border);white-space:nowrap;}
+.set-tbl td{padding:6px;border-bottom:1px solid var(--border);white-space:nowrap;}
+.set-num{width:84px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:12px;font-family:'JetBrains Mono',monospace;outline:none;}
+.set-num:focus,.set-sel:focus,.set-name:focus,.set-date:focus,.set-pw input:focus{border-color:var(--gold);}
+.set-num.changed{border-color:var(--gold);background:rgba(240,165,0,.12);color:var(--gold);font-weight:700;}
+.set-season{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.set-name{flex:1 1 140px;min-width:120px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:12px;font-weight:700;font-family:'Noto Sans Thai',sans-serif;outline:none;}
+.set-sel,.set-date{padding:5px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:12px;font-family:'Noto Sans Thai',sans-serif;outline:none;}
+.set-btn{padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--ink2);cursor:pointer;font-size:12px;font-family:'Noto Sans Thai',sans-serif;}
+.set-btn:disabled{opacity:.6;cursor:wait;}
+.set-btn.primary{background:var(--gold);border-color:var(--gold);color:#1a1f2e;font-weight:700;}
+.set-btn.danger{border-color:var(--red);color:var(--red);background:transparent;}
+.set-btn.sm{padding:3px 10px;font-size:11px;}
+.set-savebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--border);padding:12px 0 4px;margin-top:12px;font-size:12px;}
+.set-pending{background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.35);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;}
+.set-prow{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;padding:6px 0;border-top:1px dashed var(--border);}
+.set-prow:first-of-type{border-top:none;}
+.set-warn{background:rgba(224,92,92,.12);border:1px solid var(--red);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:12px;color:var(--red);line-height:1.6;}
+.set-ok{background:rgba(61,214,140,.1);border:1px solid rgba(61,214,140,.4);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:12px;color:var(--green);}
+.set-note{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:12px;line-height:1.8;}
+.set-dialog{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;width:560px;max-width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.45);}
+.set-diff{margin:8px 0 0 18px;font-size:12px;line-height:1.7;}
+.set-diff li.big{color:var(--red);font-weight:700;}
+.set-pw{display:block;margin-top:12px;font-size:12px;font-weight:600;}
+.set-pw input{display:block;width:100%;margin-top:6px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:13px;outline:none;}
+.set-log{border-bottom:1px solid var(--border);padding:10px 0;font-size:12px;}
+.set-toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;background:var(--surface3);border:1px solid var(--green);color:var(--ink);padding:10px 16px;border-radius:8px;font-size:12px;z-index:9500;transition:all .25s;pointer-events:none;max-width:calc(100% - 32px);}
+.set-toast.show{opacity:1;transform:translate(-50%,0);}
+.set-toast.bad{border-color:var(--red);}
+/* โหลดราคาไม่ได้เลย → ซ่อนตัวเลขเงินทุกจุด (ไม่โชว์รายรับที่อาจผิด) */
+body.no-price .col-rev,body.no-price #revSection,body.no-price #whatif-section{display:none!important;}

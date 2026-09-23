@@ -30,11 +30,12 @@ saveone-go-admin/
 └── js/
     ├── firebase/               ES module (type="module")
     │   ├── init.js             ตั้งต้น Firebase ครั้งเดียว แล้ว export
-    │   ├── auth.js             login/logout + กระจายสิทธิ์ตาม role
+    │   ├── auth.js             login/logout + กระจายสิทธิ์ตาม role (import settings.js)
+    │   ├── settings.js         หน้าตั้งค่า ราคา · ฤดูกาล · เป้ายอด · ประวัติการแก้ (admin)
     │   └── user-admin.js       เมนูโปรไฟล์ + จัดการผู้ใช้ (admin)
     │
     ├── config.js               URL Apps Script, ค่าคงที่, state, เป้ารายวัน
-    ├── utils.js                ตัวแปลงรูปแบบ, ราคา/รายรับ, แปลงแถว CSV
+    ├── utils.js                ตัวแปลงรูปแบบ, ชุดราคา/ฤดูกาล/รายรับ, แปลงแถว CSV
     ├── data-fetch.js           token, fetch + timeout/retry, คุมท่อขนาน
     ├── data-cache.js           เก็บ CSV ใน localStorage + สิทธิ์สาขา
     ├── data-load.js            loadAll, สถานะข้อมูล, refresh, รวม ST+Non

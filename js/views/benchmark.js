@@ -99,7 +99,7 @@ function renderBenchmark(){
       const avgLock=(totalLock/days).toFixed(1);
       const totalRev=d.reduce((s,r)=>s+revST(r,'all',b)+revNon(r,'all',b),0); // PRICE-01: ใช้ราคาของสาขา b ไม่ใช่สาขาที่เปิดดูอยู่
       const fds=d.filter(r=>r.freeDay).length;
-      const canSeeRev=window.userPerms?.showRevenue;
+      const canSeeRev=window.userPerms?.showRevenue&&PRICING_STATE!=='failed'; // SET-01: ไม่รู้ราคาจริง = ไม่โชว์เงิน
       return `<div class="mom-card" style="border-color:${sc(BM_COLORS[b])}">
         <div class="mom-month" style="color:${sc(BM_COLORS[b])};font-weight:700">${BM_NAMES[b]}</div>
         <div class="mom-val" style="color:${sc(BM_COLORS[b])}">${fmtN(avgLock,1)}</div>

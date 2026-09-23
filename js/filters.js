@@ -146,5 +146,6 @@ function applyAll(){
   else if(view==='compare') renderCompare();
   else if(view==='heatmap') renderHeatmap();
   else if(view==='benchmark') renderBenchmark();
+  else if(view==='pricenote'&&typeof window.renderPriceNote==='function') window.renderPriceNote(); // SET-01
 }
 
