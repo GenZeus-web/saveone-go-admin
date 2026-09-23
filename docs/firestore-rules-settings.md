@@ -4,35 +4,31 @@
 กฎจริงอยู่ใน Firebase Console ไม่ได้อยู่ใน repo — **คัดส่วนข้างล่างไปวางเพิ่ม ห้ามลบกฎเดิม**
 
 Firebase Console → Firestore Database → แท็บ **Rules** → วางไว้ใน `match /databases/{database}/documents { … }`
-ถัดจากกฎ `users` / `data` เดิม → กด **Publish**
+วาง **ก่อนบรรทัด** `match /{document=**} {` (กฎปฏิเสธทุกอย่างท้ายไฟล์) → กด **Publish**
+ใช้ฟังก์ชัน `isSignedIn` · `hasProfile` · `isAdmin` ที่กฎเดิมมีอยู่แล้ว (ตรวจกับ Console 23 ก.ย. 2569) — ไม่ต้องประกาศซ้ำ
 
 ```
-    // ── SET-01: หน้าตั้งค่า ──
-    function signedIn() { return request.auth != null; }
-    function isAdminUser() {
-      return signedIn()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    // ใส่รหัสผ่านยืนยันมาไม่เกิน 5 นาที (หน้าเว็บ reauthenticate ทุกครั้งก่อนบันทึก/ยกเลิกราคา)
+    // SET-01 (v2.12.0): หน้าตั้งค่า ราคา · ฤดูกาล · เป้ายอด — ดู docs/firestore-rules-settings.md
+    // ใส่รหัสผ่านยืนยันมาไม่เกิน 5 นาที (เว็บ reauthenticate ทุกครั้งก่อนบันทึก/ยกเลิกราคา)
     function recentlyConfirmed() {
       return request.auth.token.auth_time > request.time.toMillis() / 1000 - 300;
     }
-
-    // ราคา + ฤดูกาล: ทุกคนที่ล็อกอินอ่านได้ (ต้องใช้คำนวณรายรับ) · เขียนได้เฉพาะ admin ที่เพิ่งใส่รหัส
+    // ราคา + ฤดูกาล: ทุกคนที่มีโปรไฟล์อ่านได้ (ใช้คำนวณรายรับ) · เขียนได้เฉพาะ admin ที่เพิ่งใส่รหัส
     match /settings/pricing {
-      allow read: if signedIn();
-      allow write: if isAdminUser() && recentlyConfirmed();
+      allow get: if hasProfile();
+      allow list: if false;
+      allow write: if isAdmin() && recentlyConfirmed();
     }
-    // เป้ายอด: ทุกคนอ่านได้ · admin เขียนได้ (ไม่ต้องใส่รหัส — ตกลงกันไว้ Q12)
+    // เป้ายอด: ทุกคนที่มีโปรไฟล์อ่านได้ · admin เขียนได้ (ไม่ต้องใส่รหัส)
     match /settings/targets {
-      allow read: if signedIn();
-      allow write: if isAdminUser();
+      allow get: if hasProfile();
+      allow list: if false;
+      allow write: if isAdmin();
     }
-    // ประวัติการแก้: admin เพิ่มได้อย่างเดียว (ต้องลงชื่อตัวเอง) · แก้/ลบไม่ได้ทุกคน
-    // อ่านได้เฉพาะบัญชีเจ้าของระบบ
+    // ประวัติการแก้: admin เพิ่มได้อย่างเดียว (ลงชื่อตัวเอง) · แก้/ลบไม่ได้ · อ่านได้เฉพาะเจ้าของระบบ
     match /settingsLog/{id} {
-      allow create: if isAdminUser() && request.resource.data.by == request.auth.token.email;
-      allow read: if signedIn() && request.auth.token.email == 'anansit@saveone.go';
+      allow create: if isAdmin() && request.resource.data.by == request.auth.token.email;
+      allow get, list: if isSignedIn() && request.auth.token.email == 'anansit@saveone.go';
       allow update, delete: if false;
     }
 ```
