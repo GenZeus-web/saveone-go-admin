@@ -576,7 +576,13 @@ function assertSafe_(payload, step) {
  *  ไม่เก็บ class — class เปลี่ยนแค่หน้าตา ไม่เปลี่ยนสิ่งที่ส่งไปเซิร์ฟเวอร์ เก็บไว้จะหยุดบ่อยโดยไม่จำเป็น */
 function pageControls_(html) {
   var lines = {}, m;
-  var norm = function (s) { return String(s || '').replace(/\$ctl\d+\$/g, '$ctl#$').replace(/_ctl\d+_/g, '_ctl#_'); };
+  /* ตัดเลขแถวออก ให้ลายนิ้วมือไม่ขึ้นกับจำนวนล็อควันนั้น
+     name: ...ListItemsRepeater$ctl12$RefundTypeRowRadioButtonList
+     id  : ...RefundTypeRowRadioButtonList_100_2_100  (แถว_ตัวเลือก_แถว) → เก็บเลขตัวเลือกไว้ */
+  var norm = function (s) {
+    return String(s || '').replace(/\$ctl\d+\$/g, '$ctl#$').replace(/_ctl\d+_/g, '_ctl#_')
+                          .replace(/_(\d+)_(\d+)_\1$/, '_#_$2_#');
+  };
   var re = /<(input|select|textarea|button)\b[^>]*>/gi;
   while ((m = re.exec(html)) !== null) {
     var tag = m[0], kind = m[1].toLowerCase();
