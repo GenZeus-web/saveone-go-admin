@@ -156,9 +156,11 @@ function setupTriggers_(branch) {
     Logger.log('⚠️ ตอนนี้สาขา ' + branch + ' อยู่โหมดซ้อม — ตั้งเวลาไปก็จะไม่เขียนอะไรลงชีต');
     Logger.log('   ตั้งได้ แต่อย่าลืมลบ dryRun: true ออกจาก SHEETS.' + branch + ' ตอนพร้อมใช้จริง\n');
   }
+  var existing = projectTriggers_(handler);
+  if (!existing) return;                 // ไม่มีสิทธิ์ — บอกวิธีตั้งผ่านหน้าทริกเกอร์แล้ว
   // ลบของเดิมก่อน กันตั้งซ้ำแล้วรันวันละ 6 รอบโดยไม่รู้ตัว
   var removed = 0;
-  ScriptApp.getProjectTriggers().forEach(function (t) {
+  existing.forEach(function (t) {
     if (t.getHandlerFunction() === handler) { ScriptApp.deleteTrigger(t); removed++; }
   });
   if (removed) Logger.log('ลบตัวตั้งเวลาเดิมของ ' + handler + ' ออก ' + removed + ' ตัว');
@@ -171,8 +173,25 @@ function setupTriggers_(branch) {
   Logger.log('เวลาที่รันจริงอาจคลาดจากนี้ได้ถึง 1 ชม. (ข้อจำกัดของ Apps Script)');
 }
 
+/** อ่านรายการทริกเกอร์ · ถ้า manifest ไม่มีสิทธิ์ script.scriptapp (เช่นโปรเจกต์ "บางนา")
+ *  ไม่ปล่อย error ดิบ — บอกวิธีตั้งผ่านหน้า "ทริกเกอร์" แทน แล้วคืน null */
+function projectTriggers_(handler) {
+  try {
+    return ScriptApp.getProjectTriggers();
+  } catch (e) {
+    if (!/script\.scriptapp/.test(String(e))) throw e;
+    var h = handler || 'scheduledBG / scheduledBN';
+    Logger.log('⚠️ โปรเจกต์นี้ไม่มีสิทธิ์จัดการทริกเกอร์จากโค้ด (script.scriptapp) — ไม่ได้แตะทริกเกอร์ใดๆ');
+    Logger.log('   ตั้งเองได้เลย ไม่ต้องแก้ manifest: แถบซ้าย ⏰ ทริกเกอร์ → + เพิ่มทริกเกอร์ ทำ ' + RUN_HOURS.length + ' รอบ');
+    Logger.log('   ฟังก์ชัน ' + h + ' · Head · ตามเวลา · ตัวจับเวลาตามวัน · ช่วง ' +
+               RUN_HOURS.map(function (x) { return x + '.00–' + (x + 1) + '.00'; }).join(' / '));
+    return null;
+  }
+}
+
 function listTriggers() {
-  var ts = ScriptApp.getProjectTriggers();
+  var ts = projectTriggers_();
+  if (!ts) return;
   if (!ts.length) { Logger.log('ยังไม่มีตัวตั้งเวลา'); return; }
   Logger.log('ตัวตั้งเวลาที่มีอยู่ ' + ts.length + ' ตัว:');
   ts.forEach(function (t) { Logger.log('  • ' + t.getHandlerFunction() + ' (' + t.getEventType() + ')'); });
@@ -183,7 +202,9 @@ function listTriggers() {
       อยู่ด้วย ถ้าหายไป เว็บจะค้างข้อมูลเก่าเงียบๆ จนกว่าจะมีคนสังเกต */
 function removeTriggers() {
   var mine = { scheduledBG: 1, scheduledBN: 1 }, n = 0, kept = [];
-  ScriptApp.getProjectTriggers().forEach(function (t) {
+  var ts = projectTriggers_();
+  if (!ts) return;
+  ts.forEach(function (t) {
     var h = t.getHandlerFunction();
     if (mine[h]) { ScriptApp.deleteTrigger(t); n++; } else kept.push(h);
   });
