@@ -216,7 +216,8 @@ function renderOverview(d){
       },
       scales:{
         x:{ticks:{color:chartClr().tick,font:{family:'Noto Sans Thai',size:9},maxTicksLimit:15,maxRotation:0},grid:{color:chartClr().grid}},
-        y:{position:'left',min:0,max:lockMax,title:{display:true,text:'ราย / ล็อก',color:chartClr().lbl,font:{size:10}},ticks:{color:chartClr().lbl,font:{family:'JetBrains Mono',size:9}},grid:{color:chartClr().grid}},
+        // UI-NIGHT: suggestedMax แทน max — Chart.js ปัดขึ้นเป็นเลขกลมเอง (เดิมบนสุดโชว์ 585.9)
+        y:{position:'left',min:0,suggestedMax:lockMax,title:{display:true,text:'ราย / ล็อก',color:chartClr().lbl,font:{size:10}},ticks:{color:chartClr().lbl,font:{family:'JetBrains Mono',size:9}},grid:{color:chartClr().grid}},
       }
     }
   });

@@ -2,9 +2,12 @@
 // charts.js — แกนกลางกราฟ: plugin วาดเส้น, สีตามธีม, options, สร้าง/ทำลายกราฟ     [เดิม 3419-3516]
 // ============================================================
 // Plugin วาดเส้นจากซ้ายไปขวา เหมือน progress bar
+// CHT-04: ตัดขอบ (clip) เฉพาะตอนวาด "ข้อมูล" เท่านั้น — เดิมใช้ beforeDraw/afterDraw ซึ่งตัดทั้งกราฟ
+//   แกน X/Y + legend อยู่นอก chartArea เลยถูกตัดทิ้ง และเฟรมสุดท้ายไม่ได้วาดใหม่
+//   → แกนหายค้าง จนกว่าจะเอาเมาส์ไปชี้ (tooltip สั่งวาดใหม่ให้พอดี)
 const revealPlugin={
   id:'reveal',
-  beforeDraw(chart){
+  beforeDatasetsDraw(chart){
     if(chart._revealProgress===undefined) return;
     const{ctx,chartArea:{left,top,right,bottom}}=chart;
     ctx.save();
@@ -12,7 +15,7 @@ const revealPlugin={
     ctx.rect(left,top,(right-left)*chart._revealProgress,bottom-top+2);
     ctx.clip();
   },
-  afterDraw(chart){
+  afterDatasetsDraw(chart){
     if(chart._revealProgress!==undefined) chart.ctx.restore();
   }
 };
@@ -31,7 +34,7 @@ function animateChartReveal(chart,duration=1200){
     chart._revealProgress=ease;
     chart.draw();
     if(t<1) chart._revealRAF=requestAnimationFrame(step);
-    else{chart._revealProgress=undefined;chart._revealRAF=null;}
+    else{chart._revealProgress=undefined;chart._revealRAF=null;chart.draw();} // CHT-04: วาดเฟรมสุดท้ายแบบไม่ตัดขอบ
   }
   chart._revealRAF=requestAnimationFrame(step);
 }

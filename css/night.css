@@ -1,0 +1,103 @@
+/* ============================================================
+   night.css — UI-NIGHT (คอนเซปต์): โทน "ตลาดกลางคืน" ต่อจากหน้า login
+   ทับค่าเดิมเท่านั้น ไม่แก้ไฟล์อื่น → ลบ <link> บรรทัดเดียวใน index.html = กลับเป็นหน้าตาเดิม
+   ต้องอยู่หลัง screens.css และก่อน responsive.css เสมอ
+
+   หลักออกแบบที่ใช้ (อ้างอิงใน docs ของ branch นี้):
+   · สีต้องมีความหมาย (Preattentive attributes / Von Restorff)
+       การ์ด KPI ปกติ = โทนกลาง · สีแบรนด์เฉพาะตัวเลขหลัก · สีแดงเหลือไว้ให้ "ของที่ผิดปกติ" (แถบหลุดเป้า) เด่นตัวเดียว
+   · ลำดับชั้น (Visual hierarchy) — ตัวเลขหลักใหญ่สุด ซ้ายบน · ของรองเล็กลง ไม่แย่งสายตา
+   · ความลึกมาจากแสง/เงา/ชั้น ไม่ใช่การขยับ (dashboard ต้องจ้องนาน)
+   ============================================================ */
+
+/* ── 1) โทนสี ── มืด = ดำอมน้ำตาลอุ่น · สว่าง = กระดาษโทนครีม */
+:root{
+  --bg:#0e0c0b; --surface:#171412; --surface2:#201c19; --surface3:#2b2622;
+  --border:#2e2824; --ink:#f1ece6; --ink2:#b3a99f; --ink3:#7b7168;
+  --gold:#f0b43c; --gold2:#ffd27a; --green:#3dd68c; --green2:#27ae60;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px -14px rgba(0,0,0,.7);
+  --nt-card:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01)) ,rgba(23,20,18,.78);
+  --nt-edge:rgba(255,255,255,.065);
+  --nt-hi:rgba(255,255,255,.06);
+  --nt-glass:rgba(14,12,11,.72);
+}
+body.light-mode{
+  --bg:#f6f3ee; --surface:#fffdfa; --surface2:#f2eee7; --surface3:#e8e2d8;
+  --border:#e4ddd2; --ink:#1d1a17; --ink2:#4b443d; --ink3:#877c71;
+  --gold:#b87a00; --green:#15925a;
+  --shadow:0 1px 2px rgba(60,40,20,.06),0 14px 30px -16px rgba(60,40,20,.22);
+  --nt-card:linear-gradient(180deg,#fffefc,#fffaf3);
+  --nt-edge:rgba(60,40,20,.09);
+  --nt-hi:rgba(255,255,255,.9);
+  --nt-glass:rgba(246,243,238,.78);
+}
+
+/* ── 2) แสงบรรยากาศ ── เรืองนิ่งๆ ที่มุมจอ (ไม่ขยับ) เหมือนไฟแผงตลาดไกลๆ */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(55% 45% at 0% 0%,rgba(240,180,60,.08),transparent 70%),
+    radial-gradient(50% 45% at 100% 100%,rgba(61,214,140,.07),transparent 70%);}
+body.light-mode::before{background:
+    radial-gradient(55% 45% at 0% 0%,rgba(240,180,60,.12),transparent 70%),
+    radial-gradient(50% 45% at 100% 100%,rgba(61,214,140,.10),transparent 70%);}
+.layout{position:relative;z-index:1;}
+
+/* ── 3) หัวเว็บ + sidebar = กระจกฝ้า ── */
+.header{background:var(--nt-glass);border-bottom:1px solid var(--nt-edge);box-shadow:none;
+  -webkit-backdrop-filter:blur(16px) saturate(140%);backdrop-filter:blur(16px) saturate(140%);}
+.sidebar{background:var(--nt-glass);border-right:1px solid var(--nt-edge);box-shadow:none;}
+
+/* ── 4) การ์ด ── ผิวไล่แสงบางๆ + ขอบบนสว่าง + เงาหลายชั้น = ดูลอยโดยไม่ต้องเอียง */
+.kpi,.main-chart-card,.sc,.tb-card,.date-range-bar,.vtabs{
+  background:var(--nt-card);border:1px solid var(--nt-edge);
+  box-shadow:inset 0 1px 0 var(--nt-hi),var(--shadow);}
+.kpi,.sc,.tb-card{border-radius:14px;}
+.main-chart-card{border-radius:16px;padding:18px 20px;}
+.date-range-bar,.vtabs{border-radius:12px;}
+
+/* แท็บ: ตัวที่เลือกอยู่ = พื้นแบรนด์จางๆ (สีบอกสถานะ "เลือกอยู่") */
+.vtab{border-radius:8px;}
+.vtab.active{background:rgba(61,214,140,.13);color:var(--green);}
+
+/* ── 5) KPI: สีต้องมีความหมาย ──
+   เดิมทุกใบมีแถบสี+ตัวเลขสีของตัวเอง (น้ำเงิน ทอง แดง ส้ม ม่วง) → สีไม่ได้บอกอะไร
+   ใหม่: ตัวเลขทุกใบสีเดียว · ความสำคัญบอกด้วย "ขนาด" · ใบหลักมีแสงแบรนด์ */
+.kpi,.kpi.green,.kpi.orange,.kpi.red,.kpi.blue,.kpi.purple,.kpi.gold{border-left:1px solid var(--nt-edge);}
+.kpi .kpi-val,.kpi.gold .kpi-val,.kpi.green .kpi-val,.kpi.orange .kpi-val,.kpi.red .kpi-val,.kpi.blue .kpi-val,.kpi.purple .kpi-val{
+  color:var(--ink);font-weight:600;letter-spacing:-.02em;}
+.kpi-lbl{color:var(--ink2);font-size:11px;}
+.kpi{padding:15px 17px;transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s;}
+.kpi:hover{transform:translateY(-2px);box-shadow:inset 0 1px 0 var(--nt-hi),0 2px 4px rgba(0,0,0,.3),0 22px 40px -16px rgba(0,0,0,.75);}
+body.light-mode .kpi:hover{box-shadow:inset 0 1px 0 var(--nt-hi),0 2px 4px rgba(60,40,20,.08),0 22px 40px -18px rgba(60,40,20,.3);}
+/* ใบหลัก (ตัวเลขที่ต้องเห็นก่อน): ใหญ่ขึ้น + แสงเขียวแบรนด์มุมซ้ายบน + ขอบบนเรือง */
+.kpi.kpi-lead,.kpi.gold.kpi-hero,.kpi.kpi-hero{position:relative;overflow:hidden;
+  background:radial-gradient(120% 90% at 0% 0%,rgba(61,214,140,.16),transparent 55%),var(--nt-card);
+  border-color:rgba(61,214,140,.28);
+  box-shadow:inset 0 1px 0 rgba(61,214,140,.35),var(--shadow);}
+.kpi.kpi-lead .kpi-val{font-size:36px;font-weight:700;}
+/* ป้ายเฉลี่ย/วันในใบล็อก/ราย เดิมเป็นกล่องทอง/ส้ม inline → โทนกลาง */
+.kpi>div[style*="inline-flex"]{background:rgba(255,255,255,.04)!important;border-color:var(--nt-edge)!important;}
+body.light-mode .kpi>div[style*="inline-flex"]{background:rgba(60,40,20,.04)!important;}
+.kpi>div[style*="inline-flex"] span{color:var(--ink3)!important;}
+#k-lock-sub,#k-rai-sub{color:var(--ink)!important;font-weight:700!important;}
+.kpi-sec-title{color:var(--ink3);letter-spacing:.12em;font-weight:600;margin:4px 0 10px;}
+
+/* อันดับวัน: เก็บเขียว/แดงไว้ (มีความหมายจริง: มาก/น้อย) แต่หรี่ลง ไม่ให้แข่งกับ KPI */
+.tb-row{border-bottom-color:var(--nt-edge);}
+
+/* กราฟหลักมี legend ของ Chart.js ครบแล้ว (รวมเส้นเป้าหมาย) หลังแก้ CHT-04
+   ป้าย HTML มุมขวาบนจึงซ้ำ → ซ่อน (ลดสิ่งซ้ำซ้อน = ลดภาระการอ่าน) · ไม่ชอบ ลบกฎนี้ = กลับมา */
+.mc-legend{display:none;}
+
+/* ── 6) จังหวะเข้า ── การ์ดลอยขึ้นทีละใบ ต่อจากตอนพุ่งผ่านหน้า login (เล่นตอนแสดงผลครั้งแรก/สลับแท็บ) */
+@keyframes ntIn{from{opacity:0;transform:translateY(14px);}}
+.kpi,.main-chart-card,.sc,.tb-card{animation:ntIn .6s cubic-bezier(.2,.8,.2,1) backwards;}
+.kpi-row .kpi:nth-child(2){animation-delay:.05s;} .kpi-row .kpi:nth-child(3){animation-delay:.1s;}
+.kpi-row .kpi:nth-child(4){animation-delay:.15s;} .kpi-row .kpi:nth-child(5){animation-delay:.2s;}
+.kpi-row .kpi:nth-child(6){animation-delay:.25s;}
+#statsSection .kpi{animation-delay:.12s;}
+.main-chart-card{animation-delay:.25s;} .sc{animation-delay:.35s;} .tb-card{animation-delay:.45s;}
+@media (prefers-reduced-motion:reduce){
+  .kpi,.main-chart-card,.sc,.tb-card{animation:none;}
+  .kpi:hover{transform:none;}
+}
