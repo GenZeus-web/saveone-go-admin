@@ -133,8 +133,11 @@
 <!-- ส่วนที่เหลือปล่อยให้ git log เล่าเอง -->
 
 - **เว็บจริง:** https://genzeus-web.github.io/saveone-go-admin/
-- **เวอร์ชันในโค้ด:** v3.0.0 (branch `ui/dashboard-trend` ยังไม่ merge — login โบเก้ · ธีมตลาดกลางคืน · ป้ายทิศทาง · CHT-04)
-- **เวอร์ชันบนเว็บจริง:** v2.12.0 (push 23 ก.ย. 2569 — เช็คป้ายหลัง push)
+- **เวอร์ชันบนเว็บจริง = ในโค้ด:** v3.0.0 (push 24 ก.ย. 2569 20:11 · `e822198` · ป้ายหัวเว็บขึ้น v3.0.0 แล้ว)
+  login โบเก้ · ธีมตลาดกลางคืน · ป้ายทิศทาง · CHT-04 · ป๊อปอัปยอดวันนี้ (TODAY-01) · ตัวอักษร 3 ระดับ (FONT-01)
+  branch `ui/dashboard-trend` merge เข้า `main` แล้ว
+- **GitGuardian เตือน Google API Key (24 ก.ย.)** = Firebase apiKey ใน `docs/3_apps-script-code.md:188` → false positive
+  ไม่ต้อง rotate · แผนป้องกัน (จำกัด API ของ key · กฎ `settingsLog`) นัดคุย 25 ก.ย.
 - **ผัง 3D:** v0.14.0 (20 ส.ค. 2569)
 - **Firestore Rules:** เพิ่มกฎ `settings/*` + `settingsLog` แล้ว (Publish 23 ก.ย. 2569 18:40) — ตัวกฎอยู่ที่ `docs/firestore-rules-settings.md`
   กฎจริงอยู่ใน Console ไม่ได้อยู่ใน repo · **ฟีเจอร์ที่อ่าน/เขียน Firestore ใหม่ ต้องวางกฎก่อน push เสมอ** (ท้ายกฎมี deny-all)
