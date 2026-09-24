@@ -89,6 +89,35 @@ body.light-mode .kpi>div[style*="inline-flex"]{background:rgba(60,40,20,.04)!imp
    ป้าย HTML มุมขวาบนจึงซ้ำ → ซ่อน (ลดสิ่งซ้ำซ้อน = ลดภาระการอ่าน) · ไม่ชอบ ลบกฎนี้ = กลับมา */
 .mc-legend{display:none;}
 
+/* ── 5.5) มือถือ (≤768px) ──
+   responsive.css (RWD-02 · v2.11.1) มีชุดสี/การ์ดมือถือของตัวเอง และโหลดทีหลังไฟล์นี้ → ทับธีมใหม่
+   ทับกลับด้วย selector ที่เจาะจงกว่า (นำหน้า html) แทนการแก้ responsive.css
+   → ลบ <link> night.css บรรทัดเดียว ยังกลับเป็นหน้าตาเดิมได้ทั้งเดสก์ท็อปและมือถือ
+   เก็บจากดีไซน์มือถือเดิมไว้: ขนาด/ระยะ/มุมโค้ง/แท็บทรงเม็ดยา/drawer (เปลี่ยนแค่สีและพื้นผิว) */
+@media(max-width:768px){
+  html body:not(.light-mode){
+    --bg:#0e0c0b; --surface:#171412; --surface2:#201c19; --surface3:#2b2622;
+    --border:rgba(255,255,255,.07); --ink:#f1ece6; --ink2:#b3a99f; --ink3:#7b7168;
+    --gold:#f0b43c; --gold2:#ffd27a; --green:#3dd68c; --green2:#27ae60;
+    --red:#e05c5c; --orange:#f07a35; --blue:#4a9eff; --purple:#a78bfa;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px -14px rgba(0,0,0,.7);
+  }
+  html .header{background:var(--nt-glass);border-bottom-color:var(--nt-edge);}
+  html .sidebar{background:var(--nt-glass);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);}
+  html .kpi,html .sc,html .tb-card,html .fc-card,html .mom-card,html .main-chart-card{
+    background:var(--nt-card);border:1px solid var(--nt-edge);box-shadow:inset 0 1px 0 var(--nt-hi),var(--shadow);}
+  /* ใบหลัก: เดิมมือถือเป็นพื้นน้ำเงินเทา+ขอบทอง → แสงเขียวแบรนด์แบบเดียวกับเดสก์ท็อป */
+  html .kpi.kpi-lead,html .kpi.kpi-hero{
+    background:radial-gradient(120% 90% at 0% 0%,rgba(61,214,140,.16),transparent 55%),var(--nt-card);
+    border-color:rgba(61,214,140,.28);box-shadow:inset 0 1px 0 rgba(61,214,140,.35),var(--shadow);}
+  /* แท็บ/เมนูที่เลือกอยู่: ขอบทอง → เขียวแบรนด์ (ตรงกับเดสก์ท็อป) */
+  html .vtab{background:var(--nt-card);border-color:var(--nt-edge);}
+  html .vtab.active{background:rgba(61,214,140,.13);color:var(--green);border-color:rgba(61,214,140,.35);}
+  html #sbNavHost .vtab{background:transparent;border-color:transparent;}
+  html #sbNavHost .vtab.active{background:rgba(61,214,140,.13);color:var(--green);box-shadow:inset 0 0 0 1px rgba(61,214,140,.3);}
+  html .mnav-btn,html .rfbtn{background:var(--nt-card);border:1px solid var(--nt-edge);}
+}
+
 /* ── 6) จังหวะเข้า ── การ์ดลอยขึ้นทีละใบ ต่อจากตอนพุ่งผ่านหน้า login (เล่นตอนแสดงผลครั้งแรก/สลับแท็บ) */
 @keyframes ntIn{from{opacity:0;transform:translateY(14px);}}
 .kpi,.main-chart-card,.sc,.tb-card{animation:ntIn .6s cubic-bezier(.2,.8,.2,1) backwards;}
