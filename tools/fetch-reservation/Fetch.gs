@@ -739,26 +739,12 @@ function checkPage_(branch, stage, html) {
   saved = JSON.parse(saved);
   var added = now.filter(function (l) { return saved.indexOf(l) === -1; });
   var gone  = saved.filter(function (l) { return now.indexOf(l) === -1; });
-  /* "หายไป" ที่ยอมได้ — เฉพาะช่องในแถวตารางผลค้นหา (ListItemsRepeater) กับ __LASTFOCUS
-     หลัง Auto-save (BN 21:30 · BG 21:40 — มติประชุม 9-7-69) สถานะของวันถูกบันทึกแล้ว
-     ปุ่มเลือกประเภทคืนเงินท้ายแถว (RefundTypeRowRadioButtonList) หายไปจากหน้า
-     รอบ 22:00 จึงเคยหยุดทั้งที่ไม่มีอะไรอันตราย (BN 23 ก.ย. 22:35 · +0 −5)
-     ยอมให้ "หาย" เท่านั้น — ของที่หายคือปุ่มคืนเงินเอง ซึ่งเราไม่เคยส่งอยู่แล้ว (ALLOW/FORBIDDEN)
-     ⚠️ "เพิ่ม" อะไรก็ตาม หรือ "หาย" นอกแถวตาราง (ปุ่มค้นหา/Export/ฟอร์ม) = หยุดเหมือนเดิม */
-  var softGone = gone.filter(function (l) {
-    return /\$ListItemsRepeater\$ctl#\$/.test(l) || /^input \| hidden \| __LASTFOCUS \|/.test(l);
-  });
-  var hardGone = gone.filter(function (l) { return softGone.indexOf(l) === -1; });
-  if (added.length || hardGone.length) {
+  if (added.length || gone.length) {
     Logger.log('🔴 ' + where + ' เปลี่ยนไปจากที่อนุมัติไว้:');
     added.forEach(function (l) { Logger.log('   + ' + l); });
     gone.forEach(function (l) { Logger.log('   − ' + l); });
-    throw new Error('🔴 หยุด: ' + where + ' ไม่ตรงกับที่อนุมัติ (+' + added.length + ' −' + hardGone.length +
+    throw new Error('🔴 หยุด: ' + where + ' ไม่ตรงกับที่อนุมัติ (+' + added.length + ' −' + gone.length +
                     ') — ให้คนตรวจหน้าเว็บก่อน แล้วค่อยรัน approvePage' + branch + ' ใหม่');
-  }
-  if (softGone.length) {
-    Logger.log('ℹ️ ' + where + ' ช่องในแถวตารางหายไป ' + softGone.length + ' รายการ (ปกติหลัง Auto-save) — ไปต่อ');
-    softGone.forEach(function (l) { Logger.log('   − ' + l); });
   }
   Logger.log('✅ ' + where + ' ตรงกับที่อนุมัติ (' + now.length + ' รายการ)');
 }
