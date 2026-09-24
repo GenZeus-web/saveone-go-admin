@@ -221,6 +221,21 @@ body.manager-mode .admin-only{display:none!important;}
 .day-r .u{font-size:10px;color:var(--ink3);font-weight:400;margin-left:3px;}
 .day-r.hi>span:last-child{font-size:15px;}
 
+/* TODAY-01 fix: ป๊อปอัปเปิดอยู่ (body.modal-open)
+   1) night.css ตั้ง .layout{z-index:1} = กล่องซ้อนชั้น → ป๊อปอัปข้างใน (8600) ชนะแค่ของใน .layout
+      หัวเว็บ (z-index:10) อยู่นอก .layout จึงทับหัวป๊อปอัป → ยก .layout ขึ้นเหนือหัวเว็บชั่วคราว
+   2) ตัวที่เลื่อนคือ .content ไม่ใช่ body → ล็อก .content · การ์ดเลื่อนในตัวเองไม่ส่งต่อให้ข้างหลัง */
+body.modal-open .layout{z-index:11;}
+body.modal-open .content{overflow:hidden;}
+.day-card{overscroll-behavior:contain;}
+/* SAFE-01: ความสูงการ์ด = จอ − ขอบ − แถบสถานะ/แถบโฮม (เดิม 86vh ไม่หักพื้นที่ iPhone)
+   ตัวอักษรใหญ่ (FONT-01) zoom คูณ max-height ด้วย → 86vh×1.3 = 112% หัวการ์ดล้นขึ้นใต้แถบสถานะ
+   จึงหารกลับด้วยค่า zoom เดียวกับ base.css */
+.day-card{--mh:calc(100vh - 40px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));max-height:var(--mh);}
+@supports(height:100dvh){.day-card{--mh:calc(100dvh - 40px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));}}
+body.fs-1 .day-card{max-height:calc(var(--mh) / 1.15);}
+body.fs-2 .day-card{max-height:calc(var(--mh) / 1.3);}
+
 /* TODAY-01: ป๊อปอัปยอดวันนี้ — ต่อจากชุด day-* ข้างบน แยกบล็อกละสาขา */
 .tdy-br{margin-top:12px;}
 .tdy-brh{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;

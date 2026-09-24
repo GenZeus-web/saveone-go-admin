@@ -17,13 +17,7 @@
   opacity:0;transition:opacity .22s ease;-webkit-tap-highlight-color:transparent;}
 .sb-backdrop.show{display:block;opacity:1;}
 
-/* พื้นที่ปลอดภัยจอบาก (iPhone) — มีผลเฉพาะตอนเปิดจากหน้าจอโฮม */
-@supports(padding:env(safe-area-inset-top)){
-  @media(display-mode:standalone){
-    .header{height:calc(50px + env(safe-area-inset-top));padding-top:env(safe-area-inset-top);}
-    .sidebar{padding-top:env(safe-area-inset-top);}
-  }
-}
+/* พื้นที่ปลอดภัยจอบาก (iPhone) → ย้ายไปท้ายไฟล์แล้ว (SAFE-01) ดูเหตุผลที่นั่น */
 
 @media(max-width:768px){
   body{height:100vh;overflow:hidden;}
@@ -179,3 +173,22 @@
   .ch-sm,.ch-md{height:210px;}
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   SAFE-01 — iPhone เปิดเต็มจอ (เพิ่มลงหน้าจอโฮม): หัวเว็บทับ นาฬิกา/WiFi/แบต/กล้อง
+   เดิมกฎนี้อยู่ต้นไฟล์ แต่ `.header{padding:0 10px}` ในบล็อก ≤768px (มาทีหลัง ความแรงเท่ากัน)
+   เป็น shorthand → ล้าง padding-top กลับเป็น 0 หัวเว็บเลยชิดขอบจอบนตลอดมา
+   ⚠️ ต้องอยู่ท้ายไฟล์นี้เสมอ · ไม่ใช้ @media(display-mode:standalone) แล้ว เพราะ env() = 0
+      เองเมื่อไม่มีอะไรบัง (เดสก์ท็อป / Safari ปกติ) → ใส่ไว้ทุกกรณีปลอดภัยกว่า
+   ═══════════════════════════════════════════════════════════════ */
+@supports(padding:env(safe-area-inset-top)){
+  .header{height:calc(50px + env(safe-area-inset-top));padding-top:env(safe-area-inset-top);}
+  .sidebar{padding-top:env(safe-area-inset-top);}
+  /* ป๊อปอัป: เว้นขอบบน/ล่างให้พ้นแถบสถานะกับแถบโฮม (inline style เดิม padding:16px) */
+  #dayModal,#todayModal{
+    padding-top:max(16px,calc(env(safe-area-inset-top) + 8px))!important;
+    padding-bottom:max(16px,calc(env(safe-area-inset-bottom) + 8px))!important;}
+}
+@media(max-width:768px){
+  /* ☰ กดยาก: 38px → 44px (ขนาดแตะขั้นต่ำของ Apple) */
+  .mnav-btn{width:44px;height:44px;margin-right:8px;}
+}

@@ -98,12 +98,14 @@ function openTodayModal(){
   }
   document.getElementById('todayRows').innerHTML=h;
   m.style.display='flex';
+  document.body.classList.add('modal-open');   // ล็อกข้างหลัง + ยกเหนือหัวเว็บ (components.css)
   try{ localStorage.setItem(TODAY_SEEN_KEY, todayKey); }catch(e){}
 }
 
 function closeTodayModal(){
   const m=document.getElementById('todayModal');
   if(m) m.style.display='none';
+  document.body.classList.remove('modal-open');
 }
 
 // เรียกหลัง loadAll ได้ข้อมูลแล้ว — เด้งครั้งแรกของวัน (รอ splash/เอฟเฟกต์ login จางก่อน)
