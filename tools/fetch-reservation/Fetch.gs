@@ -783,16 +783,30 @@ function checkPage_(branch, stage, html) {
 
    ⚠️ อ่าน log ก่อนเชื่อ: ปุ่ม Export ต้องมีข้อความ "Export (เรียงเลขล็อค)"
       ถ้าเจอปุ่มแปลกหรือชื่อไม่คุ้น อย่าเพิ่งใช้ ให้เปิดหน้าเว็บดูด้วยตาก่อน */
-function approvePageBG() { approvePage_('BG'); }
-function approvePageBN() { approvePage_('BN'); }
+/* ── หน้าเว็บ 2 รูปแบบต่อสาขา (เจ้าของกำหนด 24 ก.ย. 2569) ──
+   รูปแบบ 1 วันปกติ      — มีตัวเลือกคืนเงินรายคน (ไม่คืนเงิน · ส่วนลดฝนตก · คืนเฉพาะค่าล็อก · 100%)
+   รูปแบบ 2 วันฝนคืนเงินแล้ว — เจ้าหน้าที่กดคืนเงินฝนแล้ว ตัวเลือกรายคนหายไป
+   ด่านขั้น 2 เทียบรูปแบบ 1 ก่อน · ไม่ตรง → ลองรูปแบบ 2 · ไม่ตรงทั้งคู่ = หยุด + อีเมล
+   วันตัวอย่างที่เจ้าของยืนยันว่าเป็นแบบนั้นจริง — ใช้ถ่ายภาพหน้าเว็บตอนอนุมัติ (กดแค่ "ค้นหา" ไม่ Export)
+   เปลี่ยนวันตัวอย่างได้ถ้าต้องอนุมัติใหม่ [ปี ค.ศ., เดือน, วัน] */
+var PAGE_SAMPLES = {
+  BG: { normal: [2026, 9, 23], rain: [2026, 9, 20] },
+  BN: { normal: [2026, 9, 21], rain: [2026, 9, 23] }
+};
+function sampleDay_(branch, kind) {
+  var a = PAGE_SAMPLES[branch][kind];
+  return new Date(a[0], a[1] - 1, a[2], 12);
+}
 
-/* อนุมัติหน้าแบบ "วันฝนคืนเงินแล้ว" — รันเช้าวันถัดจากวันฝนที่เจ้าหน้าที่กดคืนเงินแล้ว
-   กดแค่ "ค้นหา" วันที่ของเมื่อวาน (ไม่กด Export) · บันทึกเฉพาะขั้น 2 เป็นชุดที่ 2
-   ⚠️ รับได้เฉพาะหน้าที่ "มีของหายไป" จากหน้าปกติ — มีอะไรเพิ่มแม้ตัวเดียว = ไม่บันทึก */
-function approvePageRainBG() { approvePage_('BG', yesterday_()); }
-function approvePageRainBN() { approvePage_('BN', yesterday_()); }
+function approvePageBG() { approvePage_('BG', sampleDay_('BG', 'normal'), false); }
+function approvePageBN() { approvePage_('BN', sampleDay_('BN', 'normal'), false); }
 
-function approvePage_(branch, rainDay) {
+/* อนุมัติรูปแบบ 2 — รันหลัง approvePage<สาขา> · บันทึกเฉพาะขั้น 2 เป็นชุดที่ 2
+   ⚠️ รับได้เฉพาะหน้าที่ "มีของหายไป" จากรูปแบบ 1 — มีอะไรเพิ่มแม้ตัวเดียว = ไม่บันทึก */
+function approvePageRainBG() { approvePage_('BG', sampleDay_('BG', 'rain'), true); }
+function approvePageRainBN() { approvePage_('BN', sampleDay_('BN', 'rain'), true); }
+
+function approvePage_(branch, day, rainDay) {
   var cfg = SHEETS[branch];
   if (!cfg || !cfg.report) { Logger.log('❌ ยังไม่รู้ URL หน้ารายงานของสาขา ' + branch); return; }
   var P = PropertiesService.getScriptProperties();
@@ -800,7 +814,8 @@ function approvePage_(branch, rainDay) {
   if (!user || !pass) { Logger.log('❌ ยังไม่ได้ตั้ง SG_USER_' + branch + ' / SG_PASS_' + branch); return; }
   var cookie = login_(cfg, user, pass);
   if (!cookie) return;
-  var REPORT = cfg.base + cfg.report, beStr = fmtBE_(rainDay || new Date());
+  var REPORT = cfg.base + cfg.report, beStr = fmtBE_(day || new Date());
+  Logger.log('ถ่ายภาพหน้าเว็บ ' + branch + ' วันที่ ' + beStr + (rainDay ? ' (รูปแบบ 2 วันฝน)' : ' (รูปแบบ 1 วันปกติ)'));
 
   var r1 = UrlFetchApp.fetch(REPORT, { headers: { Cookie: cookie }, muteHttpExceptions: true });
   if (r1.getResponseCode() !== 200) { Logger.log('❌ เปิดหน้ารายงานไม่ได้ HTTP ' + r1.getResponseCode()); return; }
