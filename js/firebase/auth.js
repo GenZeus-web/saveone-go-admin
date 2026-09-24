@@ -22,6 +22,8 @@ import { loadSettings } from "./settings.js";
 // เช็ค login state
 onAuthStateChanged(auth, async (user) => {
   if (user) {
+    // UI-3D: เพิ่งกดเข้าสู่ระบบ → เริ่มพุ่งทันที คู่ขนานกับการอ่านสิทธิ์ด้านล่าง (ไม่ให้หน้าจอนิ่งค้างระหว่างรอ Firestore)
+    if (window.__loginZoom && typeof window.beginLoginWarp === 'function') window.beginLoginWarp();
     let role = 'manager';
     let branches = ['SS'];
     // BM-04 (v2.10.0): สาขาที่ "เทียบได้ใน Benchmark" — แยกคนละแกนกับ branches
@@ -93,7 +95,9 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     // ซ่อน login page แสดง dashboard
-    document.getElementById('loginPage').style.display = 'none';
+    // UI-3D: เพิ่งกดเข้าสู่ระบบ = รอให้ฉากพุ่งจบก่อนซ่อน (js/login-fx.js) · ไม่มีฟังก์ชัน = ซ่อนทันทีแบบเดิม
+    if (typeof window.leaveLoginPage === 'function') window.leaveLoginPage();
+    else document.getElementById('loginPage').style.display = 'none';
     document.getElementById('mainHeader').style.display = 'flex';
     document.getElementById('mainLayout').style.display = 'flex';
 
@@ -239,12 +243,16 @@ window.doLogin = async function() {
   }
   
   btn.textContent = 'กำลังเข้าสู่ระบบ...';
+  window.__loginZoom = true;
+  if (typeof window.loginCharge === 'function') window.loginCharge(true);   // UI-3D: ฉากเริ่มเร่งระหว่างรอเซิร์ฟเวอร์
   btn.disabled = true;
   errEl.textContent = '';
   
   try {
     await signInWithEmailAndPassword(auth, email, password);
   } catch (e) {
+    window.__loginZoom = false;
+    if (typeof window.loginCharge === 'function') window.loginCharge(false);
     btn.textContent = 'เข้าสู่ระบบ';
     btn.disabled = false;
     errEl.textContent = 'Email หรือ Password ไม่ถูกต้อง';

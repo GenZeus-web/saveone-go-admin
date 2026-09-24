@@ -68,7 +68,14 @@
 
 <!-- LOGIN PAGE -->
 <div id="loginPage">
-  <div class="login-box">
+  <!-- UI-3D: ฉากหลัง WebGL shader (ไม่มีไลบรารี) วาดใน js/login-fx.js · .login-sky = สำรองถ้าเครื่องไม่มี WebGL -->
+  <div class="login-scene" aria-hidden="true">
+    <div class="login-sky"></div>
+    <canvas class="login-gl" id="loginGL"></canvas>
+    <div class="login-vignette"></div>
+  </div>
+  <div class="login-box" id="loginBox">
+    <div class="login-sheen" aria-hidden="true"></div>
     <div class="login-logo">
       <span class="login-logo-text">เซฟวัน</span>
       <span class="login-logo-go">GO</span>
@@ -804,5 +811,6 @@
 <script src="js/views/benchmark.js"></script>
 <script src="js/export.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/login-fx.js"></script>
 </body>
 </html>
