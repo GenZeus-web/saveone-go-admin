@@ -755,6 +755,19 @@ function checkPage_(branch, stage, html) {
   var added = now.filter(function (l) { return saved.indexOf(l) === -1; });
   var gone  = saved.filter(function (l) { return now.indexOf(l) === -1; });
   if (added.length || gone.length) {
+    /* ขั้น 2 มีหน้าตาที่ถูกต้อง 2 แบบ (BN):
+         ปกติ              — มีตัวเลือกรายคน ไม่คืนเงิน/ส่วนลดฝนตก/คืนเฉพาะค่าล็อก/100%
+         วันฝนคืนเงินแล้ว   — เจ้าหน้าที่กดคืนเงินฝนแล้ว ตัวเลือกพวกนั้นหายไป (ยืนยันโดยเจ้าของ 24 ก.ย. 2569)
+       แบบที่ 2 ต้อง "ตรงเป๊ะ" กับชุดที่คนอนุมัติผ่าน approvePageRain<สาขา> — ไม่ใช่ยอมให้อะไรหายก็ได้
+       ไม่ตรงทั้งสองแบบ = หยุดเหมือนเดิม */
+    var rain = stage === 2 && PropertiesService.getScriptProperties().getProperty(key + 'R');
+    if (rain) {
+      rain = JSON.parse(rain);
+      if (rain.length === now.length && rain.every(function (l) { return now.indexOf(l) !== -1; })) {
+        Logger.log('✅ ' + where + ' ตรงกับหน้าแบบ "วันฝนคืนเงินแล้ว" ที่อนุมัติ (' + now.length + ' รายการ)');
+        return;
+      }
+    }
     Logger.log('🔴 ' + where + ' เปลี่ยนไปจากที่อนุมัติไว้:');
     added.forEach(function (l) { Logger.log('   + ' + l); });
     gone.forEach(function (l) { Logger.log('   − ' + l); });
@@ -773,7 +786,13 @@ function checkPage_(branch, stage, html) {
 function approvePageBG() { approvePage_('BG'); }
 function approvePageBN() { approvePage_('BN'); }
 
-function approvePage_(branch) {
+/* อนุมัติหน้าแบบ "วันฝนคืนเงินแล้ว" — รันเช้าวันถัดจากวันฝนที่เจ้าหน้าที่กดคืนเงินแล้ว
+   กดแค่ "ค้นหา" วันที่ของเมื่อวาน (ไม่กด Export) · บันทึกเฉพาะขั้น 2 เป็นชุดที่ 2
+   ⚠️ รับได้เฉพาะหน้าที่ "มีของหายไป" จากหน้าปกติ — มีอะไรเพิ่มแม้ตัวเดียว = ไม่บันทึก */
+function approvePageRainBG() { approvePage_('BG', yesterday_()); }
+function approvePageRainBN() { approvePage_('BN', yesterday_()); }
+
+function approvePage_(branch, rainDay) {
   var cfg = SHEETS[branch];
   if (!cfg || !cfg.report) { Logger.log('❌ ยังไม่รู้ URL หน้ารายงานของสาขา ' + branch); return; }
   var P = PropertiesService.getScriptProperties();
@@ -781,7 +800,7 @@ function approvePage_(branch) {
   if (!user || !pass) { Logger.log('❌ ยังไม่ได้ตั้ง SG_USER_' + branch + ' / SG_PASS_' + branch); return; }
   var cookie = login_(cfg, user, pass);
   if (!cookie) return;
-  var REPORT = cfg.base + cfg.report, beStr = fmtBE_(new Date());
+  var REPORT = cfg.base + cfg.report, beStr = fmtBE_(rainDay || new Date());
 
   var r1 = UrlFetchApp.fetch(REPORT, { headers: { Cookie: cookie }, muteHttpExceptions: true });
   if (r1.getResponseCode() !== 200) { Logger.log('❌ เปิดหน้ารายงานไม่ได้ HTTP ' + r1.getResponseCode()); return; }
@@ -794,6 +813,22 @@ function approvePage_(branch) {
     method: 'post', payload: p2, headers: { Cookie: cookie }, followRedirects: true, muteHttpExceptions: true
   });
   if (r2.getResponseCode() !== 200) { Logger.log('❌ ค้นหาไม่สำเร็จ HTTP ' + r2.getResponseCode()); return; }
+
+  if (rainDay) {
+    var normal = JSON.parse(P.getProperty('SG_PAGE_' + branch + '_2') || '[]');
+    var list = pageControls_(r2.getContentText());
+    var extra = list.filter(function (l) { return normal.indexOf(l) === -1; });
+    var gone  = normal.filter(function (l) { return list.indexOf(l) === -1; });
+    Logger.log('\n════════ ' + branch + ' ขั้น 2 วันฝน ' + beStr + ' · ' + list.length + ' รายการ ════════');
+    gone.forEach(function (l) { Logger.log('  − ' + l); });
+    extra.forEach(function (l) { Logger.log('  + ' + l); });
+    if (!normal.length) { Logger.log('❌ ยังไม่มีหน้าแบบปกติ — รัน approvePage' + branch + ' ก่อน'); return; }
+    if (extra.length) { Logger.log('🔴 ไม่บันทึก — หน้าวันฝนมีของที่หน้าปกติไม่มี ' + extra.length + ' รายการ ต้องให้คนตรวจ'); return; }
+    if (!gone.length) { Logger.log('ℹ️ หน้าวันที่ ' + beStr + ' เหมือนหน้าปกติทุกอย่าง — วันนั้นยังไม่ได้คืนเงินฝน ไม่ต้องบันทึก'); return; }
+    P.setProperty('SG_PAGE_' + branch + '_2R', JSON.stringify(list));
+    Logger.log('\n✅ อนุมัติหน้าแบบ "วันฝนคืนเงินแล้ว" ของ ' + branch + ' (ต่างจากหน้าปกติ −' + gone.length + ') — ตรวจรายการ − ข้างบนว่าเป็นตัวเลือกคืนเงินรายคน');
+    return;
+  }
 
   [r1, r2].forEach(function (res, i) {
     var stage = i + 1, list = pageControls_(res.getContentText());
