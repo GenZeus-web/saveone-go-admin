@@ -20,6 +20,8 @@
  *  3) approvePage<สาขา>       อนุมัติหน้าตาหน้าเว็บ — อ่าน log ก่อนเชื่อ
  *  4) fetch<สาขา>             ซ้อม เทียบตัวเลขกับหน้าเว็บ → ตรงแล้วลบ dryRun
  *  5) setupTriggers<สาขา>     หรือตั้งผ่านหน้า "ทริกเกอร์" ก็ได้ (ไม่ต้องใช้สิทธิ์ scriptapp)
+ *     แล้วแก้ทริกเกอร์ทุกตัว: "การแจ้งเตือนความล้มเหลว" → "แจ้งฉันทันที"
+ *     (ค่าตั้งต้นคือสรุปวันละครั้ง — ทุกจุดที่ระบบหยุดเองจะ throw ผ่าน fail_ เพื่อให้อีเมลนี้เด้ง)
  *
  *  ════════ ⚠️ อ่านก่อนแก้โค้ดนี้ ════════
  *  หน้ารายงานของทั้งสองสาขา (BG Zone6 · BN Zone9) มีปุ่ม "คืนเงินจริง" อยู่ด้วย:
@@ -250,14 +252,19 @@ function colName_(i) { var s = ''; i++; while (i > 0) { var m = (i - 1) % 26; s 
  * @param {string} branch  'BG' | 'BN'
  * @param {Date=}  when    วันขายที่ต้องการ (null = วันนี้)
  */
+/* ── หยุดแล้วต้องมีคนรู้ ──
+   Apps Script ส่งอีเมลให้เจ้าของทริกเกอร์ "เฉพาะตอน throw" เท่านั้น
+   ถ้าหยุดด้วย return เฉยๆ รอบนั้นขึ้น "เสร็จสมบูรณ์" แล้วชีตค้างเลขเก่าไปเรื่อยๆ ไม่มีใครรู้
+   ทุกจุดที่ตัวดึงข้อมูลหยุดเองจึงผ่าน fail_ — ข้อความใน throw คือสิ่งที่ขึ้นในอีเมล ต้องอ่านรู้เรื่องในตัว */
+function fail_(branch, msg) {
+  Logger.log('🔴 ' + msg);
+  throw new Error('🔴 สาขา ' + branch + ': ' + msg);
+}
+
 function fetchBranch_(branch, when) {
   var cfg = SHEETS[branch];
-  if (!cfg) { Logger.log('❌ ไม่รู้จักสาขา ' + branch); return; }
-  if (!cfg.report) {
-    Logger.log('❌ ยังไม่รู้ URL หน้ารายงานของสาขา ' + branch);
-    Logger.log('   → เปิดหน้ารายงานในเบราว์เซอร์ ก๊อป URL มาเติมที่ SHEETS.' + branch + '.base / .report');
-    return;
-  }
+  if (!cfg) fail_(branch, 'ไม่รู้จักสาขานี้ใน SHEETS');
+  if (!cfg.report) fail_(branch, 'ยังไม่รู้ URL หน้ารายงาน — เติมที่ SHEETS.' + branch + '.base / .report');
   var d = when || new Date();
   var ceStr = fmtCE_(d);                       // 22/09/2026 — ใช้ตรวจไฟล์ที่ได้
   var beStr = fmtBE_(d);                       // 22/09/2569 — เว็บรับแบบนี้
@@ -269,16 +276,16 @@ function fetchBranch_(branch, when) {
 
   var P = PropertiesService.getScriptProperties();
   var user = P.getProperty('SG_USER_' + branch), pass = P.getProperty('SG_PASS_' + branch);
-  if (!user || !pass) { Logger.log('❌ ยังไม่ได้ตั้ง SG_USER_' + branch + ' / SG_PASS_' + branch); return; }
+  if (!user || !pass) fail_(branch, 'ยังไม่ได้ตั้ง SG_USER_' + branch + ' / SG_PASS_' + branch + ' ใน Script Properties');
 
   var cookie = login_(cfg, user, pass);
-  if (!cookie) return;
+  if (!cookie) fail_(branch, 'login เว็บบริษัทไม่ผ่าน — รหัสผ่านถูกเปลี่ยนหรือบัญชีถูกล็อคหรือเปล่า (SG_USER_' + branch + ' / SG_PASS_' + branch + ')');
   Logger.log('✅ login ผ่าน');
 
   // 1) เปิดหน้ารายงาน เก็บ VIEWSTATE
   var REPORT = cfg.base + cfg.report;
   var r1 = UrlFetchApp.fetch(REPORT, { headers: { Cookie: cookie }, muteHttpExceptions: true });
-  if (r1.getResponseCode() !== 200) { Logger.log('❌ เปิดหน้ารายงานไม่ได้ HTTP ' + r1.getResponseCode()); return; }
+  if (r1.getResponseCode() !== 200) fail_(branch, 'เปิดหน้ารายงานไม่ได้ HTTP ' + r1.getResponseCode() + ' — เว็บบริษัทล่มหรือย้าย URL');
   Logger.log('✅ เปิดหน้ารายงานแล้ว');
   checkPage_(branch, 1, r1.getContentText());      // หน้าเปลี่ยน = throw ก่อนยิงอะไร
 
@@ -292,7 +299,7 @@ function fetchBranch_(branch, when) {
     method: 'post', payload: p2, headers: { Cookie: cookie },
     followRedirects: true, muteHttpExceptions: true
   });
-  if (r2.getResponseCode() !== 200) { Logger.log('❌ ค้นหาไม่สำเร็จ HTTP ' + r2.getResponseCode()); return; }
+  if (r2.getResponseCode() !== 200) fail_(branch, 'กดค้นหาวันที่ ' + beStr + ' ไม่สำเร็จ HTTP ' + r2.getResponseCode());
   Logger.log('✅ ค้นหาวันที่ ' + beStr + ' แล้ว');
 
   // 3) กด "Export (เรียงเลขล็อค)" — ปุ่มเดียวที่อนุญาต
@@ -313,29 +320,30 @@ function fetchBranch_(branch, when) {
   Logger.log('→ Export ตอบกลับ HTTP ' + code + ' · ชนิด ' + ct + ' · ขนาด ' + size + ' ไบต์');
 
   if (code !== 200 || size < 5000) {
-    Logger.log('❌ ไม่ได้ไฟล์ที่คาดไว้ (เล็กเกินไป — น่าจะได้หน้า HTML กลับมาแทนไฟล์)');
     Logger.log('   ตัวอย่างเนื้อหา: ' + r3.getContentText().slice(0, 300).replace(/\s+/g, ' '));
-    return;
+    fail_(branch, 'กด Export แล้วไม่ได้ไฟล์ (HTTP ' + code + ' · ' + size + ' ไบต์) — น่าจะได้หน้า HTML กลับมาแทน');
   }
 
   // 4) แกะไฟล์อ่านในหน่วยความจำแล้วตรวจ — ไม่ต้องใช้สิทธิ์ Drive
   var rows = parseXlsx_(blob);
-  if (!rows.length) { Logger.log('❌ แกะไฟล์แล้วไม่เจอข้อมูล'); return; }
+  if (!rows.length) fail_(branch, 'แกะไฟล์ Export แล้วไม่เจอข้อมูล');
   Logger.log('✅ แกะไฟล์ได้ ' + (rows.length - 1) + ' แถวข้อมูล');
 
   var z = verify_(rows, ceStr, cfg);
-  if (!z) return;                       // วันที่ไม่ตรง — verify_ แจ้งแล้ว
-  writeSheet_(branch, ceStr, z);
+  if (typeof z === 'string') fail_(branch, z);     // ไฟล์ไม่ผ่านด่าน — ยังไม่เขียนอะไร
+  var problems = writeSheet_(branch, ceStr, z);
 
   /* ด่านล็อคหลุดโซน — เช่นเพิ่มแถวใหม่ที่ตัวอักษรไม่อยู่ในกติกา (BN แถว K–T · BG GU/GV)
      เขียนชีตก่อนแล้วค่อย throw: ยอดโซนที่รู้จักยังอัปเดตตามปกติ ไม่ค้างตัวเลขรอบก่อน
      แต่รอบนี้ขึ้น "ล้มเหลว" → Apps Script ส่งอีเมลแจ้ง ไม่ใช่จบเงียบๆ แค่ใน Logger
      แก้: เพิ่มตัวอักษรนั้นเข้า SHEETS.<สาขา>.food / .car ตามที่อนุมัติโซนจริง */
   if (z.other) {
-    throw new Error('🟠 สาขา ' + branch + ' วันที่ ' + ceStr + ': มีล็อค ' + z.other +
-                    ' ตัวที่ไม่เข้าโซนอาหาร/รถ (' + otherText_(z) + ') — ยอดในชีตขาดล็อคพวกนี้ ' +
-                    'ต้องเพิ่มตัวอักษรเข้า SHEETS.' + branch + '.food หรือ .car');
+    problems.push('🟠 วันที่ ' + ceStr + ' มีล็อค ' + z.other +
+                  ' ตัวที่ไม่เข้าโซนอาหาร/รถ (' + otherText_(z) + ') — ยอดในชีตขาดล็อคพวกนี้ ' +
+                  'ต้องเพิ่มตัวอักษรเข้า SHEETS.' + branch + '.food หรือ .car');
   }
+  // รวมทุกปัญหาไว้ในอีเมลฉบับเดียว — แท็บหนึ่งพังไม่ทำให้อีกแท็บไม่ถูกเขียน
+  if (problems.length) fail_(branch, problems.join(' · '));
 }
 
 function otherText_(z) {
@@ -344,12 +352,13 @@ function otherText_(z) {
 
 /** เขียนลงชีต ฟอร์แมตเดียวกับ saveDataByBranch ของสคริปต์คำนวณเดิมเป๊ะ
  *  [วันที่, ราย, ล็อก, 0×11, ค่าไฟ, อุปกรณ์, สาขา]  ← 17 ช่อง
- *  11 ช่องกลางเว้นไว้ให้กรอกมือทีหลัง (วอล์กอิน/ไม่มา/ลา/ล็อกเสริม/วันฝน) */
+ *  11 ช่องกลางเว้นไว้ให้กรอกมือทีหลัง (วอล์กอิน/ไม่มา/ลา/ล็อกเสริม/วันฝน)
+ *  คืนรายการปัญหา (ว่าง = เขียนครบทั้ง 2 แท็บ) — แท็บหนึ่งพังยังเขียนอีกแท็บต่อ แล้วค่อยแจ้งรวม */
 function writeSheet_(branch, dateStr, z) {
   var cfg = SHEETS[branch];
   var id = PropertiesService.getScriptProperties().getProperty('SG_SHEET_' + branch);
   Logger.log('\n──────── บันทึกลงชีต ────────');
-  if (!cfg) { Logger.log('❌ ไม่รู้จักสาขา ' + branch); return; }
+  if (!cfg) return ['ไม่รู้จักสาขา ' + branch];
 
   if (isDry_(branch)) {
     ['st', 'car'].forEach(function (k) {
@@ -363,7 +372,7 @@ function writeSheet_(branch, dateStr, z) {
     });
     Logger.log('\n🟡 โหมดซ้อม — ยังไม่ได้เขียนจริง');
     Logger.log('   ถ้าตัวเลขถูกต้องแล้ว ลบ dryRun: true ออกจาก SHEETS.' + branch + ' (หรือ DRY_RUN เป็น false)');
-    return;
+    return [];                        // ซ้อมอยู่ = ตั้งใจไม่เขียน ไม่ใช่ปัญหา
   }
   /* ถ้าไม่ได้ตั้ง SG_SHEET_* ให้ใช้ชีตที่สคริปต์นี้ผูกอยู่แทน
      (เปิด Apps Script จากในชีตไหน ก็ผูกกับชีตนั้น)
@@ -376,15 +385,21 @@ function writeSheet_(branch, dateStr, z) {
     if (!ss) {
       Logger.log('❌ ไม่ได้ตั้ง SG_SHEET_' + branch + ' และสคริปต์นี้ก็ไม่ได้ผูกกับชีตไหน');
       Logger.log('   → ใส่ id ของไฟล์ชีตใน Script Properties (ดูจาก URL ของชีต)');
-      return;
+      return ['ไม่ได้ตั้ง SG_SHEET_' + branch + ' และสคริปต์ไม่ได้ผูกกับชีตไหน — ไม่ได้เขียนชีต'];
     }
     Logger.log('ℹ️ ไม่ได้ตั้ง SG_SHEET_' + branch + ' — ใช้ชีตที่สคริปต์ผูกอยู่: ' + ss.getName());
   }
+  var problems = [];
   [[cfg.sheetFood, cfg.gidFood, z.st], [cfg.sheetCar, cfg.gidCar, z.car]].forEach(function (t) {
     var sh = sheetOf_(ss, t[0], t[1]);
-    if (!sh) { Logger.log('❌ ไม่เจอชีต "' + t[0] + '"' + (t[1] ? ' (gid ' + t[1] + ')' : '')); return; }
-    upsert_(sh, dateStr, t[2], cfg.name, sh.getName());
+    if (!sh) {
+      var msg = 'ไม่เจอแท็บ "' + t[0] + '"' + (t[1] ? ' (gid ' + t[1] + ')' : '') + ' — แท็บถูกลบหรือเปลี่ยนชื่อ ไม่ได้เขียนแท็บนี้';
+      Logger.log('❌ ' + msg); problems.push(msg); return;
+    }
+    var err = upsert_(sh, dateStr, t[2], cfg.name, sh.getName());
+    if (err) problems.push(err);
   });
+  return problems;
 }
 
 /** หาแท็บจาก gid ก่อน (ไม่พังเมื่อมีคนเปลี่ยนชื่อแท็บ) ไม่มี gid ค่อยหาจากชื่อ */
@@ -441,7 +456,8 @@ function upsert_(sh, dateStr, c, branchName, label) {
     Logger.log('❌ "' + label + '" หาหัวคอลัมน์ไม่ครบ: ' + (missing.join(',') || '') +
                (!cDate ? ' วันที่' : '') + (!cL1 ? ' L1_*' : '') + (!cL2 ? ' L2_*' : ''));
     Logger.log('   หัวที่เจอจริง: ' + head.join(','));
-    return;
+    return 'แท็บ "' + label + '" หาหัวคอลัมน์ไม่ครบ (' + (missing.join(',') || '') +
+           (!cDate ? ' วันที่' : '') + (!cL1 ? ' L1_*' : '') + (!cL2 ? ' L2_*' : '') + ') — ไม่ได้เขียนแท็บนี้';
   }
   owned.push(['__L1', c.elec]); owned.push(['__L2', c.tool]);
   var colOf = function (key) { return key === '__L1' ? cL1 : key === '__L2' ? cL2 : col[key]; };
@@ -482,7 +498,8 @@ function findCol_(col, re) {
   return 0;
 }
 
-/** ตรวจว่าไฟล์ที่ได้ถูกวัน ถูกโซน แล้วสรุปตัวเลขที่ชีตต้องใช้ */
+/** ตรวจว่าไฟล์ที่ได้ถูกวัน ถูกโซน แล้วสรุปตัวเลขที่ชีตต้องใช้
+ *  ผ่าน = object ตัวเลข · ไม่ผ่าน = string เหตุผล (fetchBranch_ เอาไปใส่อีเมล) */
 function verify_(rows, wantDate, cfg) {
   var H = rows[0], data = rows.slice(1);
   var iDate = H.indexOf('วันที่ขาย'), iLock = H.indexOf('ล็อค');
@@ -499,7 +516,7 @@ function verify_(rows, wantDate, cfg) {
     Logger.log('🔴 หยุด — ไฟล์ Export ไม่มีคอลัมน์: ' + lost.join(' · '));
     Logger.log('   หัวคอลัมน์ที่เจอจริง: ' + H.join(' | '));
     Logger.log('   ไม่เขียนชีต — ต้องแก้ชื่อคอลัมน์ใน verify_ ก่อน');
-    return null;
+    return 'ไฟล์ Export ไม่มีคอลัมน์ ' + lost.join(' · ') + ' — บริษัทเปลี่ยนชื่อคอลัมน์ ไม่ได้เขียนชีต';
   }
 
   // ด่านวันที่ — สำคัญที่สุด กัน VIEWSTATE เพี้ยนแล้วได้ข้อมูลผิดวันเงียบๆ
@@ -510,7 +527,7 @@ function verify_(rows, wantDate, cfg) {
   if (keys.length !== 1 || keys[0] !== wantDate) {
     Logger.log('🔴 หยุด — ขอวันที่ ' + wantDate + ' แต่ไฟล์เป็น ' + keys.join(','));
     Logger.log('   อย่าเอาข้อมูลนี้ไปใช้ ต้องแก้ก่อน');
-    return null;
+    return 'ขอวันที่ ' + wantDate + ' แต่ไฟล์ได้ ' + (keys.join(', ') || 'ไม่มีข้อมูลเลย') + ' — ไม่ได้เขียนชีต';
   }
   Logger.log('✅ วันที่ตรงกับที่ขอ (' + wantDate + ')');
 
@@ -571,7 +588,8 @@ function verify_(rows, wantDate, cfg) {
   if (!z.st.total.rai && !z.car.total.rai) {
     Logger.log('🔴 หยุด — ไฟล์มี ' + data.length + ' แถว แต่ไม่มีล็อคเข้าโซนอาหาร/รถเลย');
     Logger.log('   ไม่เขียนชีต — ตรวจรูปแบบรหัสล็อคกับ SHEETS.*.food / .car');
-    return null;
+    return 'ไฟล์มี ' + data.length + ' แถว แต่ไม่มีล็อคเข้าโซนอาหาร/รถเลย' +
+           (z.other ? ' (' + otherText_(z) + ')' : '') + ' — รหัสล็อคเปลี่ยนรูปแบบ ไม่ได้เขียนชีต';
   }
   return z;
 }
