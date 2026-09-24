@@ -326,6 +326,20 @@ function fetchBranch_(branch, when) {
   var z = verify_(rows, ceStr, cfg);
   if (!z) return;                       // วันที่ไม่ตรง — verify_ แจ้งแล้ว
   writeSheet_(branch, ceStr, z);
+
+  /* ด่านล็อคหลุดโซน — เช่นเพิ่มแถวใหม่ที่ตัวอักษรไม่อยู่ในกติกา (BN แถว K–T · BG GU/GV)
+     เขียนชีตก่อนแล้วค่อย throw: ยอดโซนที่รู้จักยังอัปเดตตามปกติ ไม่ค้างตัวเลขรอบก่อน
+     แต่รอบนี้ขึ้น "ล้มเหลว" → Apps Script ส่งอีเมลแจ้ง ไม่ใช่จบเงียบๆ แค่ใน Logger
+     แก้: เพิ่มตัวอักษรนั้นเข้า SHEETS.<สาขา>.food / .car ตามที่อนุมัติโซนจริง */
+  if (z.other) {
+    throw new Error('🟠 สาขา ' + branch + ' วันที่ ' + ceStr + ': มีล็อค ' + z.other +
+                    ' ตัวที่ไม่เข้าโซนอาหาร/รถ (' + otherText_(z) + ') — ยอดในชีตขาดล็อคพวกนี้ ' +
+                    'ต้องเพิ่มตัวอักษรเข้า SHEETS.' + branch + '.food หรือ .car');
+  }
+}
+
+function otherText_(z) {
+  return Object.keys(z.otherBy).sort().map(function (k) { return k + ' ' + z.otherBy[k]; }).join(' · ');
 }
 
 /** เขียนลงชีต ฟอร์แมตเดียวกับ saveDataByBranch ของสคริปต์คำนวณเดิมเป๊ะ
@@ -516,7 +530,7 @@ function verify_(rows, wantDate, cfg) {
     return { total: { rai: 0, lock: 0 }, walkin: { rai: 0, lock: 0 },
              cancel: { rai: 0, lock: 0 }, absent: { rai: 0, lock: 0 }, elec: 0, tool: 0 };
   };
-  var z = { st: mkz(), car: mkz(), other: 0 };
+  var z = { st: mkz(), car: mkz(), other: 0, otherBy: {} };
   var stat = {};
   data.forEach(function (r) {
     var st = String(r[iStat] || '(ว่าง)'); stat[st] = (stat[st] || 0) + 1;
@@ -525,7 +539,7 @@ function verify_(rows, wantDate, cfg) {
     var p = (codes[0].match(/^[A-Za-z]+/) || [''])[0].toUpperCase();
     // กติกาแยกโซนต่างกันต่อสาขา — BG ใช้ 2 ตัวอักษร · BN ใช้ตัวเดียว
     var bucket = cfg.food.test(p) ? 'st' : cfg.car.test(p) ? 'car' : null;
-    if (!bucket) { z.other += codes.length; return; }
+    if (!bucket) { z.other += codes.length; z.otherBy[p || '(ไม่มีตัวอักษร)'] = (z.otherBy[p || '(ไม่มีตัวอักษร)'] || 0) + codes.length; return; }
     var b = z[bucket], n = codes.length;
     b.total.rai += 1; b.total.lock += n;
     b.elec += num_(r[iElec]); b.tool += num_(r[iTool]);
@@ -551,7 +565,7 @@ function verify_(rows, wantDate, cfg) {
     Logger.log('  ลา         ราย ' + b.absent.rai + ' · ล็อก ' + b.absent.lock);
     Logger.log('  ค่าไฟ ' + b.elec + ' · อุปกรณ์ ' + b.tool);
   });
-  if (z.other) Logger.log('⚠️ มีล็อค ' + z.other + ' ตัวที่รหัสไม่เข้าทั้ง 2 โซน — ต้องดูว่าเป็นอะไร');
+  if (z.other) Logger.log('⚠️ มีล็อค ' + z.other + ' ตัวที่รหัสไม่เข้าทั้ง 2 โซน: ' + otherText_(z));
   /* ไม่มีล็อคเข้าโซนไหนเลย = รหัสล็อคเปลี่ยนรูปแบบ หรือกติกาโซนผิดสาขา
      เขียนไปจะได้ 0 ทับของจริงทั้งแถว — หยุดดีกว่า */
   if (!z.st.total.rai && !z.car.total.rai) {
