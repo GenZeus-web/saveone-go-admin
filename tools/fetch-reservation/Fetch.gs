@@ -152,6 +152,21 @@ function setupTriggersBN() { setupTriggers_('BN'); }
 function scheduledBG() { fetchBranch_('BG', null); }
 function scheduledBN() { fetchBranch_('BN', null); }
 
+/* ══════════ ดึงย้อน "เมื่อวาน" — รอบเช้า / กดรันเองก็ได้ ══════════
+   รอบ 22:00 ของเมื่อคืนติดด่าน (เช่น BN 23 ก.ย. 22:35 หน้าเว็บขั้น 2 เปลี่ยน) = ยอดปิดวันไม่ถูกเขียน
+   ฟังก์ชันนี้ดึงวันที่ของเมื่อวานซ้ำ แล้ว "เขียนทับ" แถวของวันนั้น (upsert_ — ไม่แตะช่องกรอกมือ)
+   เมื่อคืนผ่านอยู่แล้วก็ไม่เสียหาย แค่เขียนเลขเดิมซ้ำ · ติดด่านอีก = throw → อีเมลแจ้งเหมือนรอบปกติ
+   ตั้งทริกเกอร์ผ่านหน้า "ทริกเกอร์": yesterdayBN · ตามเวลา · ตัวจับเวลาตามวัน · 07.00–08.00 */
+function yesterdayBG() { fetchBranch_('BG', yesterday_()); }
+function yesterdayBN() { fetchBranch_('BN', yesterday_()); }
+
+function yesterday_() {
+  var d = new Date();
+  d.setDate(d.getDate() - 1);
+  d.setHours(23, 0, 0, 0);       // วันที่ของเมื่อวาน — ชั่วโมงไม่มีผลกับการค้นหา
+  return d;
+}
+
 function setupTriggers_(branch) {
   var handler = 'scheduled' + branch;
   if (isDry_(branch)) {
