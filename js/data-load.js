@@ -73,6 +73,7 @@ async function loadAll(){
     document.getElementById('loadingState').style.display='none';
     document.getElementById('mainContent').style.display='block';
     hideSplash();
+    if(typeof maybeShowTodayPopup==='function') maybeShowTodayPopup(); // TODAY-01
   }catch(e){
     console.error('loadAll ล้มเหลว:', e.message);
     // v2.6.2 NET-04: ต้องซ่อน splash ด้วย ไม่งั้น error ถูก splash (z-index 9999) บังหมด เห็นเป็นหน้าโหลดค้าง
@@ -82,6 +83,7 @@ async function loadAll(){
     if(shownFromCache){
       setDataAge(cacheShownAt,'stale');
       renderDataHealth();
+      if(typeof maybeShowTodayPopup==='function') maybeShowTodayPopup(); // TODAY-01
     }else{
       document.getElementById('loadingState').style.display='flex';
       document.getElementById('loadingState').innerHTML=`<div style="text-align:center;color:var(--red)">❌ โหลดไม่ได้: ${e.message}<br><br><button class="rfbtn" onclick="loadAll()">ลองใหม่</button></div>`;

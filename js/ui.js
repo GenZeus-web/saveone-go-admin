@@ -95,7 +95,7 @@ function toggleTheme(){
   isDark=!isDark;
   document.body.classList.toggle('light-mode',!isDark);
   const btn=document.getElementById('themeBtn');
-  if(btn) btn.textContent=isDark?'🌙 Dark':'☀️ Light';
+  if(btn) btn.innerHTML=isDark?'🌙<span class="rf-lbl"> Dark</span>':'☀️<span class="rf-lbl"> Light</span>'; // .rf-lbl ซ่อนบนจอแคบ
   localStorage.setItem('swTheme',isDark?'dark':'light');
   if(Object.keys(charts).length>0) applyAll();
 }
@@ -104,8 +104,29 @@ function toggleTheme(){
   if(!isDark){
     document.body.classList.add('light-mode');
     const btn=document.getElementById('themeBtn');
-    if(btn) btn.textContent='☀️ Light';
+    if(btn) btn.innerHTML='☀️<span class="rf-lbl"> Light</span>';
   }
+})();
+
+// ── FONT-01: ขนาดตัวอักษร 3 ระดับ (ปกติ/ใหญ่/ใหญ่มาก) จำค่าต่อเครื่อง ──
+//   CSS ทั้งเว็บเขียนเป็น px → เปลี่ยน font-size ราก ไม่มีผล จึงใช้ zoom (ดู base.css body.fs-1/fs-2)
+//   กราฟเป็น canvas: คูณ devicePixelRatio ตามซูม ไม่งั้นภาพเบลอ แล้ววาดใหม่
+const FONT_KEY='sg_font', FONT_ZOOM=[1,1.15,1.3];
+let fontLevel=0;
+try{ fontLevel=Math.min(2,Math.max(0,parseInt(localStorage.getItem(FONT_KEY),10)||0)); }catch(e){}
+function setFontLevel(lv){
+  fontLevel=Math.min(2,Math.max(0,lv|0));
+  document.body.classList.remove('fs-1','fs-2');
+  if(fontLevel) document.body.classList.add('fs-'+fontLevel);
+  document.querySelectorAll('[data-fs]').forEach(b=>b.classList.toggle('active',+b.dataset.fs===fontLevel));
+  try{ localStorage.setItem(FONT_KEY,String(fontLevel)); }catch(e){}
+  if(typeof Chart!=='undefined') Chart.defaults.devicePixelRatio=(window.devicePixelRatio||1)*FONT_ZOOM[fontLevel];
+  if(Object.keys(charts).length>0) applyAll();
+}
+(function(){
+  if(fontLevel) document.body.classList.add('fs-'+fontLevel);
+  if(typeof Chart!=='undefined') Chart.defaults.devicePixelRatio=(window.devicePixelRatio||1)*FONT_ZOOM[fontLevel];
+  document.querySelectorAll('[data-fs]').forEach(b=>b.classList.toggle('active',+b.dataset.fs===fontLevel));
 })();
 
 // ── AUTO REFRESH ──

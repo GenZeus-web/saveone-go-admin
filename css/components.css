@@ -220,6 +220,17 @@ body.manager-mode .admin-only{display:none!important;}
 .day-r>span:last-child{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ink);white-space:nowrap;}
 .day-r .u{font-size:10px;color:var(--ink3);font-weight:400;margin-left:3px;}
 .day-r.hi>span:last-child{font-size:15px;}
+
+/* TODAY-01: ป๊อปอัปยอดวันนี้ — ต่อจากชุด day-* ข้างบน แยกบล็อกละสาขา */
+.tdy-br{margin-top:12px;}
+.tdy-brh{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
+  font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px;}
+.tdy-code{font-size:10px;font-weight:600;color:var(--ink3);font-family:'JetBrains Mono',monospace;}
+.tdy-big{padding:2px 0 8px;}   /* อยู่ใน .day-rows ที่มีขอบซ้ายขวาแล้ว ไม่ต้องซ้อน · คั่นกับแถวย่อยใต้การ์ด */
+.tdy-br+.tdy-tag{border-top:1px dashed var(--border);padding-top:14px;margin-top:18px;}
+.tdy-tag{margin-top:14px;font-size:10px;color:var(--ink3);}
+.tdy-note{margin-top:14px;padding:10px 12px;border-radius:10px;background:var(--surface2);
+  border:1px solid var(--border);font-size:12px;color:var(--ink2);line-height:1.5;}
 #cMain{cursor:pointer;}
 
 /* ── SET-01: หน้าตั้งค่า ราคา · ฤดูกาล · เป้ายอด (js/firebase/settings.js) ── */

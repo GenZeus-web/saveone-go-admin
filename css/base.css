@@ -26,6 +26,17 @@ body.light-mode .splash{
 body.light-mode .login-logo-text{color:#1a1f2e!important;}
 body.no-rev .col-rev{display:none!important;}
 body.no-elec .col-elec{display:none!important;}
+
+/* FONT-01: ขนาดตัวอักษร 3 ระดับ (ui.js setFontLevel) — ซูมเนื้อหา ไม่ซูม #mainContent ทั้งก้อน
+   เพราะป๊อปอัปอยู่ข้างใน และเป็น position:fixed;inset:0 → ถ้าซูมด้วย ฉากมืดจะใหญ่เกินจอ
+   ป๊อปอัปจึงซูมเฉพาะตัวการ์ด (.day-card) · หน้าตั้งค่า/จัดการผู้ใช้ (admin) ไม่ซูม */
+body.fs-1 #mainContent>:not([id$="Modal"]):not(#setConfirm),body.fs-1 .day-card{zoom:1.15;}
+body.fs-2 #mainContent>:not([id$="Modal"]):not(#setConfirm),body.fs-2 .day-card{zoom:1.3;}
+.fs-seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.fs-seg button{background:transparent;border:0;color:var(--ink2);cursor:pointer;
+  padding:4px 9px;font-family:'Noto Sans Thai',sans-serif;line-height:1.2;}
+.fs-seg button+button{border-left:1px solid var(--border);}
+.fs-seg button.active{background:var(--surface2);color:var(--gold);font-weight:700;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-serif;font-size:13px;line-height:1.5;display:flex;flex-direction:column;height:100vh;overflow:hidden;}#appWrapper_removed{display:flex;flex-direction:column;height:100%;}
 

@@ -108,8 +108,10 @@
   <div class="header-right">
     <span class="upd" id="updTime">—</span>
     <button class="rfbtn" id="sidebarBtn" onclick="toggleSidebar()" title="พับ/แสดง Sidebar">◀</button>
-    <button class="rfbtn" id="themeBtn" onclick="toggleTheme()" title="สลับ Light/Dark Mode">🌙 Dark</button>
-    <button class="rfbtn" onclick="refreshBranch()">↻ รีเฟรช</button>
+    <!-- TODAY-01 · จอแคบ (≤1100px) ปุ่มเหลือแค่ไอคอน ป้าย .rf-lbl ซ่อน กันหัวเว็บล้น -->
+    <button class="rfbtn" id="todayBtn" onclick="openTodayModal()" title="ดูยอดวันนี้" aria-label="ดูยอดวันนี้">📅<span class="rf-lbl"> ยอดวันนี้</span></button>
+    <button class="rfbtn" id="themeBtn" onclick="toggleTheme()" title="สลับ Light/Dark Mode" aria-label="สลับธีม">🌙<span class="rf-lbl"> Dark</span></button>
+    <button class="rfbtn" onclick="refreshBranch()" title="รีเฟรช" aria-label="รีเฟรช">↻<span class="rf-lbl"> รีเฟรช</span></button>
 
     <!-- USR-02: เมนูโปรไฟล์ -->
     <div class="prof-wrap">
@@ -135,6 +137,15 @@
         <button class="prof-item" onclick="toggleTheme();closeProfMenu()">
           <span style="width:16px;display:inline-block">&#127769;</span> สลับธีม สว่าง/มืด
         </button>
+        <!-- FONT-01: ขนาดตัวอักษร 3 ระดับ (ui.js setFontLevel) -->
+        <div class="prof-item" style="cursor:default;justify-content:space-between">
+          <span><span style="width:16px;display:inline-block">&#128270;</span> ขนาดตัวอักษร</span>
+          <span class="fs-seg" role="group" aria-label="ขนาดตัวอักษร">
+            <button data-fs="0" onclick="setFontLevel(0)" style="font-size:11px" title="ปกติ">ก</button>
+            <button data-fs="1" onclick="setFontLevel(1)" style="font-size:13px" title="ใหญ่">ก</button>
+            <button data-fs="2" onclick="setFontLevel(2)" style="font-size:16px" title="ใหญ่มาก">ก</button>
+          </span>
+        </div>
         <div class="prof-sep"></div>
         <button class="prof-item danger" onclick="doLogout()">
           <span style="width:16px;display:inline-block">&#8630;</span> ออกจากระบบ
@@ -678,6 +689,23 @@
       </div>
     </div>
 
+    <!-- ══════════ TODAY-01: ยอดวันนี้ (เด้งครั้งแรกของวัน + ปุ่ม 📅) ══════════
+         ใช้คลาส day-* ชุดเดียวกับ dayModal · col-rev/col-elec ซ่อนตามสิทธิ์ให้เอง -->
+    <div id="todayModal" onclick="if(event.target===this)closeTodayModal()"
+         style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8600;
+                align-items:center;justify-content:center;padding:16px;">
+      <div class="day-card" role="dialog" aria-modal="true" aria-labelledby="todayTitle">
+        <div class="day-head">
+          <div>
+            <div class="day-date" id="todayTitle">ยอดวันนี้</div>
+            <div class="day-sub" id="todaySub">—</div>
+          </div>
+          <button class="day-x" onclick="closeTodayModal()" aria-label="ปิด">✕</button>
+        </div>
+        <div class="day-rows" id="todayRows"></div>
+      </div>
+    </div>
+
     <!-- ══════════ USR-01: จัดการผู้ใช้ (admin เท่านั้น) — เปิดจากเมนูโปรไฟล์ ══════════ -->
     <div id="usersModal" onclick="if(event.target===this)closeUsersPanel()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8500;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto">
       <div class="mc-panel" style="width:900px;max-width:100%;margin:0;box-shadow:0 20px 60px rgba(0,0,0,.45)">
@@ -817,5 +845,7 @@
 <script src="js/export.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/login-fx.js"></script>
+<script src="js/today.js"></script><!-- TODAY-01: ใช้ของจาก utils/data-load ตอนเรียกเท่านั้น -->
+
 </body>
 </html>

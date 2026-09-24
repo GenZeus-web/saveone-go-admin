@@ -11,6 +11,14 @@
 .upd{font-size:10px;color:var(--ink3);font-family:'JetBrains Mono',monospace;}
 .rfbtn{background:var(--surface2);border:1px solid var(--border);color:var(--ink2);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'Noto Sans Thai',sans-serif;transition:all .15s;}
 .rfbtn:hover{border-color:var(--gold);color:var(--gold);}
+/* TODAY-01: จอแท็บเล็ต/มือถือ ปุ่มหัวเว็บล้น → เหลือแค่ไอคอน (title/aria-label ยังบอกชื่อปุ่ม)
+   ซ่อนอีเมลข้างรูปโปรไฟล์ด้วย (ดูได้ในเมนูโปรไฟล์) · ป้ายเวลาข้อมูลคงไว้ ห้ามซ่อนบนแท็บเล็ต */
+@media(max-width:1100px){
+  .rf-lbl,.prof-btn #userDisplay{display:none;}
+  .rfbtn{padding:5px 10px;font-size:14px;}
+  .header-right{gap:6px;}
+  .upd{white-space:nowrap;}
+}
 
 /* USR-02: เมนูโปรไฟล์ (มุมขวาบน) */
 .prof-wrap{position:relative;}

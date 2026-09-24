@@ -116,6 +116,14 @@ body.light-mode .kpi>div[style*="inline-flex"]{background:rgba(60,40,20,.04)!imp
   html #sbNavHost .vtab{background:transparent;border-color:transparent;}
   html #sbNavHost .vtab.active{background:rgba(61,214,140,.13);color:var(--green);box-shadow:inset 0 0 0 1px rgba(61,214,140,.3);}
   html .mnav-btn,html .rfbtn{background:var(--nt-card);border:1px solid var(--nt-edge);}
+
+  /* เลย์เอาต์การ์ด: เดิม 1 ใบต่อแถว 10 ใบ = เลื่อนหลายจอกว่าจะถึงกราฟหลักที่ ผอ. ดู
+     ใหม่: ใบหลัก + ใบถัดไปกว้างเต็มแถว (ตัวเลขใหญ่ มีป้ายทิศทาง) · ใบรองวางคู่ แถวละ 2 */
+  html .kpi-row{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+  html .kpi-row>.kpi-lead,html .kpi-row>.kpi-lead+.kpi{grid-column:1/-1;}
+  html .kpi-row>.kpi:not(.kpi-lead):not(.kpi-lead + .kpi){padding:12px 14px;border-radius:12px;}
+  html .kpi-row>.kpi:not(.kpi-lead):not(.kpi-lead + .kpi) .kpi-val{font-size:21px;}
+  html .kpi-row>.kpi:not(.kpi-lead):not(.kpi-lead + .kpi) .kpi-lbl{font-size:10px;margin-bottom:5px;}
 }
 
 /* ── 6) จังหวะเข้า ── การ์ดลอยขึ้นทีละใบ ต่อจากตอนพุ่งผ่านหน้า login (เล่นตอนแสดงผลครั้งแรก/สลับแท็บ) */
