@@ -264,3 +264,13 @@ body.manager-mode .admin-only{display:none!important;}
 .set-toast.bad{border-color:var(--red);}
 /* โหลดราคาไม่ได้เลย → ซ่อนตัวเลขเงินทุกจุด (ไม่โชว์รายรับที่อาจผิด) */
 body.no-price .col-rev,body.no-price #revSection,body.no-price #whatif-section{display:none!important;}
+
+/* ── TREND-01: ป้ายทิศทางตอนนี้ (7 วันล่าสุด vs 7 วันก่อนหน้า) · มีลูกศร+คำกำกับสีเสมอ ── */
+.trend-line{margin:6px 0 4px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;}
+.trend-line:empty{display:none;}
+.trend{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;}
+.trend.good{color:var(--green);background:rgba(61,214,140,.12);}
+.trend.bad{color:var(--red);background:rgba(224,92,92,.13);}
+.trend.flat{color:var(--ink2);background:rgba(127,127,127,.12);}
+.trend.na{color:var(--ink3);font-weight:400;padding-left:0;}
+.trend-raw{font-size:10px;color:var(--ink3);}

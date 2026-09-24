@@ -328,6 +328,7 @@
           <div class="kpi blue kpi-hero kpi-lead">
             <div class="kpi-lbl" id="k-revtotal-lbl">รายรับสุทธิรวม (ST+Non)</div>
             <div class="kpi-val" id="k-revtotal">—</div>
+            <div class="trend-line" id="t-rev"></div><!-- TREND-01: ทิศทางตอนนี้ -->
             <div class="kpi-sub">บาท</div>
           </div>
           <div class="kpi gold">
@@ -355,6 +356,7 @@
           <div class="kpi gold kpi-hero kpi-lead">
             <div class="kpi-lbl">จำนวนล็อก <span style="color:var(--ink3);font-size:9px">/ เฉลี่ย/วัน ↓</span></div>
             <div class="kpi-val" id="k-lock">—</div>
+            <div class="trend-line" id="t-lock"></div><!-- TREND-01 -->
             <div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:rgba(20,15,0,.5);border:1px solid rgba(240,165,0,.4);padding:5px 12px;border-radius:8px;">
               <span style="font-size:11px;color:rgba(255,255,255,.5)">เฉลี่ย/วัน</span>
               <span id="k-lock-sub" style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#ffd166;">—</span>
@@ -364,6 +366,7 @@
           <div class="kpi green">
             <div class="kpi-lbl">จำนวนราย <span style="color:var(--ink3);font-size:9px">/ เฉลี่ย/วัน ↓</span></div>
             <div class="kpi-val" id="k-rai">—</div>
+            <div class="trend-line" id="t-rai"></div><!-- TREND-01 -->
             <div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:rgba(30,25,15,.5);border:1px solid rgba(240,122,53,.4);padding:5px 12px;border-radius:8px;">
               <span style="font-size:11px;color:rgba(255,255,255,.5)">เฉลี่ย/วัน</span>
               <span id="k-rai-sub" style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#ffb347;">—</span>
@@ -803,6 +806,7 @@
 <script src="js/data-cache.js"></script>
 <script src="js/data-load.js"></script>
 <script src="js/filters.js"></script>
+<script src="js/trend.js"></script><!-- TREND-01: ต้องอยู่ก่อน overview.js -->
 <script src="js/views/overview.js"></script>
 <script src="js/views/forecast.js"></script>
 <script src="js/views/raw.js"></script>

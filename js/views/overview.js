@@ -107,6 +107,28 @@ function renderTargetStatus(d){
   }
 }
 
+// ── TREND-01: ป้ายทิศทางตอนนี้ (7 วันล่าสุด vs 7 วันก่อนหน้า · คำนวณใน js/trend.js) ──
+// ลูกศร + คำ กำกับสีเสมอ — คนที่แยกแดง/เขียวไม่ออกก็อ่านได้ (WCAG 1.4.1)
+// แสดงตัวเลขที่มาต่อท้ายเสมอ ให้เห็นว่าลูกศรมาจากไหน ไม่ต้องเชื่อลูกศรอย่างเดียว
+function trendChip(t,dec=1){
+  if(!t) return '<span class="trend na">ข้อมูลไม่พอดูทิศทาง</span>';
+  const arrow={up:'↗',down:'↘',flat:'→'}[t.dir];
+  const word={up:'กำลังขึ้น',down:'กำลังลง',flat:'ทรงตัว'}[t.dir];
+  const tone=t.dir==='flat'?'flat':t.dir==='up'?'good':'bad';
+  const sign=t.diff>0?'+':t.diff<0?'−':'±';
+  const amt=t.small?`${sign}${fmtN(Math.abs(t.diff),dec)}/วัน`:`${sign}${Math.abs(t.pct).toFixed(1)}%`;
+  return `<span class="trend ${tone}">${arrow} ${word} ${amt}</span>`+
+    `<span class="trend-raw" title="เฉลี่ยต่อวัน 7 วันล่าสุด เทียบ 7 วันก่อนหน้านั้น">7 วันล่าสุด ${fmtN(t.cur,dec)} · ก่อนหน้า ${fmtN(t.prev,dec)}</span>`;
+}
+function renderTrends(d){
+  const all=applyZone(getActiveMerged());           // หน้าต่าง "7 วันก่อน" อาจอยู่นอกช่วงที่เลือก
+  const anchor=d.length?d.reduce((a,b)=>a.date>b.date?a:b).date:null;  // วันล่าสุดของช่วงที่ดู ไม่ใช่วันนี้
+  const set=(id,t,dec)=>{const el=document.getElementById(id); if(el) el.innerHTML=trendChip(t,dec);};
+  set('t-rev',trendOf(all,anchor,r=>revST(r,group)+revNon(r,group)),0);
+  set('t-lock',trendOf(all,anchor,r=>getLock(r,group)),1);
+  set('t-rai',trendOf(all,anchor,r=>getRai(r,group)),1);
+}
+
 // ── OVERVIEW ──
 function renderOverview(d){
   // คำนวณ KPI
@@ -154,6 +176,7 @@ function renderOverview(d){
   document.getElementById('k-rai-sub').textContent=fmtN(rai/days,1);
   animateNumber(document.getElementById('k-lock'),lock);
   document.getElementById('k-lock-sub').textContent=fmtN(lock/days,1);
+  renderTrends(d); // TREND-01
   
   // Target summary
   const avgActual=lock/days;
