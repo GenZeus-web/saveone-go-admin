@@ -61,6 +61,11 @@
        คงไว้: anansit@saveone.go (settings.js ใช้เช็คเจ้าของ + กฎ Firestore) · Fetch.gs (ใช้งานจริง รหัสอยู่ใน Script Properties)
     API key (ตั้งใน Google Cloud 25 ก.ย. 16:30 — ไม่ใช่โค้ด): จำกัดให้ใช้ได้จาก genzeus-web.github.io + localhost:8781
        ตอนบันทึก GCP เตือนว่ามีคนเอา key ไปยิง Maps API (เราไม่ได้ใช้) · ทดสอบหลังตั้ง: login + Firestore 0.22 วิ · ผัง 3D ปกติ
+    CACHE-02) ใส่ ?v=3.0.1 ท้าย js/css ทั้ง 26 ตัวใน index.html — เจ้าของเปิดทดสอบแล้วขึ้น "โหลดไม่ได้: canSeeRev is not defined"
+       สาเหตุ: เบราว์เซอร์ใช้ utils.js เก่าจากแคช ปนกับ overview.js ใหม่ที่เรียกฟังก์ชันใหม่ข้ามไฟล์
+       เว็บจริงก็เสี่ยง: GitHub Pages ตอบ Cache-Control max-age=600 ต่อไฟล์ → 10 นาทีหลัง push ได้ไฟล์ปนกันได้
+       แก้: index.html ใหม่เรียก URL ชุดใหม่ทั้งชุด · ขั้นตอนจบงานใน CLAUDE.md เพิ่มเป็น bump 3 จุด
+       ทดสอบ: โหลด index ผ่าน Chrome ไม่มี error / ไม่มี 404 · import ใน js/firebase/ ไม่มี ?v (settings.js เก่า+ใหม่เข้ากันได้)
     SPLASH-01) กด F5 / เปิดเว็บซ้ำ: โลโก้เซฟวันโกโผล่แวบแล้วหาย (จอกะพริบ)
        สาเหตุ: splash ตั้งจังหวะไว้ 0.3–1.5 วิ (ยุครอ Apps Script 5–10 วิ) แต่มี cache แล้ว loadAll
        โชว์ข้อมูลทันทีและสั่งซ่อน splash → เล่นไม่ทันจบ เหลือแค่แวบเดียว

@@ -38,12 +38,12 @@
      │ การสลับลำดับ = สลับ cascade = สไตล์บางอย่างจะถูกทับผิดตัว        │
      │ responsive.css ต้องอยู่ท้ายสุดเสมอ (media query ทับของเดิม)      │
      └────────────────────────────────────────────────────────────────┘ -->
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/layout.css">
-<link rel="stylesheet" href="css/components.css">
-<link rel="stylesheet" href="css/screens.css">
-<link rel="stylesheet" href="css/night.css"><!-- UI-NIGHT คอนเซปต์: ลบบรรทัดนี้ = หน้าตาเดิม -->
-<link rel="stylesheet" href="css/responsive.css">
+<link rel="stylesheet" href="css/base.css?v=3.0.1">
+<link rel="stylesheet" href="css/layout.css?v=3.0.1">
+<link rel="stylesheet" href="css/components.css?v=3.0.1">
+<link rel="stylesheet" href="css/screens.css?v=3.0.1">
+<link rel="stylesheet" href="css/night.css?v=3.0.1"><!-- UI-NIGHT คอนเซปต์: ลบบรรทัดนี้ = หน้าตาเดิม -->
+<link rel="stylesheet" href="css/responsive.css?v=3.0.1">
 
 <!-- ┌── Firebase (ES module) ────────────────────────────────────────┐
      │ type="module" ถูก defer โดยอัตโนมัติ → ทำงานหลัง DOM พร้อม      │
@@ -51,8 +51,8 @@
      │ จึงเรียก showSplash() / loadAll() / setBranch() ได้อย่างปลอดภัย  │
      │ init.js ถูก import จากทั้งสองไฟล์ แต่รันครั้งเดียว (ES module)   │
      └────────────────────────────────────────────────────────────────┘ -->
-<script type="module" src="js/firebase/auth.js"></script>
-<script type="module" src="js/firebase/user-admin.js"></script>
+<script type="module" src="js/firebase/auth.js?v=3.0.1"></script>
+<script type="module" src="js/firebase/user-admin.js?v=3.0.1"></script>
 </head>
 <body>
 
@@ -830,24 +830,24 @@
      │     ui.js      → startAutoRefresh(5)                           │
      │   ซึ่ง hoisting ใช้ได้ "ภายในไฟล์เดียวกัน" เท่านั้น              │
      └────────────────────────────────────────────────────────────────┘ -->
-<script src="js/config.js"></script>
-<script src="js/utils.js"></script>
-<script src="js/data-fetch.js"></script>
-<script src="js/data-cache.js"></script>
-<script src="js/data-load.js"></script>
-<script src="js/filters.js"></script>
-<script src="js/trend.js"></script><!-- TREND-01: ต้องอยู่ก่อน overview.js -->
-<script src="js/views/overview.js"></script>
-<script src="js/views/forecast.js"></script>
-<script src="js/views/raw.js"></script>
-<script src="js/charts.js"></script>
-<script src="js/views/compare.js"></script>
-<script src="js/views/heatmap.js"></script>
-<script src="js/views/benchmark.js"></script>
-<script src="js/export.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/login-fx.js"></script>
-<script src="js/today.js"></script><!-- TODAY-01: ใช้ของจาก utils/data-load ตอนเรียกเท่านั้น -->
+<script src="js/config.js?v=3.0.1"></script>
+<script src="js/utils.js?v=3.0.1"></script>
+<script src="js/data-fetch.js?v=3.0.1"></script>
+<script src="js/data-cache.js?v=3.0.1"></script>
+<script src="js/data-load.js?v=3.0.1"></script>
+<script src="js/filters.js?v=3.0.1"></script>
+<script src="js/trend.js?v=3.0.1"></script><!-- TREND-01: ต้องอยู่ก่อน overview.js -->
+<script src="js/views/overview.js?v=3.0.1"></script>
+<script src="js/views/forecast.js?v=3.0.1"></script>
+<script src="js/views/raw.js?v=3.0.1"></script>
+<script src="js/charts.js?v=3.0.1"></script>
+<script src="js/views/compare.js?v=3.0.1"></script>
+<script src="js/views/heatmap.js?v=3.0.1"></script>
+<script src="js/views/benchmark.js?v=3.0.1"></script>
+<script src="js/export.js?v=3.0.1"></script>
+<script src="js/ui.js?v=3.0.1"></script>
+<script src="js/login-fx.js?v=3.0.1"></script>
+<script src="js/today.js?v=3.0.1"></script><!-- TODAY-01: ใช้ของจาก utils/data-load ตอนเรียกเท่านั้น -->
 
 </body>
 </html>
