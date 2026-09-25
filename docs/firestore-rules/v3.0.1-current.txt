@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function myDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function hasProfile() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function isAdmin() {
+      return hasProfile() && myDoc().role == 'admin';
+    }
+    function myBranches() {
+      return hasProfile() && myDoc().branches is list ? myDoc().branches : [];
+    }
+    // BM-04 (v2.10.0): สาขาที่ผู้ใช้ "เทียบได้ใน Benchmark" — แยกคนละแกนกับ branches
+    // ไม่มี field / ผิดชนิด = ว่าง = พฤติกรรมเดิมก่อน v2.10.0 เป๊ะ (fail-safe)
+    function myBmBranches() {
+      return hasProfile() && myDoc().bmBranches is list ? myDoc().bmBranches : [];
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin() && request.auth.uid != userId;
+    }
+
+    // ARCH-01: ข้อมูลที่ Apps Script ดันขึ้นทุก 10 นาที
+    // docId = SS_ST · SS_NON · BG_ST · BG_CAR · BN_ST · BN_CAR
+    //
+    // v2.10.0 BM-04: เปิดให้อ่านข้ามสาขาได้ ถ้าสาขานั้นอยู่ใน bmBranches ของผู้ใช้
+    //   จำเป็นเพราะ renderBenchmark() อ่านจาก `data/` โดยตรง (getBranchMerged)
+    //   ⚠️ นี่คือ CSV ดิบรายวัน ไม่ใช่แค่ค่าเฉลี่ยที่หน้าจอแสดง — ดู SEC-08 ใน WORKFLOW.md
+    //      ทางแก้ที่รากคือให้ Apps Script เขียนเอกสารสรุป `benchmark/{branch}` แล้ว
+    //      ถอดเงื่อนไข myBmBranches() บรรทัดล่างนี้ออกทั้งหมด กลับไปเป็น ARCH-01 เดิม
+    match /data/{docId} {
+      allow get: if hasProfile() && (docId.split('_')[0] in myBranches()
+                                  || docId.split('_')[0] in myBmBranches());
+      allow list: if false;
+      allow write: if false;
+    }
+
+    // LAY-01 (v2.9.0) / LAY-03 (v2.10.0): ผังกลางของผัง 3D — docId = ชื่อสาขา (SS · BG · BN)
+    //
+    // ⚠️ LAY-03 ผ่อนกฎที่ LAY-02 ตั้งไว้ — เดิม `create, update: if isAdmin()`
+    //   เหตุผลที่ผ่อน: ผังเป็นข้อมูลโครงสร้างตลาด ไม่ใช่ยอดขาย · ผู้จัดการสาขาคือคน
+    //   ที่รู้ผังจริงที่สุด แต่เดิมต้องรอ admin กดบันทึกให้ทุกครั้ง = คอขวด
+    //   สิ่งที่ยังกันอยู่: เขียนได้เฉพาะสาขาที่ตัวเองดูแล (แก้ผังสาขาอื่นไม่ได้) · ลบไม่ได้
+    //   get เปิดให้ทุกคนที่มีโปรไฟล์ — ดูผังข้ามสาขาได้ แต่ deploy ไม่ได้
+    match /layouts/{branch} {
+      allow get: if hasProfile();
+      allow list: if false;
+      allow create, update: if hasProfile() && branch in myBranches();
+      allow delete: if false;
+    }
+
+    // SET-01 (v2.12.0): หน้าตั้งค่า ราคา · ฤดูกาล · เป้ายอด — ดู docs/firestore-rules-settings.md
+    function recentlyConfirmed() {
+      return request.auth.token.auth_time > request.time.toMillis() / 1000 - 300;
+    }
+    // PERM-08 (v3.0.1): ราคาอ่านได้เฉพาะคนที่เห็นรายรับ (admin หรือ users/{uid}.showRevenue == true)
+    function canSeeRevenue() {
+      return isAdmin() || (hasProfile() && myDoc().showRevenue == true);
+    }
+    match /settings/pricing {
+      allow get: if canSeeRevenue();
+      allow list: if false;
+      allow write: if isAdmin() && recentlyConfirmed();
+    }
+    // เป้ายอด: ทุกคนที่มีโปรไฟล์อ่านได้ · admin เขียนได้ (ไม่ต้องใส่รหัส)
+    match /settings/targets {
+      allow get: if hasProfile();
+      allow list: if false;
+      allow write: if isAdmin();
+    }
+    // SEC-09 (v3.0.1): ประวัติการแก้ — admin เพิ่มได้อย่างเดียว · อ่านได้เฉพาะเจ้าของระบบที่มีโปรไฟล์
+    match /settingsLog/{id} {
+      allow create: if isAdmin() && request.resource.data.by == request.auth.token.email;
+      allow get, list: if hasProfile() && request.auth.token.email == 'anansit@saveone.go';
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

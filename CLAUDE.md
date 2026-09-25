@@ -136,14 +136,18 @@
 <!-- ส่วนที่เหลือปล่อยให้ git log เล่าเอง -->
 
 - **เว็บจริง:** https://genzeus-web.github.io/saveone-go-admin/
-- **เวอร์ชันบนเว็บจริง = ในโค้ด:** v3.0.0 (push 24 ก.ย. 2569 20:11 · `e822198` · ป้ายหัวเว็บขึ้น v3.0.0 แล้ว)
-  login โบเก้ · ธีมตลาดกลางคืน · ป้ายทิศทาง · CHT-04 · ป๊อปอัปยอดวันนี้ (TODAY-01) · ตัวอักษร 3 ระดับ (FONT-01)
-  branch `ui/dashboard-trend` merge เข้า `main` แล้ว
-- **GitGuardian เตือน Google API Key (24 ก.ย.)** = Firebase apiKey ใน `docs/3_apps-script-code.md:188` → false positive
-  ไม่ต้อง rotate · แผนป้องกัน (จำกัด API ของ key · กฎ `settingsLog`) นัดคุย 25 ก.ย.
+- **เวอร์ชันบนเว็บจริง = ในโค้ด:** v3.0.1 (push 25 ก.ย. 2569 17:10 · `c952a70` · ป้ายหัวเว็บขึ้น v3.0.1 แล้ว)
+  โลโก้บริษัท (login · หัวเว็บป้ายไฟรถ · หัวรายงาน โลโก้│สาขา) · เงิน/ค่าไฟตามสิทธิ์ `canSeeRev`/`canSeeElec` (utils.js)
+  ป๊อปอัปทุกตัวล็อกข้างหลัง (LAY-05) · `?v=` ท้าย js/css ทุกตัว (CACHE-02 — bump ทุกเวอร์ชัน)
+- **API key Firebase จำกัดแล้ว (25 ก.ย. 16:30)** — Google Cloud → Credentials → "Browser key (auto created by Firebase)"
+  Websites: `https://genzeus-web.github.io/*` · `http://localhost:8781/*` (GCP ไม่รับ `*` ที่พอร์ต)
+  เปิดเว็บจากที่อยู่อื่น (Live Server `127.0.0.1:5500` · โดเมนใหม่) = ล็อกอินไม่ได้ จนกว่าจะเพิ่มในรายการ
+  GitGuardian เตือน key นี้ = false positive · เจ้าของยังต้องกด mark ใน GitGuardian
 - **ผัง 3D:** v0.14.0 (20 ส.ค. 2569)
-- **Firestore Rules:** เพิ่มกฎ `settings/*` + `settingsLog` แล้ว (Publish 23 ก.ย. 2569 18:40) — ตัวกฎอยู่ที่ `docs/firestore-rules-settings.md`
-  กฎจริงอยู่ใน Console ไม่ได้อยู่ใน repo · **ฟีเจอร์ที่อ่าน/เขียน Firestore ใหม่ ต้องวางกฎก่อน push เสมอ** (ท้ายกฎมี deny-all)
+- **Firestore Rules:** Publish 25 ก.ย. 2569 ~17:37 — **ฉบับเต็มอยู่ที่ `docs/firestore-rules/v3.0.1-current.txt`** (ตรงกับ Console)
+  ราคา `settings/pricing` อ่านได้เฉพาะ `canSeeRevenue()` · `settingsLog` ต้อง `hasProfile()` · รายละเอียด `docs/firestore-rules-settings.md`
+  ⚠️ กฎเป็น OR — เพิ่มบล็อกใหม่ "เปิด" ได้อย่างเดียว จะ "ปิด" ต้องลบบล็อกเดิม · แก้ครั้งหน้าให้วางทั้งไฟล์จาก repo (เคยวางทับ `settings/targets` หาย)
+  **ฟีเจอร์ที่อ่าน/เขียน Firestore ใหม่ ต้องวางกฎก่อน push** · ฟีเจอร์ที่ "ปิด" สิทธิ์ ให้ push ก่อนแล้วค่อยวางกฎ (ท้ายกฎมี deny-all)
 - **ราคาไม่ได้อยู่ในโค้ดแล้ว** — แก้ที่เมนูโปรไฟล์ → ⚙️ ตั้งค่า (admin) · ค่าใน `DEFAULT_PRICING` (utils.js) ใช้แค่ตอนยังไม่เคยบันทึก
   ราคามีวันเริ่มใช้ วันเก่าไม่ถูกคิดใหม่ (ADR 0001) · เทสต์ `node --test tests/`
 
