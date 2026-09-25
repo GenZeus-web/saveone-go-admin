@@ -40,7 +40,17 @@
 .login-box>.login-logo{transform:translateZ(46px);}
 @keyframes loginIn{from{opacity:0;transform:perspective(1000px) translateY(24px) scale(.97);}}
 
+/* LOGO-3D: โลโก้รถเป็นป้ายไฟลอยเหนือการ์ด · ไฟล์มีขอบม่วงจากการตัดพื้น → brightness(0) invert บังคับเป็นสีเดียว
+   แสงส้มแค่ขอบนอก (แสงขาววงในจะถมช่องว่างจักรยาน/คนขับจนอ่านไม่ออก) */
+.login-box>.login-truck{display:flex;justify-content:center;margin-bottom:8px;transform:translateZ(60px);transform-style:preserve-3d;}
+.login-truck img{width:150px;height:auto;display:block;
+  filter:brightness(0) invert(.94) sepia(.12) drop-shadow(0 0 3px rgba(255,170,80,.75)) drop-shadow(0 0 10px rgba(255,120,30,.35));
+  animation:truckFloat 5s ease-in-out infinite,truckFlick 7s infinite;}
+@keyframes truckFloat{0%,100%{transform:rotateX(10deg) rotateY(-10deg)}50%{transform:rotateX(-6deg) rotateY(12deg)}}
+@keyframes truckFlick{0%,93%,100%{opacity:1}94%{opacity:.55}95%{opacity:1}97%{opacity:.7}}
 .login-logo{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:10px;}
+/* LOGO-TXT: โลโก้ตัวอักษรของบริษัท (logo-wordmark.svg = ลากเส้นจาก LoGosaveonego.png เป็นเวกเตอร์ คมทุกจอ) */
+.login-wordmark{width:230px;height:auto;display:block;filter:drop-shadow(0 0 18px rgba(255,255,255,.10));}
 body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700;color:#fff!important;font-family:'Noto Sans Thai',sans-serif;letter-spacing:-.01em;
   text-shadow:0 0 28px rgba(255,255,255,.18);}
 .login-logo-go{background:#3dd68c;color:#04130b;padding:1px 11px;border-radius:9px;font-size:30px;font-weight:800;letter-spacing:.02em;
@@ -65,10 +75,13 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 
 @media (max-width:600px){
   .login-box{padding:36px 26px 26px;}
+  .login-truck img{width:124px;}
+  .login-wordmark{width:200px;}
 }
 /* ผู้ใช้ตั้ง "ลดการเคลื่อนไหว" ในเครื่อง = ฉากนิ่ง (js วาดเฟรมเดียว) ไม่พุ่ง แค่มืดลง */
 @media (prefers-reduced-motion:reduce){
   .login-box{animation:none;transition:none;}
+  .login-truck img{animation:none;}
   #loginPage::after{transition-delay:0s;}
 }
 

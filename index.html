@@ -11,7 +11,7 @@
   สิ่งที่ต้อง deploy คู่กันเสมอ (ไม่งั้นจะ 404 เงียบๆ):
     index.html · manifest.webmanifest · css/ · js/ · assets/
   assets/apple-touch-icon.png = 180x180 (ไอคอนตอน "เพิ่มลงหน้าจอโฮม")
-  assets/logo.png             = โลโก้หน้า splash (ชื่อไฟล์พิมพ์เล็กตรงกัน)
+  assets/logo.png             = โลโก้หน้า splash + ป้ายไฟบนการ์ด login (ชื่อไฟล์พิมพ์เล็กตรงกัน)
 =========================================================================
 -->
 <meta charset="UTF-8">
@@ -77,9 +77,9 @@
   </div>
   <div class="login-box" id="loginBox">
     <div class="login-sheen" aria-hidden="true"></div>
+    <div class="login-truck" aria-hidden="true"><img src="assets/logo.png" alt=""></div>
     <div class="login-logo">
-      <span class="login-logo-text">เซฟวัน</span>
-      <span class="login-logo-go">GO</span>
+      <img class="login-wordmark" src="assets/logo-wordmark.svg" alt="ตลาดเซฟวัน GO">
     </div>
     <div class="login-company">บริษัท เซฟวันโก จำกัด</div>
     <label class="login-label">Email</label>
@@ -99,9 +99,10 @@
   <div class="brand">
     <!-- v2.11.0 RWD-01: ปุ่มแฮมเบอร์เกอร์ โผล่เฉพาะจอ <=768px -->
     <button class="mnav-btn" id="mnavBtn" onclick="toggleMobileNav()" aria-label="เปิดเมนู" aria-expanded="false" aria-controls="sidebar">&#9776;</button>
-    <div class="brand-logo" style="background:#3dd68c;color:#0a0a0a">SG</div>
+    <!-- LOGO-HDR: ป้ายไฟรถ (ต่อจากหน้า login) แทนป้าย SG · โลโก้ตัวอักษรอยู่ที่หัวรายงานแล้ว ไม่ซ้ำตรงนี้ -->
+    <div class="brand-tile" aria-hidden="true"><img src="assets/logo.png" alt=""></div>
     <div>
-      <div class="brand-name">เซฟวันโก <span style="font-size:9px;font-weight:600;color:var(--ink3);vertical-align:middle">v3.0.0</span></div>
+      <div class="brand-name">เซฟวันโก<span class="brand-ver">v3.0.1</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -289,10 +290,11 @@
 
     <!-- REPORT TITLE -->
     <div class="report-title">
-      <div class="rt-left">
-        <span class="rt-name">รายงาน เซฟวันโก</span>
-        <span class="rt-branch" id="rtBranch">ศรีสมาน</span>
-        <span class="rt-badge">SS</span>
+      <!-- LOGO-BR: โลโก้บริษัท + | + ชื่อสาขา (setBranch เปลี่ยนชื่อ)
+           ใช้ <use> แทน <img> เพื่อให้สีขาวในโลโก้เปลี่ยนตามธีม (--wm-ink) -->
+      <div class="rt-left" id="rtTitle" aria-label="รายงาน ตลาดเซฟวัน GO ศรีสมาน">
+        <svg class="rt-wm" viewBox="0 0 2824 624" aria-hidden="true"><use href="assets/logo-wordmark.svg#wm"/></svg>
+        <span class="rt-brwrap"><span class="rt-bar"></span><span class="rt-branch" id="rtBranch">ศรีสมาน</span></span>
       </div>
       
     </div>

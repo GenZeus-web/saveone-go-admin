@@ -169,6 +169,7 @@
   /* ขอบจอคง 20px ตาม handoff (เดิม 10px — แคบกว่าดีไซน์) */
   .content{padding:10px 20px calc(14px + env(safe-area-inset-bottom));}
   .brand-name{font-size:12px;}
+  .brand-tile{width:40px;height:30px;} .brand-tile img{width:32px;} /* LOGO-HDR: ไม่ดันปุ่มขวาล้น */
   .ch-main{height:260px;}
   .ch-sm,.ch-md{height:210px;}
 }

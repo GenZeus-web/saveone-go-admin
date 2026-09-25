@@ -10,6 +10,8 @@ function showSplash(){
   const bar=document.getElementById('splashBar');
   const fill=document.getElementById('splashFill');
   if(!splash) return;
+  // SPLASH-01: มี cache = loadAll โชว์ข้อมูลทันที → splash ได้แค่แวบเดียวตอน F5 (กะพริบ) · โชว์เฉพาะเครื่องที่ยังไม่มี cache
+  if(typeof loadCache==='function' && loadCache()) return;
   // reset state
   if(logo) logo.classList.remove('show');
   if(wordmark) wordmark.classList.remove('show');
@@ -206,3 +208,16 @@ function calcWhatIf(){
   note.innerHTML=`สมมติฐาน: ${wkndDays} วันหยุด (ศ-อา) ${wdDays} วันธรรมดา | สาขา ${activeBranch} | โซน ${zoneLbl} | ราคาตามฤดูกาลปัจจุบัน`;
 }
 
+
+// ── LAY-05: ป๊อปอัปทุกตัวใช้กลไกเดียวกับยอดวันนี้ (body.modal-open ใน components.css) ──
+//   เดิมมีแค่ todayModal ที่ใส่ class → อีก 5 ตัวโดนหัวเว็บบัง + ข้างหลังเลื่อนตามได้
+//   ไม่แก้ฟังก์ชันเปิด/ปิดทีละตัว (10+ จุด รวม Esc/คลิกพื้นหลัง) แต่เฝ้า style ของกล่องแทน
+//   → เปิดอยู่ ≥1 ตัว = ล็อก · ปิดครบ = ปลด (ป๊อปอัปซ้อนกัน เช่น ยืนยันรหัสบนหน้าตั้งค่า ก็ถูก)
+(function(){
+  const ids=['dayModal','todayModal','settingsModal','setConfirm','usersModal','addUserModal'];
+  const els=ids.map(id=>document.getElementById(id)).filter(Boolean);
+  const sync=()=>document.body.classList.toggle('modal-open',els.some(el=>el.style.display&&el.style.display!=='none'));
+  const mo=new MutationObserver(sync);
+  els.forEach(el=>mo.observe(el,{attributes:true,attributeFilter:['style']}));
+  sync();
+})();

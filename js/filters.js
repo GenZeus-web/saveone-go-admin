@@ -57,9 +57,9 @@ function setBranch(b,btn){
   updateZoneLabel();
   // อัปเดตชื่อสาขาใน header
   const names={SS:'ศรีสมาน',BG:'ประตูกรุงเทพ',BN:'บางนา'};
-  const badges={SS:'SS',BG:'BG',BN:'BN'};
+  // LOGO-BR: โลโก้ + ชื่อสาขาต่อท้าย (ทุกสาขา)
   const el=document.getElementById('rtBranch');if(el)el.textContent=names[b]||b;
-  const badge=document.querySelector('.rt-badge');if(badge)badge.textContent=badges[b]||b;
+  const ttl=document.getElementById('rtTitle');if(ttl)ttl.setAttribute('aria-label','รายงาน ตลาดเซฟวัน GO '+(names[b]||b));
   // รีเซ็ต zone เป็น all
   zone='all';document.querySelectorAll('[id^="z-"]').forEach(x=>x.classList.remove('active'));
   const za=document.getElementById('z-all');if(za)za.classList.add('active');
