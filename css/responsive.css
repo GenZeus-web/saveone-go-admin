@@ -35,6 +35,10 @@
      บน iPhone หัวเว็บสูง ~100px (รวมแถบสถานะ) บังป้าย "สาขา" เห็นปุ่มศรีสมานเป็นอย่างแรก
      เปิด drawer = ยก .layout เหนือหัวเว็บชั่วคราว (หลักเดียวกับ body.modal-open ใน components.css) */
   body.mnav-open .layout{z-index:11;}
+  /* LAY-07: มือถือเลื่อนใน drawer ไม่ได้ ไปเลื่อน .content ข้างหลังแทน (มี 2 กล่องเลื่อนได้ซ้อนกัน · ข้างหลังไม่ถูกล็อก)
+     ล็อกข้างหลังตอนเปิด (หลักเดียวกับ body.modal-open) · drawer เลื่อนสุดแล้วไม่ส่งการเลื่อนต่อไปข้างหลัง */
+  body.mnav-open .content{overflow:hidden;touch-action:none;}
+  .sidebar{overscroll-behavior:contain;}
   /* ปุ่มพับ sidebar ของจอใหญ่ใช้ไม่ได้บนมือถือ — กันไม่ให้ค้างซ่อน */
   .sidebar.collapsed{width:78%!important;opacity:1;padding:0;overflow-y:auto;}
 

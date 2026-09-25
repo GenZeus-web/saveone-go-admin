@@ -14,6 +14,10 @@
        manifest เพิ่ม 192/512 · favicon ใช้ 192 · ใส่ ?v= ที่ลิงก์ไอคอนด้วย (เบราว์เซอร์แคชไอคอนนาน)
        ⚠️ คนที่เพิ่มลงหน้าจอโฮมไว้แล้ว ไอคอนไม่เปลี่ยนเอง ต้องลบแล้วเพิ่มใหม่
        ⚠️ deploy: ไฟล์ใหม่ assets/icon-192.png · assets/icon-512.png
+    LAY-07) มือถือ: เลื่อนใน drawer ไม่ได้ ไปเลื่อนหน้าข้างหลังแทน (มี 2 กล่องเลื่อนได้ซ้อนกัน · ข้างหลังไม่ถูกล็อก)
+       แก้: body.mnav-open .content{overflow:hidden;touch-action:none} + .sidebar{overscroll-behavior:contain}
+       ทดสอบ Chrome 500px: เปิด = content hidden · ปิด = auto · drawer scrollHeight 1553 > 505 เลื่อนได้
+       ⚠️ ปัดนิ้วบนมือถือจริงจำลองไม่ได้ — รอเจ้าของลองบนเครื่อง
     LAY-06) มือถือ: กด ☰ แล้วป้าย "สาขา" หายใต้หัวเว็บ เห็นปุ่มศรีสมาน (โดนตัดขอบ) เป็นอย่างแรก
        สาเหตุเดียวกับ LAY-05: drawer + พื้นมืดอยู่ใน .layout (night.css z-index:1) หัวเว็บ z-index:10 ทับส่วนบน
        แก้: setMobileNav ใส่ body.mnav-open → .layout z-index:11 ตอนเปิด · พื้นมืดคลุมหัวเว็บด้วย แตะนอกเมนูปิดได้
