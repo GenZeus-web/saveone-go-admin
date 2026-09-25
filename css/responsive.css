@@ -31,6 +31,10 @@
     transform:translateX(-100%);transition:transform .24s cubic-bezier(.4,0,.2,1);
     box-shadow:8px 0 24px rgba(0,0,0,.4);}
   .sidebar.mopen{transform:translateX(0);}
+  /* LAY-06: drawer + พื้นมืดอยู่ใน .layout ที่ night.css ตั้ง z-index:1 → หัวเว็บ (10) ทับส่วนบนของ drawer
+     บน iPhone หัวเว็บสูง ~100px (รวมแถบสถานะ) บังป้าย "สาขา" เห็นปุ่มศรีสมานเป็นอย่างแรก
+     เปิด drawer = ยก .layout เหนือหัวเว็บชั่วคราว (หลักเดียวกับ body.modal-open ใน components.css) */
+  body.mnav-open .layout{z-index:11;}
   /* ปุ่มพับ sidebar ของจอใหญ่ใช้ไม่ได้บนมือถือ — กันไม่ให้ค้างซ่อน */
   .sidebar.collapsed{width:78%!important;opacity:1;padding:0;overflow-y:auto;}
 
