@@ -79,7 +79,9 @@ export async function loadSettings(){
     try{ localStorage.removeItem(PRICE_CACHE); }catch(e){}
     setPricing(null, 'default');
     lockTargetInputs();
-    await fetchSettings();
+    // PERF-10: ไม่ await — เดิมรอเป้ายอดจาก Firestore ก่อนทุกครั้ง = ต่อคิวอีก 1 รอบก่อน loadAll (มือถือช้าชัด)
+    //   เป้ายอดใช้ค่าในเครื่องไปก่อน มาแล้วค่อยวาดใหม่ (ทางเดียวกับคนมีสิทธิ์ที่มี cache)
+    fetchSettings().then(changed => { if(changed) rerender(); });
     return;
   }
   try{
