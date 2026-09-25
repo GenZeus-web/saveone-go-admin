@@ -47,6 +47,7 @@ function setMobileNav(open){
   if(sb) sb.classList.toggle('mopen',open);
   if(bd) bd.classList.toggle('show',open);
   document.body.classList.toggle('mnav-open',open);   // LAY-06: ยก .layout เหนือหัวเว็บตอนเปิด (responsive.css)
+  document.documentElement.classList.toggle('mnav-open',open);   // LAY-08: ตรึงทั้งหน้าบน iPhone (responsive.css)
   if(btn) btn.setAttribute('aria-expanded',open?'true':'false');
 }
 function toggleMobileNav(){

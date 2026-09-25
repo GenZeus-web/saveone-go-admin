@@ -39,6 +39,11 @@
      ล็อกข้างหลังตอนเปิด (หลักเดียวกับ body.modal-open) · drawer เลื่อนสุดแล้วไม่ส่งการเลื่อนต่อไปข้างหลัง */
   body.mnav-open .content{overflow:hidden;touch-action:none;}
   .sidebar{overscroll-behavior:contain;}
+  /* LAY-08: iPhone (Safari · เปิดจากไอคอนหน้าจอโฮม) — body{overflow:hidden} ไม่กันทั้งหน้าเลื่อน/เด้ง
+     หลังกดสาขา (วาดใหม่ทั้งหน้า) ปัดใน drawer แล้วทั้งหน้าเลื่อนแทน → ตรึง html+body ตอนเปิด
+     เว็บนี้เลื่อนใน .content ไม่ได้เลื่อนทั้งหน้า (window.scrollY = 0) ตรึงแล้วจึงไม่กระโดด */
+  html.mnav-open,html.mnav-open body{overflow:hidden;overscroll-behavior:none;height:100%;}
+  body.mnav-open{position:fixed;inset:0;width:100%;}
   /* ปุ่มพับ sidebar ของจอใหญ่ใช้ไม่ได้บนมือถือ — กันไม่ให้ค้างซ่อน */
   .sidebar.collapsed{width:78%!important;opacity:1;padding:0;overflow-y:auto;}
 

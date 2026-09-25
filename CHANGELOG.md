@@ -14,6 +14,12 @@
        manifest เพิ่ม 192/512 · favicon ใช้ 192 · ใส่ ?v= ที่ลิงก์ไอคอนด้วย (เบราว์เซอร์แคชไอคอนนาน)
        ⚠️ คนที่เพิ่มลงหน้าจอโฮมไว้แล้ว ไอคอนไม่เปลี่ยนเอง ต้องลบแล้วเพิ่มใหม่
        ⚠️ deploy: ไฟล์ใหม่ assets/icon-192.png · assets/icon-512.png
+    LAY-08) iPhone (Safari · เปิดจากไอคอนหน้าจอโฮม): กดเลือกสาขาใน drawer แล้ว ปัดต่อ = ทั้งหน้าเลื่อนแทน drawer
+       iOS ไม่หยุดการเลื่อน/เด้งทั้งหน้าด้วย body{overflow:hidden} · หลังกดสาขาหน้าเว็บวาดใหม่ทั้งหมด
+       แก้: เปิด drawer = html+body overflow hidden + overscroll-behavior none + body position:fixed inset:0
+       (เว็บเลื่อนใน .content ไม่ใช่ทั้งหน้า → ตรึงแล้วไม่กระโดด)
+       ทดสอบ Chrome 500px: เปิด → กดสาขา BG → ยังตรึง/ล็อก drawer เลื่อนได้ → ปิด = กลับปกติ หัวเว็บอยู่ที่เดิม
+       ⚠️ ปัดนิ้วบน iPhone จริงจำลองไม่ได้ · ถ้ายังไม่หาย ทางถัดไป = ปิด drawer เองเมื่อกดสาขา
     LAY-07) มือถือ: เลื่อนใน drawer ไม่ได้ ไปเลื่อนหน้าข้างหลังแทน (มี 2 กล่องเลื่อนได้ซ้อนกัน · ข้างหลังไม่ถูกล็อก)
        แก้: body.mnav-open .content{overflow:hidden;touch-action:none} + .sidebar{overscroll-behavior:contain}
        ทดสอบ Chrome 500px: เปิด = content hidden · ปิด = auto · drawer scrollHeight 1553 > 505 เลื่อนได้
