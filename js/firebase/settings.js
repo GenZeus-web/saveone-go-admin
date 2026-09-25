@@ -70,8 +70,18 @@ function deviceLabel(){
 //  โหลดค่าตั้งค่า (เรียกจาก auth.js ก่อน loadAll)
 // ═══════════════════════════════════════════════════════════════
 let hadCache = false;   // เครื่องนี้เคยได้ชุดราคาจริงมาแล้ว (หรือรู้แน่ว่ายังไม่มีเอกสาร = ใช้ค่าตั้งต้นได้)
+// PERM-08: ไม่มีสิทธิ์รายรับ = ไม่อ่านราคาจาก Firestore เลย (กฎ settings/pricing ปฏิเสธอยู่แล้ว — ดู docs/firestore-rules-settings.md)
+//   + ลบราคาที่เคยเก็บในเครื่อง (เผื่อเคยมีสิทธิ์แล้วถูกถอด) · ไม่ขึ้นแถบ "โหลดราคาไม่ได้" เพราะไม่ได้พยายามโหลด
+const mayReadPricing = () => window.userPerms?.showRevenue === true;
 export async function loadSettings(){
   hadCache = false;
+  if(!mayReadPricing()){
+    try{ localStorage.removeItem(PRICE_CACHE); }catch(e){}
+    setPricing(null, 'default');
+    lockTargetInputs();
+    await fetchSettings();
+    return;
+  }
   try{
     const c = JSON.parse(localStorage.getItem(PRICE_CACHE) || 'null');
     if(c && c.doc){ setPricing(c.doc, 'cache'); hadCache = true; }
@@ -87,12 +97,16 @@ export async function loadSettings(){
 
 async function fetchSettings(){
   try{
-    const [p, t] = await Promise.all([getDoc(doc(db,'settings','pricing')), getDoc(doc(db,'settings','targets'))]);
+    const readP = mayReadPricing();
+    const [p, t] = await Promise.all([readP ? getDoc(doc(db,'settings','pricing')) : null, getDoc(doc(db,'settings','targets'))]);
     const before = JSON.stringify(PRICING);
-    const pd = p.exists() ? p.data() : null;
-    setPricing(pd, pd ? 'fresh' : 'default');
-    try{ localStorage.setItem(PRICE_CACHE, JSON.stringify(pd ? {doc:pd} : {none:true})); }catch(e){}
-    let changed = before !== JSON.stringify(PRICING);
+    let changed = false;
+    if(readP){
+      const pd = p.exists() ? p.data() : null;
+      setPricing(pd, pd ? 'fresh' : 'default');
+      try{ localStorage.setItem(PRICE_CACHE, JSON.stringify(pd ? {doc:pd} : {none:true})); }catch(e){}
+      changed = before !== JSON.stringify(PRICING);
+    }
     if(t.exists()){
       const b2 = JSON.stringify(TARGETS);
       applySharedTargets(t.data());
@@ -102,6 +116,7 @@ async function fetchSettings(){
     return changed;
   }catch(e){
     console.error('settings: โหลดราคาไม่ได้', e);
+    if(!mayReadPricing()) return false;   // PERM-08: อ่านแค่เป้ายอด พลาดก็ใช้เป้าเดิมในเครื่อง ไม่ต้องขึ้นแถบราคา
     // มี cache = ใช้ชุดราคารอบก่อนต่อไป · ไม่เคยมีเลย = ไม่รู้ราคาจริง → ซ่อนรายรับ (Q13)
     if(!hadCache){ setPricing(null, 'failed'); setPriceUnavailable(true); return true; }
     return false;

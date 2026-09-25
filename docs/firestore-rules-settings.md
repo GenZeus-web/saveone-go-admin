@@ -13,9 +13,14 @@ Firebase Console → Firestore Database → แท็บ **Rules** → วาง
     function recentlyConfirmed() {
       return request.auth.token.auth_time > request.time.toMillis() / 1000 - 300;
     }
-    // ราคา + ฤดูกาล: ทุกคนที่มีโปรไฟล์อ่านได้ (ใช้คำนวณรายรับ) · เขียนได้เฉพาะ admin ที่เพิ่งใส่รหัส
+    // PERM-08 (v3.0.1): ราคาอ่านได้เฉพาะคนที่เห็นรายรับ (admin หรือ users/{uid}.showRevenue == true)
+    //   ผู้ใช้แก้โปรไฟล์ตัวเองไม่ได้ (กฎ users: update เฉพาะ admin ที่ไม่ใช่ตัวเอง) → ค่า showRevenue เชื่อได้
+    function canSeeRevenue() {
+      return isAdmin() || (hasProfile() && myDoc().showRevenue == true);
+    }
+    // ราคา + ฤดูกาล: อ่านได้เฉพาะคนที่มีสิทธิ์รายรับ · เขียนได้เฉพาะ admin ที่เพิ่งใส่รหัส
     match /settings/pricing {
-      allow get: if hasProfile();
+      allow get: if canSeeRevenue();
       allow list: if false;
       allow write: if isAdmin() && recentlyConfirmed();
     }
@@ -33,6 +38,18 @@ Firebase Console → Firestore Database → แท็บ **Rules** → วาง
     }
 ```
 
+## PERM-08 — ปิดราคาจากคนที่ไม่มีสิทธิ์รายรับ (v3.0.1 · 25 ก.ย. 2569)
+
+เดิม `settings/pricing` ใช้ `allow get: if hasProfile();` = ทุกคนที่ล็อกอินได้อ่านราคาทุกช่อง
+(เว็บซ่อนเงินแล้ว แต่คนที่เปิด Console ของเบราว์เซอร์เรียก Firestore เองยังอ่านได้)
+
+**ลำดับสำคัญ — push เว็บก่อน แล้วค่อย Publish กฎ** (กลับกับปกติ เพราะรอบนี้ "ปิด" ไม่ใช่ "เปิด")
+1. push เว็บ v3.0.1 → เว็บใหม่ไม่อ่านราคาถ้าไม่มีสิทธิ์รายรับ
+2. Console → Firestore → Rules → **แทนที่** บล็อก `match /settings/pricing { … }` เดิม
+   ด้วยบล็อกข้างบน (ใส่ `function canSeeRevenue()` ไว้เหนือ match) → Publish
+   ถ้า Publish ก่อน push: manager ที่ยังใช้เว็บเก่าจะขึ้นแถบ "โหลดราคาไม่ได้" (ไม่พัง แต่ตกใจ)
+3. ทดสอบตามข้อ 5–6 ข้างล่าง
+
 ## ข้อจำกัดที่ควรรู้
 
 - กฎนี้ **ไม่ได้** ตรวจว่าชุดราคาที่มีผลไปแล้วถูกแก้ไหม (Rules เทียบ list ซ้อนกันได้ยาก)
@@ -46,3 +63,6 @@ Firebase Console → Firestore Database → แท็บ **Rules** → วาง
 2. แท็บราคา → แก้ 1 ช่อง → ตรวจและบันทึก → ใส่รหัส → ต้องขึ้นชุด "⏳ รอมีผล" → กดยกเลิก → ใส่รหัส → หายไป
 3. บัญชี anansit@saveone.go → แท็บประวัติการแก้ ต้องเห็น 3 รายการข้างบน
 4. บัญชี manager → ไม่มีเมนูตั้งค่า · ช่องเป้าในไซด์บาร์กดแก้ไม่ได้
+5. (PERM-08) บัญชี manager ที่ปิดรายรับ (เช่น TestSG) → เปิดเว็บ ไม่มีแถบ "โหลดราคาไม่ได้" · ยอดล็อก/เป้าปกติ
+   F12 → Console ต้องไม่มี error `permission-denied` ของ settings/pricing
+6. (PERM-08) บัญชี admin → รายรับ/หน้าตั้งค่าราคาปกติ

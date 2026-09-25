@@ -178,7 +178,20 @@ function calcWhatIf(){
 
   const wkndDays=Math.round(days*wkndPct);
   const wdDays=days-wkndDays;
-  
+  const totalLock=lockPerDay*days;
+  const zoneLbl=activeBranch==='SS'?'ST · Street Food (70% Online/30% WalkIn)':'Car/Non · Boot Sale';
+  const lockCards=`
+    <div class="fc-card"><div class="fc-val">${fmtN(lockPerDay,1)}</div><div class="fc-lbl">ล็อก/วัน (จำลอง)</div></div>
+    <div class="fc-card"><div class="fc-val">${fmtN(totalLock)}</div><div class="fc-lbl">ล็อกรวม ${days} วัน</div></div>`;
+
+  // PERM-06: เดิมไม่เช็คสิทธิ์เลย — ปิด showRevenue แล้วยังเห็นรายรับ/วันที่นี่ (หารกลับได้ราคาต่อล็อก)
+  //   ไม่มีสิทธิ์ หรือโหลดราคาไม่ได้ = ไม่คำนวณเงินเลย (ไม่ใช่ซ่อนด้วย CSS ที่ยังเหลือเลขใน DOM) · canSeeRev() ใน utils.js
+  if(!canSeeRev()){
+    res.innerHTML=lockCards;
+    note.innerHTML=`สมมติฐาน: ${wkndDays} วันหยุด (ศ-อา) ${wdDays} วันธรรมดา | สาขา ${activeBranch} | โซน ${zoneLbl}`;
+    return;
+  }
+
   // คำนวณรายรับตามสาขา
   let revPerDay=0;
   if(activeBranch==='SS'){
@@ -194,17 +207,13 @@ function calcWhatIf(){
     revPerDay=(p_wd*wdDays+p_wk*wkndDays)/days*lockPerDay;
   }
 
-  const totalLock=lockPerDay*days;
   const totalRev=Math.round(revPerDay*days);
   const revPerDayRound=Math.round(revPerDay);
 
-  res.innerHTML=`
-    <div class="fc-card"><div class="fc-val">${fmtN(lockPerDay,1)}</div><div class="fc-lbl">ล็อก/วัน (จำลอง)</div></div>
-    <div class="fc-card"><div class="fc-val">${fmtN(totalLock)}</div><div class="fc-lbl">ล็อกรวม ${days} วัน</div></div>
+  res.innerHTML=lockCards+`
     <div class="fc-card" style="background:rgba(63,185,80,.1);border-color:rgba(63,185,80,.3)"><div class="fc-val" style="color:var(--green)">${fmtN(revPerDayRound)}</div><div class="fc-lbl">รายรับเฉลี่ย/วัน (฿)</div></div>
     <div class="fc-card" style="background:rgba(63,185,80,.1);border-color:rgba(63,185,80,.3)"><div class="fc-val" style="color:var(--green)">${fmtN(totalRev)}</div><div class="fc-lbl">รายรับรวม ${days} วัน (฿)</div></div>
   `;
-  const zoneLbl=activeBranch==='SS'?'ST · Street Food (70% Online/30% WalkIn)':'Car/Non · Boot Sale';
   note.innerHTML=`สมมติฐาน: ${wkndDays} วันหยุด (ศ-อา) ${wdDays} วันธรรมดา | สาขา ${activeBranch} | โซน ${zoneLbl} | ราคาตามฤดูกาลปัจจุบัน`;
 }
 

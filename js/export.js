@@ -10,14 +10,13 @@ function exportCSV(){
     const net=Math.max(0,r.onlineLock-r.absentLock-r.cancelLock);
     const totalLock=getLock(r,group);
     const totalRai=getRai(r,group);
-    const rev=PRICING_STATE==='failed'?'':Math.round(revST(r)+revNon(r)); // SET-01: ไม่รู้ราคาจริง = เว้นว่าง
-    const elec=r.l1+r.l1n+r.l2+r.l2n;
+    const rev=!canSeeRev()?'':Math.round(revST(r)+revNon(r)); // SET-01 + PERM-06: ไม่รู้ราคาจริง / ไม่มีสิทธิ์รายรับ = เว้นว่าง
     const hitTarget=totalLock>=targetLock?'ใช่':'ไม่';
     return[
       fmtD(r.date),DAYS[r.date.getDay()],branchNames[activeBranch]||activeBranch,
       net,r.walkInLock,r.extraLock,r.nonLock,
       r.cancelLock,r.absentLock,totalLock,totalRai,rev,
-      r.l1+(r.l1n||0),r.l2+(r.l2n||0),
+      ...(canSeeElec()?[r.l1+(r.l1n||0),r.l2+(r.l2n||0)]:['','']),   // PERM-07: ไม่มีสิทธิ์ค่าไฟ = เว้นว่าง
       r.freeDay?'ใช่':'ไม่',targetLock,hitTarget
     ];
   });

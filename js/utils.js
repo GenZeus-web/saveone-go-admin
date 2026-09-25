@@ -53,6 +53,12 @@ const DEFAULT_PRICING=(()=>{
 let PRICING=null;          // เอกสาร settings/pricing ที่โหลดมา (null = ยังไม่มี → ใช้ค่าตั้งต้น)
 let PRICING_STATE='default'; // default | cache | fresh | failed
 const pricingDoc=()=>PRICING||DEFAULT_PRICING;
+// PERM-06: ด่านเดียวของ "ตัวเลขเงิน" — ไม่มีสิทธิ์รายรับ หรือไม่รู้ราคาจริง = ไม่สร้างตัวเลขเงินลงหน้าเลย
+//   (เดิมหลายจุดซ่อนด้วย CSS .col-rev อย่างเดียว → บนจอไม่เห็น แต่เลขยังอยู่ใน DOM เปิด Inspect ก็อ่านได้)
+//   ยังไม่รู้สิทธิ์ (userPerms ยังไม่มา) = ไม่ให้เห็น
+function canSeeRev(){ return window.userPerms?.showRevenue===true && PRICING_STATE!=='failed'; }
+// PERM-07: ค่าไฟใช้หลักเดียวกัน (สิทธิ์ showElec) — เดิมซ่อนด้วย CSS .col-elec อย่างเดียว
+function canSeeElec(){ return window.userPerms?.showElec===true; }
 // เปลี่ยนชุดราคาที่ใช้คำนวณ (เรียกจาก firebase/settings.js) · doc=null = กลับไปค่าตั้งต้น
 function setPricing(doc,state){
   PRICING=doc&&Array.isArray(doc.versions)&&doc.versions.length?doc:null;

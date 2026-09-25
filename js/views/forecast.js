@@ -24,7 +24,7 @@ function renderForecast(){
   const _daysInNext=new Date(_nextY,_nextM+1,0).getDate();
   const _nextLbl=mLbl(new Date(_nextY,_nextM,1));
   const fcLock=Math.round(avgLock*_daysInNext),fcRev=Math.round(avgRev*_daysInNext);
-  const _fcRev=window.userPerms?window.userPerms.showRevenue:true;
+  const _fcRev=canSeeRev(); // PERM-06: ด่านกลาง (เดิม ยังไม่รู้สิทธิ์ = ให้เห็น)
   // pace เทียบค่าเฉลี่ยฐาน (แสดงว่าเร็ว/ช้ากว่าปกติ)
   const _pace=(cur)=>{if(!avgLock)return '';const p=Math.round((cur-avgLock)/avgLock*100);const up=p>=0;return `<div style="font-size:10px;margin-top:3px;color:${up?'var(--green)':'var(--red)'}">${up?'▲':'▼'} ${Math.abs(p)}% เทียบเฉลี่ย 3 ด.</div>`;};
   // v2.5.7 FCST-03: บล็อก "เดือนนี้" แสดงตลอดถ้ามีข้อมูลเดือนปัจจุบัน

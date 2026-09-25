@@ -124,7 +124,8 @@ function renderTrends(d){
   const all=applyZone(getActiveMerged());           // หน้าต่าง "7 วันก่อน" อาจอยู่นอกช่วงที่เลือก
   const anchor=d.length?d.reduce((a,b)=>a.date>b.date?a:b).date:null;  // วันล่าสุดของช่วงที่ดู ไม่ใช่วันนี้
   const set=(id,t,dec)=>{const el=document.getElementById(id); if(el) el.innerHTML=trendChip(t,dec);};
-  set('t-rev',trendOf(all,anchor,r=>revST(r,group)+revNon(r,group)),0);
+  if(canSeeRev()) set('t-rev',trendOf(all,anchor,r=>revST(r,group)+revNon(r,group)),0);   // PERM-06
+  else { const el=document.getElementById('t-rev'); if(el) el.innerHTML=''; }
   set('t-lock',trendOf(all,anchor,r=>getLock(r,group)),1);
   set('t-rai',trendOf(all,anchor,r=>getRai(r,group)),1);
 }
@@ -142,8 +143,11 @@ function renderOverview(d){
     rai+=getRai(r,group);lock+=getLock(r,group);
   });
   const days=d.length||1;
-  animateNumber(document.getElementById('k-revbefore'),revNormal);
-  animateNumber(document.getElementById('k-disc'),disc);
+  // PERM-06: #revSection ถูกซ่อนด้วย display:none อยู่แล้ว แต่เลขยังถูกเขียนลง DOM → ไม่มีสิทธิ์ = ไม่เขียน (ค่าไฟใน section เดียวกันใช้ canSeeElec แยก)
+  const _rv=canSeeRev();
+  const _money=(id,v)=>{const el=document.getElementById(id); if(!el) return; if(_rv) animateNumber(el,v); else el.textContent='—';};
+  _money('k-revbefore',revNormal);
+  _money('k-disc',disc);
   document.getElementById('k-disc-sub').textContent=`${fdays} วัน FreeDay`;
   /* v2.11.3 KPI-02: การ์ดรายรับสุทธิใบเดียว ใช้ร่วมกันทั้ง 3 โซน
      ค่าที่แสดงไม่ต้องแยกเคส — applyZone() ล้างยอดโซนที่ไม่ได้เลือกเป็น 0 แล้ว
@@ -155,9 +159,11 @@ function renderOverview(d){
       zone==='st'  ? 'รายรับสุทธิ ST'
     : zone==='non' ? `รายรับสุทธิ ${_nonName}`
     :                `รายรับสุทธิรวม (ST+${_nonName})`;
-  animateNumber(document.getElementById('k-revtotal'),revSTsum+revNonSum);
-  animateNumber(document.getElementById('k-elec'),l1+l2);
-  document.getElementById('k-elec-sub').textContent=`L1: ${fmtN(l1)} | L2: ${fmtN(l2)} ฿`;
+  _money('k-revtotal',revSTsum+revNonSum);
+  if(canSeeElec()){   // PERM-07
+    animateNumber(document.getElementById('k-elec'),l1+l2);
+    document.getElementById('k-elec-sub').textContent=`L1: ${fmtN(l1)} | L2: ${fmtN(l2)} ฿`;
+  } else { document.getElementById('k-elec').textContent='—'; document.getElementById('k-elec-sub').textContent='บาท'; }
   // ลา/ไม่มา/เสริม แยกตาม zone
   const stAbsent=d.reduce((s,r)=>s+(r.absentLock||0),0);
   const stCancel=d.reduce((s,r)=>s+(r.cancelLock||0),0);
@@ -299,33 +305,36 @@ function renderFreeday(d){
   const fds=d.filter(r=>r.freeDay);
   const g=group; // FD-03: ใช้ตัวกรอง "กลุ่มข้อมูล" (all/online/walkin/extra/cancel) ปัจจุบัน — เดิมค้างที่ online เสมอ
   const grpLbl={all:'ล็อก',online:'ออนไลน์ล็อก',walkin:'วอคอินล็อก',extra:'ล็อกเสริม',cancel:'ยกเลิก/ลา'};
+  const rv=canSeeRev(); // PERM-06: ไม่มีสิทธิ์ = ไม่สร้างการ์ด/คอลัมน์/กราฟเงินเลย (เดิมซ่อนด้วย .col-rev แต่เลขยังอยู่ใน DOM)
   let td=0,tn=0,ta=0;
-  fds.forEach(r=>{td+=calcDiscount(r,g);tn+=revSTNormal(r,g)+revNonNormal(r,g);ta+=revST(r,g)+revNon(r,g);});
+  if(rv) fds.forEach(r=>{td+=calcDiscount(r,g);tn+=revSTNormal(r,g)+revNonNormal(r,g);ta+=revST(r,g)+revNon(r,g);});
   document.getElementById('fdKpi').innerHTML=`
     <div class="fd-kpi"><div class="fd-kpi-val">${fds.length}</div><div class="fd-kpi-lbl">จำนวนวันฝน</div></div>
     <div class="fd-kpi"><div class="fd-kpi-val">${fmtN(fds.reduce((s,r)=>s+getLock(r,g),0))}</div><div class="fd-kpi-lbl">รวม${grpLbl[g]||'ล็อก'}</div></div>
-    <div class="fd-kpi col-rev"><div class="fd-kpi-val">${fmtN(td)}</div><div class="fd-kpi-lbl">รายได้ที่เสียไป (฿)</div></div>
+    ${rv?`<div class="fd-kpi col-rev"><div class="fd-kpi-val">${fmtN(td)}</div><div class="fd-kpi-lbl">รายได้ที่เสียไป (฿)</div></div>
     <div class="fd-kpi col-rev"><div class="fd-kpi-val">${fmtN(tn)}</div><div class="fd-kpi-lbl">รายได้ถ้าไม่มีวันฝน (฿)</div></div>
     <div class="fd-kpi col-rev"><div class="fd-kpi-val">${fmtN(ta)}</div><div class="fd-kpi-lbl">รายได้จริง (฿)</div></div>
-    <div class="fd-kpi col-rev"><div class="fd-kpi-val">${tn>0?(td/tn*100).toFixed(1)+'%':'—'}</div><div class="fd-kpi-lbl">% ที่หายไป</div></div>
+    <div class="fd-kpi col-rev"><div class="fd-kpi-val">${tn>0?(td/tn*100).toFixed(1)+'%':'—'}</div><div class="fd-kpi-lbl">% ที่หายไป</div></div>`:''}
   `;
   const fdColLock=document.getElementById('fdColLock');
   if(fdColLock) fdColLock.textContent=grpLbl[g]||'ล็อก';
   const fdm={};
-  [...d].sort((a,b)=>a.date-b.date).forEach(r=>{const k=mLbl(r.date);if(!fdm[k])fdm[k]={d:0,c:0};if(r.freeDay){fdm[k].d+=calcDiscount(r,g);fdm[k].c++;}});
+  [...d].sort((a,b)=>a.date-b.date).forEach(r=>{const k=mLbl(r.date);if(!fdm[k])fdm[k]={d:0,c:0};if(r.freeDay){if(rv)fdm[k].d+=calcDiscount(r,g);fdm[k].c++;}});
   const fmks=Object.keys(fdm);
-  dChart('cFDMonth');charts.cFDMonth=makeChart('cFDMonth',{type:'bar',data:{labels:fmks,datasets:[{label:'ส่วนลดวันฝน (฿)',data:fmks.map(k=>fdm[k].d),backgroundColor:'rgba(240,165,0,.7)',borderRadius:3}]},options:cOpts()});
+  dChart('cFDMonth');if(rv)charts.cFDMonth=makeChart('cFDMonth',{type:'bar',data:{labels:fmks,datasets:[{label:'ส่วนลดวันฝน (฿)',data:fmks.map(k=>fdm[k].d),backgroundColor:'rgba(240,165,0,.7)',borderRadius:3}]},options:cOpts()});
   dChart('cFDCount');charts.cFDCount=makeChart('cFDCount',{type:'bar',data:{labels:fmks,datasets:[{label:'จำนวนวันฝน',data:fmks.map(k=>fdm[k].c),backgroundColor:'rgba(61,214,140,.7)',borderRadius:3}]},options:cOpts()});
   document.getElementById('fdTbl').innerHTML=fds.sort((a,b)=>b.date-a.date).map(r=>{
     // FD-02/FD-03: ล็อค/ลา/ไม่มา/ราคา ต้องตามทั้งโซน (ST/Non) และกลุ่ม (online/walkin/extra) ที่เลือกจริง
     const lockTot=getLock(r,g),absentTot=(r.absentLock||0)+(r.nonAbsentLock||0),cancelTot=(r.cancelLock||0)+(r.nonCancelLock||0);
+    const base=`<tr><td style="color:var(--gold)">${fmtD(r.date)}</td><td>${DAYS[r.date.getDay()]}</td><td class="num">${fmtN(lockTot)}</td><td class="num">${fmtN(absentTot)}</td><td class="num">${fmtN(cancelTot)}</td>`;
+    if(!rv) return base+'<td class="num col-rev"></td>'.repeat(4)+'</tr>';   // คงช่องไว้ให้ตรงหัวตาราง
     const{po,pw}=lockPrices(r.date,zone);
     const isWalkGroup=(g==='walkin'||g==='extra');
     const walkDiscounted=rainHalvesWalkIn(); // SS ไม่ลดราคาวันฝนให้ WalkIn/ล็อกเสริม
     const priceFrom=isWalkGroup?pw:po;
     const priceTo=isWalkGroup?(walkDiscounted?pw/2:pw):po/2;
     const dc=calcDiscount(r,g),ac=revST(r,g)+revNon(r,g),nm=revSTNormal(r,g)+revNonNormal(r,g);
-    return`<tr><td style="color:var(--gold)">${fmtD(r.date)}</td><td>${DAYS[r.date.getDay()]}</td><td class="num">${fmtN(lockTot)}</td><td class="num">${fmtN(absentTot)}</td><td class="num">${fmtN(cancelTot)}</td><td class="num col-rev">${priceFrom} → ${priceTo} ฿${(isWalkGroup&&!walkDiscounted)?' (ไม่ลด)':''}</td><td class="num col-rev">${fmtN(nm)}</td><td class="num col-rev">${fmtN(ac)}</td><td class="num col-rev" style="color:var(--red);font-weight:700">−${fmtN(dc)}</td></tr>`;
+    return base+`<td class="num col-rev">${priceFrom} → ${priceTo} ฿${(isWalkGroup&&!walkDiscounted)?' (ไม่ลด)':''}</td><td class="num col-rev">${fmtN(nm)}</td><td class="num col-rev">${fmtN(ac)}</td><td class="num col-rev" style="color:var(--red);font-weight:700">−${fmtN(dc)}</td></tr>`;
   }).join('');
 }
 
@@ -394,11 +403,11 @@ function openDayModal(i){
     if(absentShow) h+=row('ลา',fmtN(absentShow),'ล็อก');
     h+='</div>';
   }
-  h+=`<div class="col-rev">${sec('💰','รายรับ','var(--green)')}<div class="day-grp rev">`
+  if(canSeeRev()) h+=`<div class="col-rev">${sec('💰','รายรับ','var(--green)')}<div class="day-grp rev">`   // PERM-06
     +row('ราคา/ล็อก', fd?`${po/2} / ${rainHalvesWalkIn()?pw/2:pw}`:`${po} / ${pw}`,'฿ ออนไลน์/วอล์กอิน')
     +row('รายรับรวม',fmtN(rv),'฿','hi')
     +'</div></div>';
-  if(l1+l2>0){
+  if(l1+l2>0&&canSeeElec()){   // PERM-07
     h+=`<div class="col-elec">${sec('⚡','ค่าไฟ','var(--orange)')}<div class="day-grp elec">`
       +row('L1',fmtN(l1),'฿')+row('L2',fmtN(l2),'฿')
       +'</div></div>';

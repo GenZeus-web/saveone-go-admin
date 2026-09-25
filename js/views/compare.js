@@ -61,7 +61,7 @@ function renderCompare(){
   const _totLabels={id:'totLabels',afterDatasetsDraw(chart){const{ctx}=chart;const meta=chart.getDatasetMeta(0);if(!meta)return;ctx.save();ctx.textAlign='center';meta.data.forEach((bar,i)=>{const v=totals[mks[i]]||0;ctx.fillStyle=chartClr().lbl;ctx.font='600 12px JetBrains Mono';ctx.fillText(fmtN(v),bar.x,bar.y-6);if(mks[i]===_curMK){ctx.fillStyle=chartClr().tick;ctx.font='400 10px Noto Sans Thai';ctx.fillText('(ยังไม่จบเดือน)',bar.x,bar.y-22);}});ctx.restore();}};
   charts.cMonthTotal=makeChart('cMonthTotal',{type:'bar',data:{labels:mkLabels,datasets:[{label:'ล็อกรวม',data:mks.map(k=>totals[k]),backgroundColor:mks.map((_,i)=>MONTH_COLORS[i%MONTH_COLORS.length]),borderRadius:6,maxBarThickness:90}]},options:{...cOpts(),layout:{padding:{top:30}}},plugins:[_totLabels]});
   dChart('cMonthRev');
-  const _canRev=window.userPerms?window.userPerms.showRevenue:true;
+  const _canRev=canSeeRev(); // PERM-06: ด่านกลาง (เดิม ยังไม่รู้สิทธิ์ = ให้เห็น)
   const _revCard=document.getElementById('cMonthRevCard');
   if(_canRev){
     if(_revCard) _revCard.style.display='';
@@ -109,7 +109,7 @@ function renderCompare(){
     mks.forEach(k=>{const a=(allTotals[k]||0)/((days_in[k]||1));if(_best===null||a>_best.a)_best={k,a};if(_worst===null||a<_worst.a)_worst={k,a};});
     const _tgt=currentTarget()||1;
     const _pct=_tgt?(_avg/_tgt*100):0;
-    const _canRev=window.userPerms?window.userPerms.showRevenue:true;
+    const _canRev=canSeeRev(); // PERM-06: ด่านกลาง (เดิม ยังไม่รู้สิทธิ์ = ให้เห็น)
     const _bl=(x)=>{if(!x)return '-';const p=x.split('-');return mLbl(new Date(p[0],p[1]-1,1));};
     let _rows=[['รวมล็อก ('+mks.length+' เดือน)',fmtN(_lockSum)+' ล็อก'],['เฉลี่ยรวม',_avg.toFixed(1)+' ล็อก/วัน'],['% เทียบเป้า ('+_tgt+'/วัน)',_pct.toFixed(0)+'%'],['เดือนสูงสุด',_bl(_best&&_best.k)+' · '+(_best?_best.a.toFixed(0):0)+'/วัน'],['เดือนต่ำสุด',_bl(_worst&&_worst.k)+' · '+(_worst?_worst.a.toFixed(0):0)+'/วัน']];
     if(_canRev){_rows.push(['รวมรายรับ',fmtN(_revSum)+' ฿']);_rows.push(['เฉลี่ยรายรับ',fmtN(_daysSum?(_revSum/_daysSum):0)+' ฿/วัน']);}

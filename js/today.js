@@ -59,12 +59,12 @@ function _todayBranchHtml(br, r){
     if(r.nonExtraLock) h+=rl('ล็อกเสริม',r.nonExtraRai,r.nonExtraLock);
     h+='</div>';
   }
-  h+=`<div class="col-rev">${sec('💰','รายรับ','var(--green)')}<div class="day-grp rev">`
+  if(canSeeRev()) h+=`<div class="col-rev">${sec('💰','รายรับ','var(--green)')}<div class="day-grp rev">`   // PERM-06
     +row('อาหาร',fmtN(rvSt),'฿')
     +((r.nonLock||rvCar)?row('Car',fmtN(rvCar),'฿'):'')   // มีเงินต้องมีแถว ไม่งั้นรวมไม่เท่าผลบวกที่เห็น
     +row('รายรับรวม',fmtN(rvSt+rvCar),'฿','hi')
     +'</div></div>';
-  if(l1+l2>0){
+  if(l1+l2>0&&canSeeElec()){   // PERM-07
     h+=`<div class="col-elec">${sec('⚡','ค่าไฟ','var(--orange)')}<div class="day-grp elec">`
       +row('L1',fmtN(l1),'฿')+row('L2',fmtN(l2),'฿')+row('รวม',fmtN(l1+l2),'฿','hi')
       +'</div></div>';
