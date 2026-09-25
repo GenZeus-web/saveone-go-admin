@@ -198,11 +198,13 @@ const firebaseConfig = {
 ```
 
 ### Users (Firebase Auth)
-| Email | Role | UID |
-|---|---|---|
-| anansit@saveone.go | admin | rwr3VtwHa9PWZaMMf2aDJCy3PUs1 |
-| saveone8@saveone.go (ผอ.) | admin | lBXj22W909VPcK82XzKj210X9Oy1 |
-| test@saveone.go | manager | EXzIm6sTFIfRLHuD4qYzi2asgk33 |
+| บัญชี | Role |
+|---|---|
+| เจ้าของระบบ | admin |
+| ผอ. | admin |
+| บัญชีทดสอบ manager | manager |
+
+> รายชื่อจริง + UID ดูใน Firebase Console → Authentication (ไม่เก็บใน repo เพราะ repo เป็น public)
 
 ### Firestore: collection `users` (Document ID = UID)
 ```json
@@ -269,7 +271,7 @@ const firebaseConfig = {
 
 ตอนนี้ hardcode 3 สาขา — เพิ่มสาขาที่ 4 ต้องแก้ ~6 จุดใน index.html:
 
-1. **PROXIES** — เพิ่ม URL Apps Script + sheet ใหม่
+1. ~~**PROXIES**~~ — ลบแล้ว v3.0.1 (ARCH-01 อ่าน Firestore แทน) · สาขาใหม่ = เพิ่มเอกสาร `data/{สาขา}_*` ใน Apps Script
    ```js
    RS:'https://script.google.com/macros/s/.../exec'
    // sheets: ?sheet=RS_ST, ?sheet=RS_CAR (หรือ NON)

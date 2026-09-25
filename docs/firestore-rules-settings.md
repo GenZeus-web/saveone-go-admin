@@ -33,7 +33,9 @@ Firebase Console → Firestore Database → แท็บ **Rules** → วาง
     // ประวัติการแก้: admin เพิ่มได้อย่างเดียว (ลงชื่อตัวเอง) · แก้/ลบไม่ได้ · อ่านได้เฉพาะเจ้าของระบบ
     match /settingsLog/{id} {
       allow create: if isAdmin() && request.resource.data.by == request.auth.token.email;
-      allow get, list: if isSignedIn() && request.auth.token.email == 'anansit@saveone.go';
+      // SEC-09 (v3.0.1): เพิ่ม hasProfile() — เดิมเช็คแค่อีเมล · เว็บเปิดให้สร้างบัญชีได้ (หน้าเพิ่มผู้ใช้ใช้ createUser)
+      //   บัญชีที่ไม่มีโปรไฟล์ต้องไม่ผ่านด่านไหนเลย ต่อให้อีเมลตรงก็ตาม
+      allow get, list: if hasProfile() && request.auth.token.email == 'anansit@saveone.go';
       allow update, delete: if false;
     }
 ```
@@ -46,7 +48,8 @@ Firebase Console → Firestore Database → แท็บ **Rules** → วาง
 **ลำดับสำคัญ — push เว็บก่อน แล้วค่อย Publish กฎ** (กลับกับปกติ เพราะรอบนี้ "ปิด" ไม่ใช่ "เปิด")
 1. push เว็บ v3.0.1 → เว็บใหม่ไม่อ่านราคาถ้าไม่มีสิทธิ์รายรับ
 2. Console → Firestore → Rules → **แทนที่** บล็อก `match /settings/pricing { … }` เดิม
-   ด้วยบล็อกข้างบน (ใส่ `function canSeeRevenue()` ไว้เหนือ match) → Publish
+   ด้วยบล็อกข้างบน (ใส่ `function canSeeRevenue()` ไว้เหนือ match)
+   + แก้บรรทัด `allow get, list` ของ `settingsLog` เป็นแบบใหม่ (SEC-09: `isSignedIn()` → `hasProfile()`) → Publish ครั้งเดียว
    ถ้า Publish ก่อน push: manager ที่ยังใช้เว็บเก่าจะขึ้นแถบ "โหลดราคาไม่ได้" (ไม่พัง แต่ตกใจ)
 3. ทดสอบตามข้อ 5–6 ข้างล่าง
 

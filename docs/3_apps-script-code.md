@@ -64,10 +64,8 @@ collection **`data`** · 6 เอกสาร: `SS_ST` `SS_NON` `BG_ST` `BG_CAR`
 | `buildCSV` fallback | `'NON'` → Boot Seller | `'BG_CAR'` → Car Boot | `'BN_CAR'` → Car Boot |
 | `doPost` default | `'ST'` | `'BG_ST'` | `'BN_ST'` |
 
-**/exec URL เดิม (ยังไม่ได้ลบ deployment):**
-- SS `AKfycbwi_fXqPttjmkiNdjdN46Gqx1cM3-9_k2r4AAjR3b6rBTPPGtVLjUHiidad5mx7pieR`
-- BG `AKfycbzgZx9slbAw95GBMHAJFRURU-Zlh-5coW9_aIg1lae0TS1pG8qeNfrGxBMy7chZpFNP`
-- BN `AKfycbwQPzzxpQsWY8fqiS1AZ1V0eYTU7xB1wKEMEb4N19lwnADguiPuzAbOjKb3eHc7cj7DAg`
+**/exec URL เดิม (ยังไม่ได้ลบ deployment):** ตอบ Unauthorized ทุกคำขอ · ลบ URL ออกจาก repo แล้ว (SEC-10 v3.0.1)
+ดูได้ใน Apps Script → การทำให้ใช้งานได้ → จัดการการทำให้ใช้งานได้ หรือ git history
 
 ---
 

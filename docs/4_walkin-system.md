@@ -100,7 +100,7 @@
 ### 5.1 `Code.gs`
 
 ```javascript
-const AUTHORIZED_EMAIL = "anansit.gen.m@gmail.com";
+const AUTHORIZED_EMAIL = "<อีเมล Google ของเจ้าของ>";
 
 const EXTERNAL_SS_ID = "<SHEET_ID_WALKIN_EXTERNAL>";
 

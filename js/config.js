@@ -1,11 +1,8 @@
 // ============================================================
-// config.js — URL Apps Script, ค่าคงที่, ตัวแปร state ส่วนกลาง, เป้ารายวัน (ENH-05)  [เดิม 2123-2192]
+// config.js — ค่าคงที่, ตัวแปร state ส่วนกลาง, เป้ารายวัน (ENH-05)  [เดิม 2123-2192]
 // ============================================================
-const PROXIES={
-  SS:'https://script.google.com/macros/s/AKfycbwi_fXqPttjmkiNdjdN46Gqx1cM3-9_k2r4AAjR3b6rBTPPGtVLjUHiidad5mx7pieR/exec',
-  BG:'https://script.google.com/macros/s/AKfycbzgZx9slbAw95GBMHAJFRURU-Zlh-5coW9_aIg1lae0TS1pG8qeNfrGxBMy7chZpFNP/exec',
-  BN:'https://script.google.com/macros/s/AKfycbwQPzzxpQsWY8fqiS1AZ1V0eYTU7xB1wKEMEb4N19lwnADguiPuzAbOjKb3eHc7cj7DAg/exec',
-};
+// SEC-10 (v3.0.1): ลบ PROXIES (URL Apps Script เดิม) — ARCH-01 อ่าน Firestore แทนตั้งแต่ v2.8.0 ไม่มีโค้ดไหนใช้
+//   และ doGet ของ Apps Script ตอบ Unauthorized แล้ว ทางถอยกลับเดิมใช้ไม่ได้อยู่ดี · ดู git history ถ้าต้องการ URL
 const DAYS=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
 const MONTHS=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 

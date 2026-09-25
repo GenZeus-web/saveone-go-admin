@@ -50,11 +50,14 @@
 > มี token จริงเท่านั้นถึงดึงได้ (รายละเอียดในข้อ 5)
 
 ### Apps Script URLs
-| สาขา | URL (script.google.com/macros/s/.../exec) | sheets |
-|---|---|---|
-| SS | AKfycbwi_fXqPttjmkiNdjdN46Gqx1cM3-9_k2r4AAjR3b6rBTPPGtVLjUHiidad5mx7pieR | ?sheet=ST, ?sheet=NON |
-| BG | AKfycbzgZx9slbAw95GBMHAJFRURU-Zlh-5coW9_aIg1lae0TS1pG8qeNfrGxBMy7chZpFNP | ?sheet=BG_ST, ?sheet=BG_CAR |
-| BN | AKfycbwQPzzxpQsWY8fqiS1AZ1V0eYTU7xB1wKEMEb4N19lwnADguiPuzAbOjKb3eHc7cj7DAg | ?sheet=BN_ST, ?sheet=BN_CAR |
+> ⚠️ **เลิกใช้แล้ว (ARCH-01 v2.8.0)** — เว็บอ่าน Firestore `data/*` แทน · doGet ตอบ Unauthorized ทุกคำขอ
+> ลบ URL ออกจากเอกสาร/โค้ดแล้ว (SEC-10 v3.0.1) · ดู git history ถ้าต้องการ
+
+| สาขา | sheets (เดิม) |
+|---|---|
+| SS | ?sheet=ST, ?sheet=NON |
+| BG | ?sheet=BG_ST, ?sheet=BG_CAR |
+| BN | ?sheet=BN_ST, ?sheet=BN_CAR |
 
 **วิธีเรียก:** ส่งแบบ **POST** แนบ `token` (Firebase ID token) ใน body + `?sheet=...` ใน URL
 Apps Script อ่านข้อมูลด้วย `SpreadsheetApp.openById()` อ่าน sheet ตรง (ไม่ใช้ pub URL แล้ว)
