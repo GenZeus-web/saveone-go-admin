@@ -10,7 +10,7 @@
 
   สิ่งที่ต้อง deploy คู่กันเสมอ (ไม่งั้นจะ 404 เงียบๆ):
     index.html · manifest.webmanifest · css/ · js/ · assets/
-  assets/apple-touch-icon.png = 180x180 (ไอคอนตอน "เพิ่มลงหน้าจอโฮม")
+  assets/apple-touch-icon.png = 180x180 (ไอคอนตอน "เพิ่มลงหน้าจอโฮม") · icon-192/512 = Android (APP-ICON v3.0.2: GO ดำบนเขียว)
   assets/logo.png             = โลโก้หน้า splash + ป้ายไฟบนการ์ด login (ชื่อไฟล์พิมพ์เล็กตรงกัน)
 =========================================================================
 -->
@@ -24,8 +24,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1a1f2e">
-<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-<link rel="icon" type="image/png" href="assets/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=3.0.2">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png?v=3.0.2">
 <link rel="manifest" href="manifest.webmanifest">
 
 <!-- ไลบรารีภายนอก -->
@@ -38,12 +38,12 @@
      │ การสลับลำดับ = สลับ cascade = สไตล์บางอย่างจะถูกทับผิดตัว        │
      │ responsive.css ต้องอยู่ท้ายสุดเสมอ (media query ทับของเดิม)      │
      └────────────────────────────────────────────────────────────────┘ -->
-<link rel="stylesheet" href="css/base.css?v=3.0.1">
-<link rel="stylesheet" href="css/layout.css?v=3.0.1">
-<link rel="stylesheet" href="css/components.css?v=3.0.1">
-<link rel="stylesheet" href="css/screens.css?v=3.0.1">
-<link rel="stylesheet" href="css/night.css?v=3.0.1"><!-- UI-NIGHT คอนเซปต์: ลบบรรทัดนี้ = หน้าตาเดิม -->
-<link rel="stylesheet" href="css/responsive.css?v=3.0.1">
+<link rel="stylesheet" href="css/base.css?v=3.0.2">
+<link rel="stylesheet" href="css/layout.css?v=3.0.2">
+<link rel="stylesheet" href="css/components.css?v=3.0.2">
+<link rel="stylesheet" href="css/screens.css?v=3.0.2">
+<link rel="stylesheet" href="css/night.css?v=3.0.2"><!-- UI-NIGHT คอนเซปต์: ลบบรรทัดนี้ = หน้าตาเดิม -->
+<link rel="stylesheet" href="css/responsive.css?v=3.0.2">
 
 <!-- ┌── Firebase (ES module) ────────────────────────────────────────┐
      │ type="module" ถูก defer โดยอัตโนมัติ → ทำงานหลัง DOM พร้อม      │
@@ -51,8 +51,8 @@
      │ จึงเรียก showSplash() / loadAll() / setBranch() ได้อย่างปลอดภัย  │
      │ init.js ถูก import จากทั้งสองไฟล์ แต่รันครั้งเดียว (ES module)   │
      └────────────────────────────────────────────────────────────────┘ -->
-<script type="module" src="js/firebase/auth.js?v=3.0.1"></script>
-<script type="module" src="js/firebase/user-admin.js?v=3.0.1"></script>
+<script type="module" src="js/firebase/auth.js?v=3.0.2"></script>
+<script type="module" src="js/firebase/user-admin.js?v=3.0.2"></script>
 </head>
 <body>
 
@@ -102,7 +102,7 @@
     <!-- LOGO-HDR: ป้ายไฟรถ (ต่อจากหน้า login) แทนป้าย SG · โลโก้ตัวอักษรอยู่ที่หัวรายงานแล้ว ไม่ซ้ำตรงนี้ -->
     <div class="brand-tile" aria-hidden="true"><img src="assets/logo.png" alt=""></div>
     <div>
-      <div class="brand-name">เซฟวันโก<span class="brand-ver">v3.0.1</span></div>
+      <div class="brand-name">เซฟวันโก<span class="brand-ver">v3.0.2</span></div>
       <div class="brand-sub">ระบบรายงานการจองตลาด</div>
     </div>
   </div>
@@ -830,24 +830,24 @@
      │     ui.js      → startAutoRefresh(5)                           │
      │   ซึ่ง hoisting ใช้ได้ "ภายในไฟล์เดียวกัน" เท่านั้น              │
      └────────────────────────────────────────────────────────────────┘ -->
-<script src="js/config.js?v=3.0.1"></script>
-<script src="js/utils.js?v=3.0.1"></script>
-<script src="js/data-fetch.js?v=3.0.1"></script>
-<script src="js/data-cache.js?v=3.0.1"></script>
-<script src="js/data-load.js?v=3.0.1"></script>
-<script src="js/filters.js?v=3.0.1"></script>
-<script src="js/trend.js?v=3.0.1"></script><!-- TREND-01: ต้องอยู่ก่อน overview.js -->
-<script src="js/views/overview.js?v=3.0.1"></script>
-<script src="js/views/forecast.js?v=3.0.1"></script>
-<script src="js/views/raw.js?v=3.0.1"></script>
-<script src="js/charts.js?v=3.0.1"></script>
-<script src="js/views/compare.js?v=3.0.1"></script>
-<script src="js/views/heatmap.js?v=3.0.1"></script>
-<script src="js/views/benchmark.js?v=3.0.1"></script>
-<script src="js/export.js?v=3.0.1"></script>
-<script src="js/ui.js?v=3.0.1"></script>
-<script src="js/login-fx.js?v=3.0.1"></script>
-<script src="js/today.js?v=3.0.1"></script><!-- TODAY-01: ใช้ของจาก utils/data-load ตอนเรียกเท่านั้น -->
+<script src="js/config.js?v=3.0.2"></script>
+<script src="js/utils.js?v=3.0.2"></script>
+<script src="js/data-fetch.js?v=3.0.2"></script>
+<script src="js/data-cache.js?v=3.0.2"></script>
+<script src="js/data-load.js?v=3.0.2"></script>
+<script src="js/filters.js?v=3.0.2"></script>
+<script src="js/trend.js?v=3.0.2"></script><!-- TREND-01: ต้องอยู่ก่อน overview.js -->
+<script src="js/views/overview.js?v=3.0.2"></script>
+<script src="js/views/forecast.js?v=3.0.2"></script>
+<script src="js/views/raw.js?v=3.0.2"></script>
+<script src="js/charts.js?v=3.0.2"></script>
+<script src="js/views/compare.js?v=3.0.2"></script>
+<script src="js/views/heatmap.js?v=3.0.2"></script>
+<script src="js/views/benchmark.js?v=3.0.2"></script>
+<script src="js/export.js?v=3.0.2"></script>
+<script src="js/ui.js?v=3.0.2"></script>
+<script src="js/login-fx.js?v=3.0.2"></script>
+<script src="js/today.js?v=3.0.2"></script><!-- TODAY-01: ใช้ของจาก utils/data-load ตอนเรียกเท่านั้น -->
 
 </body>
 </html>
