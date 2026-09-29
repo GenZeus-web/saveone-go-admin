@@ -89,6 +89,10 @@ onAuthStateChanged(auth, async (user) => {
           perms.showBenchmark = d.showBenchmark !== false;
           perms.showMap3D = d.showMap3D !== false;
         }
+      } else {
+        // ERR-02: ล็อกอินได้แต่ไม่มีเอกสาร users/{uid} (สร้างบัญชีนอกหน้าจัดการผู้ใช้ / ถูกลบโปรไฟล์)
+        //   เดิมได้ค่าตั้งต้น SS แล้วอ่านข้อมูลไม่ได้ (กฎต้อง hasProfile) → แดชบอร์ดว่าง · ตอนนี้ปฏิบัติเหมือนไม่มีสิทธิ์
+        throw Object.assign(new Error('no user profile'), { code: 'no-profile' });
       }
     } catch(e) {
       console.error('Firestore error:', e);
@@ -236,12 +240,12 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // ERR-01: ค้างที่หน้า login พร้อมบอกสาเหตุ
-//   ไม่มีสิทธิ์อ่านโปรไฟล์ = ออกจากระบบ ให้ติดต่อ admin (ลองซ้ำก็ไม่ผ่าน)
+//   ไม่มีสิทธิ์อ่านโปรไฟล์ / ไม่มีโปรไฟล์ (ERR-02) = ออกจากระบบ ให้ติดต่อ admin (ลองซ้ำก็ไม่ผ่าน)
 //   อย่างอื่น (เน็ตหลุด/Firestore ล่ม) = ยังล็อกอินค้างไว้ ปุ่มกลายเป็น "ลองใหม่" → โหลดหน้าใหม่
 //   (กดเข้าสู่ระบบซ้ำด้วย user เดิมไม่ได้ผล — onAuthStateChanged ไม่ยิงซ้ำถ้า uid ไม่เปลี่ยน)
 async function showProfileError(e) {
   if (typeof window.abortLoginWarp === 'function') window.abortLoginWarp();
-  const denied = e && e.code === 'permission-denied';
+  const denied = e && (e.code === 'permission-denied' || e.code === 'no-profile');   // ERR-02
   if (denied) { try { await signOut(auth); } catch(_) {} }
   document.getElementById('loginPage').style.display = 'flex';
   document.getElementById('mainHeader').style.display = 'none';
