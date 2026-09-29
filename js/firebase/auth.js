@@ -92,6 +92,11 @@ onAuthStateChanged(auth, async (user) => {
       }
     } catch(e) {
       console.error('Firestore error:', e);
+      // ERR-01: อ่านโปรไฟล์ไม่ได้ = ไม่เปิดแดชบอร์ด
+      //   เดิมเปิดต่อด้วยค่าตั้งต้น (branches=['SS']) → ทุกสาขา 0/0 · admin ก็ได้แค่ SS
+      //   ผู้ใช้แยกไม่ออกว่า "ไม่มีข้อมูล" หรือ "เน็ตหลุด" (เจอจริง 25 ก.ย. 20:10 · client is offline)
+      await showProfileError(e);
+      return;
     }
 
     // ซ่อน login page แสดง dashboard
@@ -230,8 +235,29 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
+// ERR-01: ค้างที่หน้า login พร้อมบอกสาเหตุ
+//   ไม่มีสิทธิ์อ่านโปรไฟล์ = ออกจากระบบ ให้ติดต่อ admin (ลองซ้ำก็ไม่ผ่าน)
+//   อย่างอื่น (เน็ตหลุด/Firestore ล่ม) = ยังล็อกอินค้างไว้ ปุ่มกลายเป็น "ลองใหม่" → โหลดหน้าใหม่
+//   (กดเข้าสู่ระบบซ้ำด้วย user เดิมไม่ได้ผล — onAuthStateChanged ไม่ยิงซ้ำถ้า uid ไม่เปลี่ยน)
+async function showProfileError(e) {
+  if (typeof window.abortLoginWarp === 'function') window.abortLoginWarp();
+  const denied = e && e.code === 'permission-denied';
+  if (denied) { try { await signOut(auth); } catch(_) {} }
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('mainHeader').style.display = 'none';
+  document.getElementById('mainLayout').style.display = 'none';
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = false;
+  btn.textContent = denied ? 'เข้าสู่ระบบ' : 'ลองใหม่';
+  window.__profileErr = !denied;
+  document.getElementById('loginErr').textContent = denied
+    ? 'บัญชีนี้ยังไม่มีสิทธิ์ใช้งาน — ติดต่อผู้ดูแลระบบ'
+    : 'เชื่อมต่อฐานข้อมูลไม่ได้ — เช็คอินเทอร์เน็ตแล้วกด "ลองใหม่"';
+}
+
 // Login function
 window.doLogin = async function() {
+  if (window.__profileErr) { location.reload(); return; }   // ERR-01
   const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
   const errEl = document.getElementById('loginErr');

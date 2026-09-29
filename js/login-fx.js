@@ -40,6 +40,13 @@
     }, left);
   };
 
+  // ERR-01: auth.js อ่านโปรไฟล์ไม่ได้ → ยกเลิกการพุ่ง กลับมาอยู่หน้า login ตามเดิม
+  window.abortLoginWarp = function () {
+    window.__loginZoom = false;
+    if (page) page.classList.remove('is-entering');
+    st.warpT0 = 0; st.charge = st.chargeTo = 0;
+  };
+
   if (!page || !box) return;
 
   // ── 3) การ์ดเอียงตามเมาส์ ──
