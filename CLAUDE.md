@@ -29,15 +29,22 @@
 
 ---
 
-## โครงสร้างไฟล์ — อ่าน `README.md` ก่อนแก้
+## โครงสร้างไฟล์
+
+ผังไฟล์ย่อดู `README.md` (repo สาธารณะ — README เก็บแค่พื้นฐาน รายละเอียดเก็บที่นี่)
 
 ⚠️ **ลำดับ `<script>` และ `<link>` ใน `index.html` ห้ามสลับ** — เดิมโค้ดอยู่ไฟล์เดียว
 การแยกไฟล์คงลำดับเดิมเป๊ะ เพราะ hoisting ใช้ได้เฉพาะในไฟล์เดียวกัน
 มีโค้ดที่รันทันทีตอนโหลด: `TARGETS=loadTargets()` · `Chart.register()` · `startAutoRefresh(5)`
 `js/charts.js` อยู่กลางรายการ views **ไม่ใช่ความผิดพลาด** อย่าย้ายขึ้นบน
+CSS: `night.css` ต้องหลัง `screens.css` · `responsive.css` ต้องท้ายสุดเสมอ
 
 `js/*.js` เป็น classic script โดยตั้งใจ — `index.html` เรียกผ่าน `onclick="..."` กว่า 60 จุด
-ต้องการ global scope · ES module ใช้เฉพาะ `js/firebase/`
+ต้องการ global scope · ES module ใช้เฉพาะ `js/firebase/` (module ถูก defer เอง → รันหลัง `js/*.js` เสมอ
+`auth.js` จึงเรียก `showSplash()`/`loadAll()` ได้)
+
+ชื่อไฟล์ที่หน้าเว็บโหลดต้อง**ตัวพิมพ์เล็ก** — Pages แยกตัวพิมพ์ใหญ่-เล็ก (`LoGosaveonego.png` ไม่มีหน้าไหนโหลด จึงไม่เป็นไร)
+รันในเครื่องต้อง `python -m http.server 8781` — API key จำกัดที่อยู่ไว้ (ดูสถานะล่าสุด)
 
 ---
 
