@@ -382,25 +382,33 @@ function openDayModal(i){
   // ── รายการย่อย ──
   const sec=(icon,txt,color)=>`<div class="day-sec" style="color:${color}">${icon} ${txt}</div>`;
   const row=(k,v,u='',cls='')=>`<div class="day-r ${cls}"><span>${k}</span><span>${v}${u?`<span class="u">${u}</span>`:''}</span></div>`;
+  // DAY-02: ราย / ล็อก ทุกแถว — รูปแบบเดียวกับ rl() ในป๊อปอัปยอดวันนี้ (today.js)
+  const rl=(k,rai,lock)=>row(k,`${fmtN(rai||0)}<span class="u">ราย</span> / ${fmtN(lock||0)}`,'ล็อก');
+  // ออนไลน์สุทธิของราย หักแบบเดียวกับล็อก (ไม่มา/ลา ของ ST)
+  const netRai=Math.max(0,(r.onlineRai||0)-(r.absentRai||0)-(r.cancelRai||0));
+  const cancelRaiShow = zone==='st' ? (r.cancelRai||0) : zone==='non' ? (r.nonCancelRai||0) : (r.cancelRai||0)+(r.nonCancelRai||0);
+  const absentRaiShow = zone==='st' ? (r.absentRai||0) : zone==='non' ? (r.nonAbsentRai||0) : (r.absentRai||0)+(r.nonAbsentRai||0);
   let h='';
 
   if(zone!=='non'){
     h+=sec('🍜','ST · Street Food','var(--gold)')+'<div class="day-grp st">';
-    h+=row('ออนไลน์สุทธิ',fmtN(net),'ล็อก');
-    h+=row('วอล์กอิน',fmtN(r.walkInLock),'ล็อก');
-    if(r.extraLock) h+=row('ล็อกเสริม',fmtN(r.extraLock),'ล็อก');
+    h+=rl('ออนไลน์สุทธิ',netRai,net);
+    h+=rl('วอล์กอิน',r.walkInRai,r.walkInLock);
+    if(r.extraLock) h+=rl('ล็อกเสริม',r.extraRai,r.extraLock);
     h+='</div>';
   }
   if(zone!=='st'&&r.nonLock){
+    // เดิมแถวเดียว "ล็อก" = nonLock (รวมเสริม) · แตกเป็นออนไลน์/วอล์กอิน เหมือนยอดวันนี้ ให้ราย/ล็อกจับคู่กันได้
     h+=sec(activeBranch==='SS'?'🧺':'🚗',`${nonName} · Boot Sale`,'var(--purple)')+'<div class="day-grp non">';
-    h+=row('ล็อก',fmtN(r.nonLock),'ล็อก');
-    if(r.nonExtraLock) h+=row('ล็อกเสริม',fmtN(r.nonExtraLock),'ล็อก');
+    h+=rl('ออนไลน์',r.nonOnlineRai,r.nonOnlineLock);
+    h+=rl('วอล์กอิน',r.nonWalkInRai,r.nonWalkInLock);
+    if(r.nonExtraLock) h+=rl('ล็อกเสริม',r.nonExtraRai,r.nonExtraLock);
     h+='</div>';
   }
   if(cancelShow||absentShow){
     h+=sec('⚠️','ไม่ได้ขาย','var(--red)')+'<div class="day-grp bad">';
-    if(cancelShow) h+=row('ไม่มา (ยกเลิก)',fmtN(cancelShow),'ล็อก');
-    if(absentShow) h+=row('ลา',fmtN(absentShow),'ล็อก');
+    if(cancelShow) h+=rl('ไม่มา (ยกเลิก)',cancelRaiShow,cancelShow);
+    if(absentShow) h+=rl('ลา',absentRaiShow,absentShow);
     h+='</div>';
   }
   if(canSeeRev()) h+=`<div class="col-rev">${sec('💰','รายรับ','var(--green)')}<div class="day-grp rev">`   // PERM-06
