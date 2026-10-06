@@ -112,6 +112,9 @@ function makeChart(id,config){
   if(typeof el.getContext!=='function'||!el.isConnected){
     console.warn('makeChart: #'+id+' ไม่ใช่ canvas ที่ใช้ได้ (หลุด DOM?) — ข้ามการวาด');return null;
   }
+  // v3.1.0 CHT-04: แปลงเป็นแบบกราฟที่ผู้ใช้เลือก (chart-types.js) — ต้องทำก่อนตรวจชนิดด้านล่าง
+  // กราฟที่ไม่มีตัวเลือก/ยังไม่เคยเลือก ได้ config เดิมกลับมา (ตัด _ct ทิ้ง)
+  if(typeof ctResolve==='function') config=ctResolve(id,config);
   // ตรวจว่าเป็น bar หรือ line
   const hasLine=config.data?.datasets?.some(d=>d.type==='line'||config.type==='line');
   const hasBar=config.data?.datasets?.some(d=>d.type==='bar'||config.type==='bar');
@@ -147,6 +150,7 @@ function makeChart(id,config){
 
   // กราฟเส้นหรือ mixed ใช้ reveal plugin
   if(isLineOnly||isMixed) animateChartReveal(charts[id],1200);
+  if(typeof ctMount==='function') ctMount(id); // CHT-04: ปุ่มเลือกแบบกราฟมุมการ์ด
   return charts[id];
 }
 

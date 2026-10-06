@@ -300,3 +300,24 @@ body.no-price .col-rev,body.no-price #revSection,body.no-price #whatif-section{d
 .trend.flat{color:var(--ink2);background:rgba(127,127,127,.12);}
 .trend.na{color:var(--ink3);font-weight:400;padding-left:0;}
 .trend-raw{font-size:10px;color:var(--ink3);}
+
+/* ── v3.1.0 CHT-04: ปุ่มเลือกแบบกราฟ มุมขวาบนการ์ด (chart-types.js) ── */
+.ct-card{position:relative;}
+.ct-card > .sc-title{padding-right:38px;}
+.ct-btn{position:absolute;top:8px;right:8px;z-index:3;width:32px;height:32px;display:grid;place-items:center;
+  border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--ink2);cursor:pointer;padding:0;}
+.ct-btn--inline{position:static;flex:none;margin-left:10px;}
+.ct-btn:hover,.ct-btn[aria-expanded="true"]{color:var(--ink);border-color:var(--ink3);}
+.ct-btn:focus-visible,.ct-menu button:focus-visible{outline:2px solid var(--green);outline-offset:1px;}
+.main-chart-card{position:relative;}
+.ct-menu{position:absolute;top:44px;right:8px;z-index:20;width:max-content;min-width:220px;max-width:calc(100vw - 48px);
+  background:var(--surface);border:1px solid var(--border);border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.35);
+  padding:5px;display:flex;flex-direction:column;gap:2px;}
+.ct-btn--inline + .ct-menu{top:52px;}
+.ct-menu button{display:grid;grid-template-columns:18px 1fr 14px;gap:8px;align-items:center;text-align:left;
+  font:500 12px 'Noto Sans Thai',sans-serif;color:var(--ink);background:transparent;border:0;border-radius:6px;padding:7px 9px;cursor:pointer;}
+.ct-menu button:hover:not(:disabled){background:var(--surface2);}
+.ct-menu button:disabled{opacity:.5;cursor:not-allowed;}
+.ct-menu em{font-style:normal;color:var(--ink3);font-weight:400;}
+.ct-menu small{display:block;font-weight:400;font-size:10.5px;color:var(--ink3);line-height:1.4;}
+.ct-ck{color:var(--green);font-weight:700;}

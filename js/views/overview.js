@@ -216,6 +216,7 @@ function renderOverview(d){
   _dayRows=daily;
 
   charts.cMain=makeChart('cMain',{
+    _ct:{rows:daily}, // CHT-04: แบบจุดกระจายใช้ดูวันในสัปดาห์/วันฝน ของแต่ละจุด
     data:{
       labels:daily.map(r=>fmtD(r.date)),
       datasets:[
@@ -275,7 +276,9 @@ function renderOverview(d){
   d.forEach(r=>{const wd=r.date.getDay();ws[wd]+=getLock(r,group);wc[wd]++;});
   const wa=ws.map((s,i)=>wc[i]?+(s/wc[i]).toFixed(1):0);
   dChart('cWeekday');
-  charts.cWeekday=makeChart('cWeekday',{type:'bar',data:{labels:DAYS,datasets:[{data:wa,backgroundColor:wa.map((_,i)=>[0,5,6].includes(i)?'rgba(240,165,0,.8)':'rgba(74,158,255,.7)'),borderRadius:4}]},options:{...cOpts(),plugins:{legend:{display:false}}}});
+  // CHT-04: แบบจุดทุกวัน/Box plot ต้องใช้ยอดรายวัน ไม่ใช่แค่ค่าเฉลี่ย
+  const _wkRows=d.map(r=>({dow:r.date.getDay(),v:getLock(r,group),date:r.date,rain:!!r.freeDay}));
+  charts.cWeekday=makeChart('cWeekday',{_ct:{rows:_wkRows},type:'bar',data:{labels:DAYS,datasets:[{data:wa,backgroundColor:wa.map((_,i)=>[0,5,6].includes(i)?'rgba(240,165,0,.8)':'rgba(74,158,255,.7)'),borderRadius:4}]},options:{...cOpts(),plugins:{legend:{display:false}}}});
 
   // Pie
   const totO=d.reduce((s,r)=>s+Math.max(0,(r.onlineLock||0)-(r.absentLock||0)-(r.cancelLock||0)),0);

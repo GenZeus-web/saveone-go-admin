@@ -59,7 +59,9 @@ function renderCompare(){
   dChart('cMonthTotal');
   const _curMK=mKey(new Date());
   const _totLabels={id:'totLabels',afterDatasetsDraw(chart){const{ctx}=chart;const meta=chart.getDatasetMeta(0);if(!meta)return;ctx.save();ctx.textAlign='center';meta.data.forEach((bar,i)=>{const v=totals[mks[i]]||0;ctx.fillStyle=chartClr().lbl;ctx.font='600 12px JetBrains Mono';ctx.fillText(fmtN(v),bar.x,bar.y-6);if(mks[i]===_curMK){ctx.fillStyle=chartClr().tick;ctx.font='400 10px Noto Sans Thai';ctx.fillText('(ยังไม่จบเดือน)',bar.x,bar.y-22);}});ctx.restore();}};
-  charts.cMonthTotal=makeChart('cMonthTotal',{type:'bar',data:{labels:mkLabels,datasets:[{label:'ล็อกรวม',data:mks.map(k=>totals[k]),backgroundColor:mks.map((_,i)=>MONTH_COLORS[i%MONTH_COLORS.length]),borderRadius:6,maxBarThickness:90}]},options:{...cOpts(),layout:{padding:{top:30}}},plugins:[_totLabels]});
+  // CHT-04: แบบจุด/Bullet เทียบเป้า = เป้า/วัน × วันที่มีข้อมูล (นับแบบเดียวกับการ์ด Month-over-Month ด้านล่าง)
+  const _zd=applyZone(getActiveMerged()),_days=mks.map(k=>_zd.filter(r=>mKey(r.date)===k).length);
+  charts.cMonthTotal=makeChart('cMonthTotal',{_ct:{mks,days:_days},type:'bar',data:{labels:mkLabels,datasets:[{label:'ล็อกรวม',data:mks.map(k=>totals[k]),backgroundColor:mks.map((_,i)=>MONTH_COLORS[i%MONTH_COLORS.length]),borderRadius:6,maxBarThickness:90}]},options:{...cOpts(),layout:{padding:{top:30}}},plugins:[_totLabels]});
   dChart('cMonthRev');
   const _canRev=canSeeRev(); // PERM-06: ด่านกลาง (เดิม ยังไม่รู้สิทธิ์ = ให้เห็น)
   const _revCard=document.getElementById('cMonthRevCard');
