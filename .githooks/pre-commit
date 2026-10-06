@@ -1,0 +1,3 @@
+#!/bin/sh
+# CACHE-03: ตรวจ ?v= / ป้ายหัวเว็บ / CHANGELOG ก่อน commit — เปิดใช้: git config core.hooksPath .githooks
+exec node tools/check-version.js

@@ -24,6 +24,13 @@
          views ไม่ต้องรู้ว่ามีหลายแบบ · ข้อมูลที่ config เดิมไม่มี ส่งทาง config._ct (overview: rows · compare: mks/days)
        ต้นแบบ 3 แบบ (ปุ่มในหัวการ์ด / ไอคอนมุมการ์ด / แผงรวม) อยู่ branch prototype/chart-picker — เจ้าของเลือกแบบ B
        ⚠️ deploy: ไฟล์ใหม่ js/chart-types.js
+    CACHE-03) ตัวเช็คเลขเวอร์ชันก่อน commit แทนการจำเอง — tools/check-version.js + .githooks/pre-commit + tests/version.test.js
+       ?v= ทุกจุด (js/css 27 + ไอคอนแอป 2) ต้องตรงป้ายหัวเว็บและหัวข้อบนสุด CHANGELOG · แก้ js/css/assets แต่เลขยังเท่าเว็บจริง = commit ไม่ผ่าน
+       ทำไมยังเก็บ ?v=: เว็บแยกไฟล์ + GitHub Pages แคชไฟล์ละ 10 นาที → ไม่มี ?v= ได้ไฟล์เก่าปนใหม่ (เจอจริง v3.0.1 · CACHE-02)
+       รอบนี้เองก็เจอในเครื่อง: แก้ charts.js แต่ยังไม่ bump → Chrome ใช้ตัวเก่า ปุ่มเลือกกราฟไม่ขึ้น
+       ทดสอบ: ลืมเปลี่ยน ?v= charts.js 1 จุด → commit ถูกกั้น บอกชื่อไฟล์ · worktree ของเว็บจริงแก้ js/utils.js ไม่ bump → ไม่ผ่าน
+         · node --test tests/ 24/24
+       ⚠️ deploy: ไฟล์ใหม่ tools/check-version.js · .githooks/pre-commit · tests/version.test.js (ไม่มีหน้าไหนโหลด แต่ต้องอยู่ใน repo)
 
 ## v3.0.4 (2 ต.ค. 2569) — สาขาเรียงใหม่ · กล่องรายวันมีราย
 

@@ -67,6 +67,10 @@ CSS: `night.css` ต้องหลัง `screens.css` · `responsive.css` ต�
    + `?v=` ท้าย `<script>`/`<link>` ทุกตัวใน `index.html` (28 จุด · `sed -i 's/?v=3\.0\.3"/?v=X.Y.Z"/g' index.html` — เปลี่ยน 3.0.3 เป็นเลขปัจจุบัน · นับซ้ำหลังแทน)
    ⚠️ ห้ามลืม — GitHub Pages ให้แคช 10 นาทีต่อไฟล์ ถ้าไม่เปลี่ยน `?v=` เบราว์เซอร์ได้ไฟล์เก่าปนใหม่
    แล้วพังแบบ `canSeeRev is not defined` (เจอจริง v3.0.1) · import ภายใน `js/firebase/` ไม่มี `?v=` — แก้ไฟล์ในนั้นให้เข้ากับตัวเก่าได้
+   **ตัวเช็คกั้นให้แล้ว (CACHE-03):** `node tools/check-version.js` — ?v= ทุกจุด (29) / ป้ายหัวเว็บ / CHANGELOG ต้องตรงกัน
+   และถ้าแก้ js/css/assets เทียบ `origin/main` แต่เลขยังเท่าเว็บจริง = ไม่ผ่าน · รันเองทุก commit ผ่าน `.githooks/pre-commit`
+   clone ใหม่ต้องเปิดครั้งเดียว: `git config core.hooksPath .githooks` · ห้ามข้ามด้วย `--no-verify`
+   ทดสอบในเครื่องแล้วไฟล์ไม่อัปเดต = แคชเหมือนกัน → bump `?v=` ก่อนทดสอบ (หรือเปิด DevTools → Disable cache)
 3. **commit** — เขียนให้สรุปอัตโนมัติได้ (ดูหัวข้อถัดไป)
 4. 🔴 **ถามเจ้าของยืนยันก่อน push เสมอ** — repo นี้เปิด GitHub Pages
    **push ขึ้น `main` = ขึ้นเว็บจริงทันที** ไม่มีขั้นตอน deploy แยก ไม่มีจังหวะให้ทบทวน
