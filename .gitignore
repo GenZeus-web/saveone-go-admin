@@ -81,6 +81,8 @@ old/
 
 # ── Agent skills (เฉพาะเครื่อง) ─────────────────────────────
 #  .claude/skills เป็น junction ชี้ไป .agents/skills — ขึ้น git ไม่ได้
+#  .agents/ = ตัว skill จริง (ติดตั้งคืนได้จาก skills-lock.json) ไม่ใช่ส่วนของเว็บ
 #  .scratch/ = issue/spec ภายใน · repo เปิด Pages ขึ้นไปแล้วใครก็อ่านได้
 .claude/
+.agents/
 .scratch/

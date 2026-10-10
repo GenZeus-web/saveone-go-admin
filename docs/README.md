@@ -13,10 +13,14 @@
 | `5_revenue-calculator.md` | สูตรคิดรายรับ · ราคาตามฤดูกาล/วันหยุด |
 | `6_project-setup.md` | วิธีติดตั้ง · สิ่งที่ต้อง deploy |
 | `walkin-diagram.png` | ผังระบบวอล์กอิน |
-| `firestore-rules/v2.10.0-current.txt` | กฎสิทธิ์ Firestore **ตัวที่ publish อยู่จริง** |
-| `firestore-rules/v2.9.0-rollback.txt` | ตัวถอยกลับ |
-| `WORKFLOW-2026-08-21.md` | คู่มือทำงานตัวเก่าเต็มๆ (805 บรรทัด) เก็บไว้อ้างอิงประวัติ |
-| `_legacy-claude-project-instructions.txt` | instructions ของ Claude Project เดิม |
+| `firestore-rules/v3.0.1-current.txt` | กฎสิทธิ์ Firestore **ตัวที่ publish อยู่จริง** (ตรงกับ Console) |
+| `firestore-rules-settings.md` | คำอธิบายกฎส่วนตั้งค่าราคา |
+| `adr/` | บันทึกการตัดสินใจ (ADR) |
+| `agents/` | ตั้งค่า issue tracker / label / domain docs ของ agent skills |
+| `archive/` | ของเก่าเก็บไว้อ้างอิงประวัติ — **ห้ามใช้เป็นตัวจริง** |
+| `archive/firestore-rules-v2.10.0.txt` · `-v2.9.0.txt` | กฎ Firestore รุ่นเก่า · อย่าวางทับ Console (สิทธิ์ที่เพิ่มตั้งแต่ v3.0.1 จะหาย) |
+| `archive/WORKFLOW-2026-08-21.md` | คู่มือทำงานตัวเก่าเต็มๆ (805 บรรทัด) — แทนแล้วด้วย `CLAUDE.md` |
+| `archive/_legacy-claude-project-instructions.txt` | instructions ของ Claude Project เดิม |
 
 ---
 
