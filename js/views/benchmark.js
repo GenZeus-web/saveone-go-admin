@@ -39,6 +39,54 @@ function toggleBmBranch(b,btn){
   renderBenchmark();
 }
 
+// BM-08: ตัวเลขบนทุกจุด (กราฟเส้น) / ทุกแท่ง — เปิดด้วย options.plugins.bmVals.on
+//   ตัวเลือกแบบกราฟ (แท่งคู่/ดัชนี ใน chart-types.js) ส่งต่อ options.plugins เดิม → ได้ตัวเลขด้วยโดยไม่ต้องแก้
+//   ป้ายที่จะทับป้ายที่วาดไปแล้วถูกข้าม (กราฟรายวันช่วงยาวมีหลายร้อยจุด) · ปุ่ม "ซ่อนตัวเลข" จำในเครื่อง
+let bmShowVals=false;                         // ค่าเริ่มต้น = ซ่อน (เจ้าของสั่ง) · กดแสดงแล้วจำในเครื่อง
+try{ bmShowVals=localStorage.getItem('bmShowVals')==='1'; }catch(e){}
+function toggleBmVals(){
+  bmShowVals=!bmShowVals;
+  try{ localStorage.setItem('bmShowVals',bmShowVals?'1':'0'); }catch(e){}
+  renderBenchmark();
+}
+function syncBmValsBtn(){
+  const b=document.getElementById('bmValsBtn'); if(!b) return;
+  b.textContent=bmShowVals?'🔢 ซ่อนตัวเลข':'🔢 แสดงตัวเลข';
+  b.setAttribute('aria-pressed',String(bmShowVals));
+}
+const bmValFmt=v=>Math.abs(v)>=10000?(v/1000).toFixed(1)+'k':Number.isInteger(v)?fmtN(v):fmtN(v,1);
+// options กราฟเส้นของหน้านี้ + ตัวเลข · afterDataLimits = ที่ว่างเหนือค่าสูงสุดในแกน Y ให้ป้ายไม่ชนขอบ/ไม่ต้องลงไปทับในแท่ง
+//   padding ขวา = ป้ายของจุดขวาสุดไม่โดนตัด
+function bmLineOpts(){
+  const o=cOpts();
+  if(!bmShowVals) return {...o,plugins:{...o.plugins,bmVals:{on:false}}};
+  // เว้นเฉพาะด้านบน — grace ของ Chart.js เว้นทั้งบน+ล่าง ทำให้แกนล่างติดลบ (ล็อก -50)
+  return {...o,layout:{padding:{right:18}},scales:{...o.scales,y:{...o.scales.y,afterDataLimits:s=>{s.max+=(s.max-s.min)*0.12;}}},
+    plugins:{...o.plugins,bmVals:{on:true}}};
+}
+Chart.register({id:'bmVals',afterDatasetsDraw(ch,args,o){
+  if(!o||!o.on) return;
+  const{ctx,chartArea:a}=ch,boxes=[];
+  ctx.save();ctx.font='600 10px JetBrains Mono';ctx.textAlign='center';ctx.textBaseline='bottom';
+  ctx.lineJoin='round';ctx.lineWidth=3;ctx.strokeStyle=ctSurf();ctx.fillStyle=chartClr().lbl;
+  ch.data.datasets.forEach((ds,di)=>{
+    if(!ch.isDatasetVisible(di)) return;
+    const meta=ch.getDatasetMeta(di),isBar=meta.type==='bar';
+    meta.data.forEach((el,i)=>{
+      const raw=ds.data[i],v=raw&&typeof raw==='object'?raw.y:raw;
+      if(v==null||!isFinite(el.x)||!isFinite(el.y)) return;
+      const t=bmValFmt(v),w=ctx.measureText(t).width+4,h=12;
+      let y=el.y-(isBar?3:6);
+      if(y-h<a.top) y=el.y+h+6;                      // ชนขอบบน → ย้ายไปใต้จุด
+      const bx={l:el.x-w/2,r:el.x+w/2,t:y-h,b:y};
+      if(boxes.some(q=>bx.l<q.r&&bx.r>q.l&&bx.t<q.b&&bx.b>q.t)) return;
+      boxes.push(bx);
+      ctx.strokeText(t,el.x,y);ctx.fillText(t,el.x,y);
+    });
+  });
+  ctx.restore();
+}});
+
 // BM-05: ตามปุ่มโซนใน sidebar — applyZone() ล้างยอดโซนที่ไม่ได้เลือกเป็น 0
 //   → getLock/revST/revNon ทุกจุดในหน้านี้ได้ยอดเฉพาะโซนเอง ไม่ต้องแยกเคส
 // BM-06: การ์ด + กราฟ ตามช่วงเวลาด้วย · ป้ายเตือนไหลลงใช้ bmAllRows() ทั้งประวัติ
@@ -121,6 +169,7 @@ function bmTrend(b){
 
 function renderBenchmark(){
   bmEnsureInit();                       // v2.10.0 BM-04
+  syncBmValsBtn();                      // BM-08
   const branches=[...bmSelected].filter(b=>myBmBranches().includes(b));
   const zt=document.getElementById('bmZoneTag');
   if(zt) zt.textContent=bmZoneLabel(branches);
@@ -159,6 +208,7 @@ function renderBenchmark(){
   sets.push({label:'ช่วงนี้',data:cur.map(r1),backgroundColor:branches.map(b=>BM_COLORS[b]),borderRadius:4,borderSkipped:'bottom',maxBarThickness:56});
   // ป้ายบนแท่ง: ค่า + ▲▼% (สัญลักษณ์บอกทิศ ไม่พึ่งสีอย่างเดียว · ตัวหนังสือใช้สีหมึก ไม่ใช่สีสาขา)
   const cmpLbl={id:'bmCmpLbl',afterDatasetsDraw(ch){
+    if(!bmShowVals) return;                       // BM-08 ปุ่มซ่อนตัวเลข
     const{ctx}=ch;ctx.save();ctx.textAlign='center';ctx.textBaseline='bottom';
     ch.data.datasets.forEach((ds,di)=>{
       const isCur=di===ch.data.datasets.length-1;
@@ -233,7 +283,7 @@ function renderBenchmark(){
           tension:.3,spanGaps:true};
       })
     },
-    options:cOpts()
+    options:bmLineOpts()
   });
 
   // กราฟล็อกรวมรายเดือน
@@ -249,7 +299,7 @@ function renderBenchmark(){
         return{label:BM_NAMES[b],data:allMks.map(k=>mon[k]||null),borderColor:BM_COLORS[b],backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3,spanGaps:true};
       })
     },
-    options:cOpts()
+    options:bmLineOpts()
   });
 
   // กราฟรายวัน — ตามช่วงเวลาที่เลือก (BM-06 · เดิมตายตัว 60 วันล่าสุด)
@@ -280,7 +330,7 @@ function renderBenchmark(){
         borderWidth:1.5,pointRadius:1.5,tension:.3,spanGaps:false
       }))
     },
-    options:{...cOpts(),plugins:{legend:{labels:{color:chartClr().lbl,font:{family:'Noto Sans Thai',size:11}}}}}
+    options:bmLineOpts()
   });
 }
 
