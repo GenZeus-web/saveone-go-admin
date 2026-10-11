@@ -109,12 +109,15 @@ function applyZone(d){
   }
   return d;
 }
+// ตัดตามช่วงเวลาที่เลือก (เดือน / กำหนดเอง / 7-30-90 วัน / ทั้งหมด) — Benchmark ใช้ตัวเดียวกัน (BM-06)
+function applyPeriod(d){
+  if(selMonth) return d.filter(r=>mKey(r.date)===selMonth);
+  if(customFrom&&customTo) return d.filter(r=>r.date>=customFrom&&r.date<=customTo);
+  if(period>0){const cut=new Date();cut.setDate(cut.getDate()-period);return d.filter(r=>r.date>=cut);}
+  return d;
+}
 function getFiltered(){
-  let d=getActiveMerged();
-  if(selMonth) d=d.filter(r=>mKey(r.date)===selMonth);
-  else if(customFrom&&customTo) d=d.filter(r=>r.date>=customFrom&&r.date<=customTo);
-  else if(period>0){const cut=new Date();cut.setDate(cut.getDate()-period);d=d.filter(r=>r.date>=cut);}
-  return applyZone(d);
+  return applyZone(applyPeriod(getActiveMerged()));
 }
 
 function updateDateRange(d){

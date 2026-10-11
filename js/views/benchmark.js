@@ -39,11 +39,45 @@ function toggleBmBranch(b,btn){
   renderBenchmark();
 }
 
-function getBranchMerged(b){
-  if(b==='SS') return merged;
-  if(b==='BG') return bgMerged;
-  if(b==='BN') return bnMerged;
+// BM-05: ตามปุ่มโซนใน sidebar — applyZone() ล้างยอดโซนที่ไม่ได้เลือกเป็น 0
+//   → getLock/revST/revNon ทุกจุดในหน้านี้ได้ยอดเฉพาะโซนเอง ไม่ต้องแยกเคส
+// BM-06: การ์ด + กราฟ ตามช่วงเวลาด้วย · ป้ายเตือนไหลลงใช้ bmAllRows() ทั้งประวัติ
+//   (ต้องเห็น ≥ 3 เดือนถึงนับ "ตก 3 เดือนติด" ได้ ช่วง 7 วัน/30 วัน/3 เดือน จะประเมินไม่ได้)
+function bmAllRows(b){
+  if(b==='SS') return applyZone(merged);
+  if(b==='BG') return applyZone(bgMerged);
+  if(b==='BN') return applyZone(bnMerged);
   return [];
+}
+function getBranchMerged(b){ return applyPeriod(bmAllRows(b)); }
+
+// BM-07: ช่วงก่อนหน้าที่ยาวเท่ากัน · เลือกเดือน = เดือนก่อน · "ทั้งหมด" = ไม่มีให้เทียบ (null)
+function bmPrevRange(){
+  if(selMonth){
+    const[y,m]=selMonth.split('-').map(Number);
+    return {from:new Date(y,m-2,1),to:new Date(y,m-1,0,23,59,59)};
+  }
+  if(customFrom&&customTo){
+    const len=customTo-customFrom;
+    return {from:new Date(customFrom-len-1),to:new Date(customFrom-1)};
+  }
+  if(period>0){
+    const to=new Date();to.setDate(to.getDate()-period);
+    const from=new Date(to);from.setDate(from.getDate()-period);
+    return {from,to:new Date(to-1)};
+  }
+  return null;
+}
+// ล็อกเฉลี่ย/วัน แบบเดียวกับการ์ดสาขา (ยอดรวม ÷ จำนวนวันที่มีแถว) · ไม่มีแถว = null
+function bmAvgPerDay(rows){
+  return rows.length?rows.reduce((s,r)=>s+getLock(r,'all'),0)/rows.length:null;
+}
+// ป้ายโซนบนหัวการ์ด — Non ของ SS = Boot Seller · ของ BG/BN = รถ (Car) คนละแบบกัน
+function bmZoneLabel(branches){
+  if(zone==='st') return 'ST · Street Food';
+  if(zone!=='non') return 'ทุกโซน';
+  const hasSS=branches.includes('SS'), hasCar=branches.some(b=>b!=='SS');
+  return hasSS&&hasCar?'Non (SS) / Car (BG·BN)':hasSS?'Non · Boot Seller':'Car';
 }
 
 // ── v2.5.8 BM-01/BM-02: เทรนด์ล็อกเฉลี่ย/วัน รายเดือน + ป้ายเตือนสาขาไหลลง ──
@@ -52,9 +86,9 @@ const BM_ALERT_N=3;    // ตกติดกันกี่เดือน = ธ
 const BM_DROP_PCT=3;   // ต้องลดเกินกี่ % ถึงนับว่า "ตก" (deadband) — กันกราฟที่ราบแล้วโดนนับเป็นไหลลง
 
 // ล็อกเฉลี่ย/วัน รายเดือน — ตัดวันที่ยอด = 0 ออกก่อนเฉลี่ย (วันปิด/ไม่มีข้อมูล)
-function bmMonthlyAvg(b){
+function bmMonthlyAvg(rows){
   const mon={};
-  getBranchMerged(b).forEach(r=>{
+  rows.forEach(r=>{
     const v=getLock(r,'all');
     if(!v) return;
     const k=mKey(r.date);
@@ -68,7 +102,7 @@ function bmMonthlyAvg(b){
 
 // นับจำนวนเดือนที่ "ตกต่อเนื่อง" นับถอยหลังจากเดือนล่าสุด
 function bmTrend(b){
-  const m=bmMonthlyAvg(b);
+  const m=bmMonthlyAvg(bmAllRows(b));
   const ks=Object.keys(m).sort().filter(k=>m[k].days>=BM_MIN_DAYS);
   if(ks.length<2) return null;
   const vals=ks.map(k=>m[k].avg);
@@ -88,12 +122,14 @@ function bmTrend(b){
 function renderBenchmark(){
   bmEnsureInit();                       // v2.10.0 BM-04
   const branches=[...bmSelected].filter(b=>myBmBranches().includes(b));
+  const zt=document.getElementById('bmZoneTag');
+  if(zt) zt.textContent=bmZoneLabel(branches);
   // KPI cards
   const kpiRow=document.getElementById('bmKpiRow');
   if(kpiRow){
     kpiRow.innerHTML=branches.map(b=>{
       const d=getBranchMerged(b);
-      if(!d.length) return `<div class="mom-card" style="border-color:${sc(BM_COLORS[b])}"><div class="mom-month" style="color:${sc(BM_COLORS[b])}">${BM_NAMES[b]}</div><div style="font-size:11px;color:var(--ink3)">ยังไม่มีข้อมูล</div></div>`;
+      if(!d.length) return `<div class="mom-card" style="border-color:${sc(BM_COLORS[b])}"><div class="mom-month" style="color:${sc(BM_COLORS[b])}">${BM_NAMES[b]}</div><div style="font-size:11px;color:var(--ink3)">${bmAllRows(b).length?'ไม่มีข้อมูลในช่วงที่เลือก':'ยังไม่มีข้อมูล'}</div></div>`;
       const days=d.length||1;
       const totalLock=d.reduce((s,r)=>s+getLock(r,'all'),0);
       const avgLock=(totalLock/days).toFixed(1);
@@ -110,6 +146,52 @@ function renderBenchmark(){
     }).join('');
   }
 
+  // ── BM-07: แท่งเทียบช่วงก่อนหน้า — สีตามสาขา · จาง = ช่วงก่อน · เข้ม = ช่วงนี้ ──
+  const pr=bmPrevRange();
+  const cur=branches.map(b=>bmAvgPerDay(getBranchMerged(b)));
+  const prev=pr?branches.map(b=>bmAvgPerDay(bmAllRows(b).filter(r=>r.date>=pr.from&&r.date<=pr.to))):null;
+  const fade=c=>c.replace(/,\s*[\d.]+\)$/,',.28)');
+  const r1=v=>v==null?null:+v.toFixed(1);
+  const chg=i=>prev&&prev[i]&&cur[i]!=null?(cur[i]-prev[i])/prev[i]*100:null;
+  const sets=[];
+  if(prev) sets.push({label:'ช่วงก่อนหน้า',data:prev.map(r1),backgroundColor:branches.map(b=>fade(BM_COLORS[b])),
+    borderColor:branches.map(b=>BM_COLORS[b]),borderWidth:1,borderRadius:4,borderSkipped:'bottom',maxBarThickness:56});
+  sets.push({label:'ช่วงนี้',data:cur.map(r1),backgroundColor:branches.map(b=>BM_COLORS[b]),borderRadius:4,borderSkipped:'bottom',maxBarThickness:56});
+  // ป้ายบนแท่ง: ค่า + ▲▼% (สัญลักษณ์บอกทิศ ไม่พึ่งสีอย่างเดียว · ตัวหนังสือใช้สีหมึก ไม่ใช่สีสาขา)
+  const cmpLbl={id:'bmCmpLbl',afterDatasetsDraw(ch){
+    const{ctx}=ch;ctx.save();ctx.textAlign='center';ctx.textBaseline='bottom';
+    ch.data.datasets.forEach((ds,di)=>{
+      const isCur=di===ch.data.datasets.length-1;
+      ch.getDatasetMeta(di).data.forEach((bar,i)=>{
+        const v=ds.data[i]; if(v==null) return;
+        ctx.font=isCur?'600 11px JetBrains Mono':'400 10px JetBrains Mono';
+        ctx.fillStyle=isCur?chartClr().lbl:chartClr().tick;
+        ctx.fillText(fmtN(v,1),bar.x,bar.y-(isCur&&chg(i)!=null?16:3));
+        const p=isCur?chg(i):null;
+        if(p!=null){ctx.font='700 11px Noto Sans Thai';ctx.fillStyle=chartClr().lbl;
+          ctx.fillText(`${p>=0?'▲':'▼'} ${Math.abs(p).toFixed(1)}%`,bar.x,bar.y-3);}
+      });
+    });
+    ctx.restore();}};
+  dChart('cBmCmp');
+  const cmpOpts=cOpts();
+  charts.cBmCmp=makeChart('cBmCmp',{
+    type:'bar',
+    data:{labels:branches.map(b=>BM_NAMES[b]),datasets:sets},
+    options:{...cmpOpts,layout:{padding:{top:34}},
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:t=>{
+          const p=t.datasetIndex===sets.length-1?chg(t.dataIndex):null;
+          return ` ${t.dataset.label}: ${t.raw==null?'ไม่มีข้อมูล':fmtN(t.raw,1)+' ล็อก/วัน'}${p!=null?` (${p>=0?'+':''}${p.toFixed(1)}%)`:''}`;}}}},
+      scales:{x:{...cmpOpts.scales.x,grid:{display:false},ticks:{...cmpOpts.scales.x.ticks,color:chartClr().lbl,font:{family:'Noto Sans Thai',size:11}}},
+        y:{...cmpOpts.scales.y,beginAtZero:true}}},
+    plugins:[cmpLbl]
+  });
+  const note=document.getElementById('bmCmpNote');
+  if(note) note.innerHTML=pr
+    ? `ช่วงก่อนหน้า = ${fmtD(pr.from)} – ${fmtD(pr.to)} (แท่งจาง / จุดกลวง) · ช่วงที่เลือก = แท่งเข้ม / จุดทึบ · ▲▼ = เปลี่ยนจากช่วงก่อนหน้า · ใช้ <strong>เฉลี่ย/วัน</strong> · เปลี่ยนแบบกราฟได้ที่ไอคอนมุมขวา`
+    : 'เลือก "ทั้งหมด" อยู่ — ไม่มีช่วงก่อนหน้าให้เทียบ · เลือก 7 วัน / 30 วัน / 3 เดือน / เดือน เพื่อดูการเปลี่ยนแปลง';
+
   // ── ป้ายเตือนอัตโนมัติ: สาขาที่ตกต่อเนื่อง ──
   const alertBox=document.getElementById('bmAlert');
   if(alertBox){
@@ -125,7 +207,7 @@ function renderBenchmark(){
       const peakTxt=t.fromPeak<0?` · ต่ำกว่าจุดพีค ${Math.abs(t.fromPeak)}%`:' · อยู่ที่จุดพีค';
       return `<div style="background:${bg};border:1px solid ${col};border-radius:7px;padding:8px 12px;font-size:12px;color:var(--ink);display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span>${ic}</span><span>${nm} — ${txt}</span>
-        <span style="color:var(--ink3);font-size:11px">(${t.lastLbl} เฉลี่ย ${fmtN(t.last,1)} ล็อก/วัน${peakTxt})</span>
+        <span style="color:var(--ink3);font-size:11px">(${t.lastLbl} เฉลี่ย ${fmtN(t.last,1)} ล็อก/วัน${peakTxt} · ดูทั้งประวัติ ไม่ตามช่วงเวลา)</span>
       </div>`;
     }).join('');
   }
@@ -140,7 +222,7 @@ function renderBenchmark(){
     data:{
       labels:mkLabels,
       datasets:branches.map(b=>{
-        const m=bmMonthlyAvg(b);
+        const m=bmMonthlyAvg(getBranchMerged(b));
         return{label:BM_NAMES[b],
           data:allMks.map(k=>m[k]?+m[k].avg.toFixed(1):null),
           borderColor:BM_COLORS[b],backgroundColor:'transparent',borderWidth:2.5,
@@ -170,13 +252,11 @@ function renderBenchmark(){
     options:cOpts()
   });
 
-  // กราฟรายวัน 60 วันล่าสุด
-  const today=new Date();
-  const cut=new Date(today);cut.setDate(cut.getDate()-60);
+  // กราฟรายวัน — ตามช่วงเวลาที่เลือก (BM-06 · เดิมตายตัว 60 วันล่าสุด)
   // รวม unique dates จากทุกสาขา sort ตาม Date object จริง
   const dayMapRaw={};
   branches.forEach(b=>{
-    getBranchMerged(b).filter(r=>r.date>=cut).forEach(r=>{
+    getBranchMerged(b).forEach(r=>{
       const k=r.date.getTime(); // ใช้ timestamp เป็น key
       if(!dayMapRaw[k])dayMapRaw[k]={date:r.date,label:fmtD(r.date)};
       dayMapRaw[k][b]=getLock(r,'all');

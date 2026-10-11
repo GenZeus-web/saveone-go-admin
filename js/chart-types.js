@@ -12,6 +12,7 @@
    need(cfg,ctx) คืนเหตุผลที่ยังใช้แบบนั้นไม่ได้ ('' = ใช้ได้) · h = ความสูงกล่องกราฟตอนใช้แบบนั้น */
 const CT_NEED_2BR=cfg=>(cfg.data?.datasets?.length||0)<2?'เลือกอย่างน้อย 2 สาขาด้านบนก่อน':'';
 const CT_NEED_ALL=()=>group!=='all'?'เลือกกลุ่มข้อมูล "ทั้งหมด" ก่อน — เป้าตั้งไว้กับยอดรวม':'';
+const CT_NEED_PREV=cfg=>(cfg.data?.datasets?.length||0)<2?'เลือกช่วงเวลาอื่นที่ไม่ใช่ "ทั้งหมด" ก่อน — ต้องมีช่วงก่อนหน้าให้เทียบ':'';
 const CT_ROWS_H=(per,min)=>cfg=>Math.max(min,(cfg.data?.labels?.length||0)*per+70);
 const CT_SPEC={
   cMain:      {icon:'combo',   opts:[['orig','แท่ง+เส้น','ขึ้นลงตามวัน'],['scatter','จุดกระจาย','ราย × ล็อก · หาวันแปลก']]},
@@ -22,9 +23,12 @@ const CT_SPEC={
                need:{bullet:CT_NEED_ALL}, h:{dot:CT_ROWS_H(40,240),bullet:CT_ROWS_H(44,260)}},
   cCompare:   {icon:'line',    opts:[['orig','รายวัน','ล็อกแต่ละวัน'],['cum','สะสม','เดือนนี้วิ่งเร็วกว่าเดือนก่อนไหม']]},
   cAvg:       {icon:'bar',     opts:[['orig','แท่ง','เฉลี่ย/วัน'],['bullet','Bullet','เทียบเป้า/วัน']], h:{bullet:CT_ROWS_H(30,240)}},
-  cBmAvg:     {icon:'line',    opts:[['orig','เส้น','แนวโน้ม'],['dot','จุดเทียบสาขา','ห่างกันแค่ไหน']], need:{dot:CT_NEED_2BR}, h:{dot:CT_ROWS_H(24,220)}},
-  cBmMonth:   {icon:'line',    opts:[['orig','เส้น','แนวโน้ม'],['dot','จุดเทียบสาขา','ห่างกันแค่ไหน']], need:{dot:CT_NEED_2BR}, h:{dot:CT_ROWS_H(24,220)}},
+  cBmAvg:     {icon:'line',    opts:[['orig','เส้น','แนวโน้ม'],['bar','แท่งคู่','เทียบสาขาทีละเดือน'],['dot','จุดเทียบสาขา','ห่างกันแค่ไหน']], need:{dot:CT_NEED_2BR}, h:{dot:CT_ROWS_H(24,220)}},
+  cBmMonth:   {icon:'line',    opts:[['orig','เส้น','แนวโน้ม'],['bar','แท่งคู่','เทียบสาขาทีละเดือน'],['dot','จุดเทียบสาขา','ห่างกันแค่ไหน']], need:{dot:CT_NEED_2BR}, h:{dot:CT_ROWS_H(24,220)}},
   cBmDaily:   {icon:'line',    opts:[['orig','ล็อก','จำนวนจริง'],['index','ดัชนี','เฉลี่ยสาขา = 100 · ขึ้นลงพร้อมกันไหม']], need:{index:CT_NEED_2BR}},
+  // BM-07: ช่วงนี้ vs ช่วงก่อนหน้า — dataset[0] = ช่วงก่อน (ไม่มีเมื่อเลือก "ทั้งหมด") · dataset ท้าย = ช่วงนี้
+  cBmCmp:     {icon:'bar',     opts:[['orig','แท่งคู่','ค่าจริง ก่อน–หลัง'],['pct','% เปลี่ยน','ใครโต ใครหด'],['dumbbell','ดัมเบล','ขยับจากไหนไปไหน']],
+               need:{pct:CT_NEED_PREV,dumbbell:CT_NEED_PREV}, h:{pct:CT_ROWS_H(46,200),dumbbell:CT_ROWS_H(50,200)}},
 };
 const CT_ICONS={
   combo:'<rect x="2" y="9" width="2.6" height="5" rx=".8"/><rect x="6.7" y="7" width="2.6" height="7" rx=".8"/><rect x="11.4" y="10" width="2.6" height="4" rx=".8"/><path d="M2.5 6 8 3 13.5 5" fill="none" stroke-width="1.6" stroke-linecap="round"/>',
@@ -40,6 +44,8 @@ const CT_ICONS={
   waterfall:'<rect x="1.5" y="3" width="2.8" height="11" rx=".6"/><rect x="5" y="3" width="2.8" height="3" rx=".6" opacity=".5"/><rect x="8.5" y="1.5" width="2.8" height="4.5" rx=".6"/><rect x="12" y="1.5" width="2.8" height="12.5" rx=".6"/>',
   cum:'<path d="M2 14 5 12 8 9 11 6 14 2" fill="none" stroke-width="1.8" stroke-linecap="round"/><path d="M2 14H14" stroke-width="1" opacity=".4"/>',
   index:'<path d="M2 8H14" stroke-width="1" stroke-dasharray="2 1.5" opacity=".6"/><path d="M2 10 5 6 8 9 11 5 14 7" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  pct:'<path d="M8 1.5V14.5" stroke-width="1.2" opacity=".6"/><rect x="8" y="2.5" width="6" height="3" rx="1"/><rect x="3" y="6.5" width="5" height="3" rx="1"/><rect x="8" y="10.5" width="3.5" height="3" rx="1"/>',
+  dumbbell:'<path d="M4 4.5H12M6 11.5H13" stroke-width="1.6" opacity=".55"/><circle cx="3.5" cy="4.5" r="1.9" fill="none" stroke-width="1.3"/><circle cx="12.5" cy="4.5" r="2.1"/><circle cx="5.5" cy="11.5" r="1.9" fill="none" stroke-width="1.3"/><circle cx="13" cy="11.5" r="2.1"/>',
 };
 function ctIcon(id,k){
   const name=k==='orig'?CT_SPEC[id].icon:k;
@@ -215,6 +221,20 @@ function ctDotFromLines(cfg,xTitle){
   return {type:'scatter',data:{datasets:sets},options:{...ctBase(),
     plugins:{legend:ctLegend(),tooltip:{callbacks:{title:t=>labels[t[0].raw.y],label:t=>` ${t.dataset.label} ${fmtN(t.raw.x,1)}`}}},
     scales:{x:ctAxis(xTitle,{type:'linear'}),y:ctRowAxis(labels)}},plugins:[range]};
+}
+
+// BM-07: เส้นหลายสาขา → แท่งคู่ต่อเดือน (สีตามสาขาเดิม) · เดือนไม่ครบ (จุดกลวงในกราฟเส้น) = แท่งจาง
+function ctBarFromLines(cfg){
+  const labels=cfg.data.labels;
+  if(!labels?.length) return null;
+  const sets=cfg.data.datasets.map(d=>{
+    const pbc=Array.isArray(d.pointBackgroundColor)?d.pointBackgroundColor:null;
+    const thin=d.borderColor.replace(/,\s*[\d.]+\)$/,',.3)');
+    return {type:'bar',label:d.label,data:d.data,borderRadius:3,borderSkipped:'bottom',maxBarThickness:28,
+      backgroundColor:pbc?d.data.map((_,i)=>pbc[i]==='transparent'?thin:d.borderColor):d.borderColor};
+  });
+  return {type:'bar',data:{labels,datasets:sets},options:{...cfg.options,
+    plugins:{...cfg.options?.plugins,legend:ctLegend(),tooltip:{callbacks:{label:t=>` ${t.dataset.label}: ${t.raw==null?'—':Number.isInteger(t.raw)?fmtN(t.raw):fmtN(t.raw,1)}`}}}}};
 }
 
 /* ── ตัวแปลงแต่ละกราฟ: (config เดิม, ข้อมูลเพิ่มจาก view) → config ใหม่ · คืน null = ใช้แบบเดิม ── */
@@ -396,8 +416,8 @@ const CT_ALT={
     return ctBullet({labels:cfg.data.labels,vals,colors:'rgba(61,214,140,.75)',tgts:vals.map(()=>targetLock),unit:'วัน'});
   }},
 
-  cBmAvg:{dot:cfg=>ctDotFromLines(cfg,'ล็อกเฉลี่ย / วัน')},
-  cBmMonth:{dot:cfg=>ctDotFromLines(cfg,'ล็อกรวม / เดือน')},
+  cBmAvg:{dot:cfg=>ctDotFromLines(cfg,'ล็อกเฉลี่ย / วัน'),bar:ctBarFromLines},
+  cBmMonth:{dot:cfg=>ctDotFromLines(cfg,'ล็อกรวม / เดือน'),bar:ctBarFromLines},
 
   // ดัชนี — แต่ละสาขาหารด้วยค่าเฉลี่ยของตัวเองในช่วงนี้ × 100 · สาขาเล็กกับใหญ่จึงเทียบ "จังหวะ" ขึ้นลงกันได้
   cBmDaily:{index(cfg){
@@ -415,6 +435,63 @@ const CT_ALT={
         scales:{...o.scales,y:{...o.scales?.y,title:{display:true,text:'ดัชนี (เฉลี่ยของสาขา = 100)',color:chartClr().lbl,font:{size:10}}}}},
       plugins:[...(cfg.plugins||[]),ref]};
   }},
+
+  // BM-07 ช่วงนี้ vs ช่วงก่อนหน้า · ไม่ใส่ type ระดับบนในแบบแนวนอน (เหตุผลเดียวกับ cPie hbar)
+  cBmCmp:{
+    // แท่งเบี่ยงจาก 0 — ขวา = โต · ซ้าย = หด · ป้าย ▲▼ บอกทิศด้วยสัญลักษณ์ ไม่พึ่งสีอย่างเดียว
+    pct(cfg){
+      const [p,c]=cfg.data.datasets; if(!c) return null;
+      const labels=cfg.data.labels;
+      const v=labels.map((_,i)=>p.data[i]&&c.data[i]!=null?+((c.data[i]-p.data[i])/p.data[i]*100).toFixed(1):null);
+      const lim=Math.ceil(Math.max(5,...v.filter(x=>x!=null).map(Math.abs))*1.45/10)*10; // ปัดเป็นหลักสิบ แกนอ่านง่าย
+      const lbl={id:'ctPctLbl',afterDatasetsDraw(ch){
+        const{ctx}=ch,x0=ch.scales.x.getPixelForValue(0);ctx.save();ctx.textBaseline='middle';
+        ch.getDatasetMeta(0).data.forEach((b,i)=>{
+          if(!isFinite(b.y)) return;
+          if(v[i]==null){ctx.font='400 10px Noto Sans Thai';ctx.fillStyle=chartClr().tick;ctx.textAlign='left';ctx.fillText('ไม่มีข้อมูลให้เทียบ',x0+6,b.y);return;}
+          const up=v[i]>=0;ctx.font='600 11px JetBrains Mono';ctx.fillStyle=chartClr().lbl;ctx.textAlign=up?'left':'right';
+          ctx.fillText(`${up?'▲ +':'▼ '}${v[i]}%`,b.x+(up?6:-6),b.y);
+        });ctx.restore();}};
+      return {data:{labels,datasets:[{type:'bar',label:'% เปลี่ยน',data:v,backgroundColor:c.backgroundColor,borderRadius:4,borderSkipped:false,barPercentage:.6}]},
+        options:{...ctBase(),indexAxis:'y',
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:t=>` ${t.raw>=0?'+':''}${t.raw}% (${fmtN(p.data[t.dataIndex],1)} → ${fmtN(c.data[t.dataIndex],1)} ล็อก/วัน)`}}},
+          scales:{x:{...ctAxis('% เปลี่ยนจากช่วงก่อนหน้า'),min:-lim,max:lim,
+              grid:{color:t=>t.tick.value===0?chartClr().lbl:chartClr().grid},
+              ticks:{color:chartClr().tick,font:{family:'JetBrains Mono',size:10},callback:x=>Math.round(x)+'%'}},
+            y:{grid:{display:false},ticks:{color:chartClr().lbl,font:{family:'Noto Sans Thai',size:11}}}}},
+        plugins:[lbl]};
+    },
+    // ดัมเบล — แถว = สาขา · จุดกลวง = ช่วงก่อน · จุดทึบ = ช่วงนี้ · เส้นเชื่อม = ระยะที่ขยับ
+    dumbbell(cfg){
+      const [p,c]=cfg.data.datasets; if(!c) return null;
+      const labels=cfg.data.labels,col=c.backgroundColor;
+      const pts=(d,i)=>d.data[i]==null?null:{x:d.data[i],y:i};
+      const idx=labels.map((_,i)=>i);
+      const kp=idx.filter(i=>p.data[i]!=null),kc=idx.filter(i=>c.data[i]!=null);
+      const sets=[
+        {label:'ช่วงก่อนหน้า',data:kp.map(i=>pts(p,i)),borderColor:kp.map(i=>col[i]),backgroundColor:ctSurf(),borderWidth:2.5,pointRadius:7,pointHoverRadius:9},
+        {label:'ช่วงนี้',data:kc.map(i=>pts(c,i)),borderColor:ctSurf(),backgroundColor:kc.map(i=>col[i]),borderWidth:2,pointRadius:8,pointHoverRadius:10}];
+      const link={id:'ctDumb',
+        beforeDatasetsDraw(ch){const{ctx}=ch,xs=ch.scales.x,ys=ch.scales.y;ctx.save();ctx.lineWidth=4;ctx.lineCap='round';
+          idx.forEach(i=>{if(p.data[i]==null||c.data[i]==null)return;const y=ys.getPixelForValue(i);
+            ctx.strokeStyle=col[i].replace(/,\s*[\d.]+\)$/,',.45)');ctx.beginPath();ctx.moveTo(xs.getPixelForValue(p.data[i]),y);ctx.lineTo(xs.getPixelForValue(c.data[i]),y);ctx.stroke();});
+          ctx.restore();},
+        afterDatasetsDraw(ch){const{ctx}=ch,xs=ch.scales.x,ys=ch.scales.y;ctx.save();ctx.textBaseline='middle';ctx.textAlign='left';
+          idx.forEach(i=>{if(c.data[i]==null)return;const y=ys.getPixelForValue(i),x=xs.getPixelForValue(Math.max(c.data[i],p.data[i]??0))+14;
+            const pc=p.data[i]?(c.data[i]-p.data[i])/p.data[i]*100:null;
+            ctx.font='600 12px JetBrains Mono';ctx.fillStyle=chartClr().lbl;
+            ctx.fillText((p.data[i]==null?'':fmtN(p.data[i],1)+' → ')+fmtN(c.data[i],1)+(pc==null?'':`  ${pc>=0?'▲':'▼'} ${Math.abs(pc).toFixed(1)}%`),x,y);});
+          ctx.restore();}};
+      const xs=[...p.data,...c.data].filter(v=>v!=null);
+      const neutral=ctLight()?'rgba(58,66,96,1)':'rgba(154,163,188,1)';
+      return {type:'scatter',data:{datasets:sets},options:{...ctBase(),layout:{padding:{right:8}},
+        plugins:{legend:{labels:{...ctLegend().labels,boxWidth:10,boxHeight:10,padding:16,generateLabels:()=>[
+            {text:'ช่วงก่อนหน้า (กลวง)',fillStyle:ctSurf(),strokeStyle:neutral,lineWidth:2,pointStyle:'circle',fontColor:chartClr().lbl},
+            {text:'ช่วงนี้ (ทึบ)',fillStyle:neutral,strokeStyle:neutral,lineWidth:2,pointStyle:'circle',fontColor:chartClr().lbl}]}},
+          tooltip:{callbacks:{title:t=>labels[t[0].raw.y],label:t=>` ${t.dataset.label} ${fmtN(t.raw.x,1)} ล็อก/วัน`}}},
+        scales:{x:ctAxis('ล็อกเฉลี่ย / วัน',{type:'linear',beginAtZero:true,suggestedMax:Math.max(...xs)*1.45}),y:ctRowAxis(labels)}},plugins:[link]};
+    },
+  },
 };
 
 // เป้าต่อเดือนของหน้าเปรียบเทียบ — view ส่ง mks/days มาทาง config._ct
