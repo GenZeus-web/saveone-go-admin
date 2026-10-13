@@ -43,7 +43,11 @@ async function utLoad(br){
       bills.forEach(b=>{ if(!meters.some(m=>m.meter_id===b.meter_id))
         meters.push({meter_id:b.meter_id,branch_code:br,type:b.type,location:'',active:'FALSE'}); });
       if(r.billsErr) console.warn('UTIL-03 อ่านบิลไม่ได้:',r.billsErr);
-      UT.cache[br]={at:Date.now(),money,ts:r.ts,readings,meters,bills,billsErr:r.billsErr};
+      // UTIL-09 ตรวจบิล: ทำครั้งเดียวตอนโหลด · chk[meter@เดือน] ให้กราฟ/ตาราง/การ์ดเปิดดูเร็ว
+      const check=utilBillCheck(bills.map(x=>({bill_month:x.bill_month,branch_code:br,type:x.type,meter_id:x.meter_id,
+        units:utNum(x.units),amount:utNum(x.amount_incl_vat)})));
+      const chk={}; check.forEach(x=>{ if(x.high||x.dup||x.round) chk[x.meter_id+'@'+x.bill_month]=x; });
+      UT.cache[br]={at:Date.now(),money,ts:r.ts,readings,meters,bills,billsErr:r.billsErr,check,chk};
     }catch(e){
       UT.cache[br]={at:Date.now(),money,err:e.code==='permission-denied'
         ?'ไม่มีสิทธิ์อ่านข้อมูลน้ำ-ไฟของสาขานี้ (เช็คสาขาที่ดูแล / สิทธิ์ยอดเงินบิล / Firestore Rules)'
@@ -72,6 +76,7 @@ function renderUtil(){
 function utDraw(host,br){
   const c=UT.cache[br];
   UT.chartIds.forEach(dChart); UT.chartIds=[];
+  UT.br=br;   // ต้องตั้งก่อนสร้างการ์ด (utSummary/utBills อ่านธงบิลของสาขานี้)
   const money=canSeeUtilMoney();
   // แท็บย่อย: 📊 เทียบสาขา (บิลรายเดือน · แบบที่ ผอ. ส่งมา · หน้าหลัก) | 📟 มิเตอร์รายวัน (ตรวจรั่ว)
   //   ไม่มีสิทธิ์ยอดเงิน = เทียบสาขาอ่านบิลไม่ได้ → เหลือมิเตอร์รายวันอย่างเดียว ไม่มีแถบแท็บย่อย
@@ -184,10 +189,56 @@ function utRangeHtml(){
     ถึง <select id="utTo" onchange="setUtRange('custom',document.getElementById('utFrom').value,this.value)">${opt(to)}</select></span>
     <span class="ut-sub">เดือน = เดือนที่บิลออก · แท็บนี้ไม่ใช้ช่วงเวลาในเมนูข้าง</span></div>`;
 }
+// ── ผลตรวจบิล (UTIL-09) ──
+function utMeterName(b,id){ const m=(UT.cache[b]?.meters||[]).find(x=>x.meter_id===id); return (m&&m.location)||id; }
+function utFlagText(b,x){
+  const who=`${utEsc(BM_NAMES[b]||b)} · ${UT_TYPE[x.type]?UT_TYPE[x.type].split(' ')[0]+' ':''}${utEsc(utMeterName(b,x.meter_id))}`;
+  const out=[];
+  if(x.high) out.push({k:'high',t:`${who} บิล ${utMonthTh(x.bill_month)}: ${utFmt(x.units)} หน่วย สูงกว่าปกติ +${x.high.pct.toFixed(0)}% (ปกติ ~${utFmt(x.high.base)})`});
+  if(x.dup) out.push({k:'q',t:`${who} บิล ${utMonthTh(x.bill_month)}: หน่วยและเงินซ้ำกับบิล ${utMonthTh(x.dup)} ทุกหลัก — อาจคัดลอกผิด`});
+  if(x.round) out.push({k:'q',t:`${who} บิล ${utMonthTh(x.bill_month)}: ${utFmt(x.units)} หน่วย เป็นเลขกลมหลักพัน — อาจเป็นยอดประมาณ`});
+  return out;
+}
+// ธงสูงผิดปกติใน n บิลล่าสุดของแต่ละมิเตอร์ (ของที่เพิ่งเกิด = ต้องดูตอนนี้)
+function utRecentHigh(b){
+  const c=UT.cache[b]; if(!c||!c.check) return [];
+  const n=UTIL_DEFAULTS.billCheck.recent, by={};
+  c.check.forEach(x=>{ (by[x.meter_id]=by[x.meter_id]||[]).push(x); });
+  return Object.values(by).flatMap(rs=>rs.sort((a,z)=>a.bill_month<z.bill_month?-1:1).slice(-n).filter(x=>x.high));
+}
+function utCheckBox(){
+  const brs=utCmpBranches().filter(b=>UT.cache[b]&&UT.cache[b].check);
+  const hi=brs.flatMap(b=>utRecentHigh(b).map(x=>({b,x}))).sort((a,z)=>a.x.bill_month<z.x.bill_month?1:-1);
+  const n=UTIL_DEFAULTS.billCheck.recent;
+  if(!hi.length) return `<div class="ut-check ok">✅ ตรวจบิล ${n} ใบล่าสุดของทุกมิเตอร์ (${brs.map(b=>BM_NAMES[b]||b).join(' · ')}) — ไม่พบหน่วยสูงผิดปกติ</div>`;
+  return `<div class="ut-check bad"><b>⚠️ ต้องดู: บิล ${n} ใบล่าสุดสูงผิดปกติ ${new Set(hi.map(h=>h.x.meter_id)).size} มิเตอร์</b>
+    <ul>${hi.map(({b,x})=>`<li>${utFlagText(b,x).filter(f=>f.k==='high').map(f=>f.t).join('')}</li>`).join('')}</ul>
+    <div class="ut-sub">เกณฑ์: สูงกว่าค่ากลาง ${UTIL_DEFAULTS.billCheck.lookback} บิลก่อนหน้า เกิน ${Math.round((UTIL_DEFAULTS.billCheck.ratio-1)*100)}% และเกินขั้นต่ำ (น้ำ ${UTIL_DEFAULTS.billCheck.minDiff.water} · ไฟ ${utFmt(UTIL_DEFAULTS.billCheck.minDiff.elec)} หน่วย) · บิลสูงยังไม่ใช่รั่วเสมอไป ต้องตรวจสาเหตุหน้างาน</div></div>`;
+}
+// ธงในส่วน (ไฟ/น้ำ) ตามช่วงที่เลือก — ใต้ KPI
+function utSecFlags(d){
+  const set=new Set(d.months), list=[];
+  d.has.forEach(b=>(UT.cache[b].check||[]).forEach(x=>{ if(x.type===d.type&&set.has(x.bill_month)) utFlagText(b,x).forEach(f=>list.push({...f,mo:x.bill_month})); }));
+  if(!list.length) return '';
+  list.sort((a,z)=>(a.k===z.k?0:a.k==='high'?-1:1)||(a.mo<z.mo?1:-1));
+  const hi=list.filter(f=>f.k==='high'), q=list.filter(f=>f.k==='q');
+  return `<div class="ut-flagbox">${hi.length?`<div class="ut-fh">⚠️ สูงผิดปกติ ${hi.length} บิล</div><ul>${hi.map(f=>`<li>${f.t}</li>`).join('')}</ul>`:''}
+    ${q.length?`<details><summary class="ut-fq">❓ ข้อมูลต้องเช็คกับบัญชี ${q.length} บิล</summary><ul>${q.map(f=>`<li>${f.t}</li>`).join('')}</ul></details>`:''}</div>`;
+}
+// ป้ายบนแท่ง: ⚠ = มีมิเตอร์สูงผิดปกติในเดือนนั้น · ? = ข้อมูลต้องเช็ค (Chart.js plugin ต่อกราฟ ไม่ลงทะเบียนทั้งเว็บ)
+const utFlagPlugin={id:'utFlag',afterDatasetsDraw(ch){
+  const marks=ch.options.plugins.utFlag; if(!marks) return;
+  const ctx=ch.ctx; ctx.save(); ctx.textAlign='center'; ctx.textBaseline='bottom'; ctx.font='bold 12px "Noto Sans Thai",sans-serif';
+  ch.data.datasets.forEach((ds,di)=>{ const meta=ch.getDatasetMeta(di); if(meta.hidden) return;
+    meta.data.forEach((el,i)=>{ const m=marks[di]&&marks[di][i]; if(!m||el.y==null) return;
+      ctx.fillStyle=m==='high'?sc('rgba(224,92,92,1)'):chartClr().tick; ctx.fillText(m==='high'?'⚠':'?',el.x,el.y-3); }); });
+  ctx.restore(); }};
+function utMonthFlags(b,type,mo){ return (UT.cache[b].check||[]).filter(x=>x.type===type&&x.bill_month===mo&&(x.high||x.dup||x.round)); }
+
 function utCompareHtml(){
   const ok=utCmpReadable(), sel=new Set(utCmpBranches());
   const pills=ok.length>1?`<div class="ut-pills">เทียบสาขา: ${ok.map(b=>`<button class="mc-pill${sel.has(b)?' sel':''}" onclick="toggleUtCmp('${b}')">${utEsc(BM_NAMES[b]||b)} (${b})${b==='SS'?' · ปิดแล้ว':''}</button>`).join('')}</div>`:'';
-  return pills+utRangeHtml()+UT_SECS.map(([type,icon,name,money,unit],k)=>{
+  return pills+utRangeHtml()+utCheckBox()+UT_SECS.map(([type,icon,name,money,unit],k)=>{
     const d=utCmpData(type);
     const t=`<div class="ut-sec-t">${k+1}. ${icon} ${name} — หน่วยใช้และ${money}</div>`;
     if(!d) return `<div class="sc ut-sec">${t}<div class="ut-empty">ยังไม่มีบิล${name}ของสาขาที่เลือก</div></div>`;
@@ -209,6 +260,7 @@ function utCompareHtml(){
     const sumT=ov?`${utMonthTh(d.overlap[0])} – ${utMonthTh(d.overlap[ov-1])}`:'ตามข้อมูลของแต่ละสาขา';
     return `<div class="sc ut-sec">${t}<div class="ut-sub" style="margin-bottom:10px">${range}</div>
       <div class="ut-ckpis">${kpi(`หน่วย${name==='ไฟฟ้า'?'ไฟ':'น้ำ'}เฉลี่ยต่อเดือน (${unit})`,'avgU',0)}${kpi(`${money}เฉลี่ยต่อเดือน (บาท)`,'avgA',0)}${kpi(`${money}ต่อหน่วย (บาท)`,'rate',2)}</div>
+      ${utSecFlags(d)}
       <div class="sc ut-csub"><div class="sc-title">หน่วย${name==='ไฟฟ้า'?'ไฟ':'น้ำ'}ที่ใช้รายเดือน (${unit})</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}U"></canvas></div></div>
       <div class="ut-c2">
         <div class="sc ut-csub"><div class="sc-title">${money}รายเดือน (บาท)</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}A"></canvas></div></div>
@@ -225,10 +277,17 @@ function utCompareCharts(){
     const cfg=(key,money)=>{
       const o=cOpts();
       o.plugins.legend={display:true,labels:o.plugins.legend.labels};
-      o.plugins.tooltip={callbacks:{label:it=>`${it.dataset.label}: ${it.raw==null?'—':utFmt(it.raw,money?2:0)}`}};
+      // UTIL-09: ป้าย ⚠/? บนแท่ง + เหตุผลใน tooltip · dataset ลำดับเดียวกับ d.has
+      const flags=d.has.map(b=>d.months.map(mo=>utMonthFlags(b,type,mo)));
+      o.plugins.utFlag=flags.map(r=>r.map(fs=>!fs.length?null:fs.some(x=>x.high)?'high':'q'));
+      o.plugins.tooltip={callbacks:{label:it=>`${it.dataset.label}: ${it.raw==null?'—':utFmt(it.raw,money?2:0)}`,
+        afterLabel:it=>(flags[it.datasetIndex][it.dataIndex]||[]).flatMap(x=>utFlagText(d.has[it.datasetIndex],x))
+          .map(f=>(f.k==='high'?'⚠ ':'? ')+f.t.replace(/^.*?บิล [^:]+: /,'').replace(/<[^>]+>/g,''))}};
       o.scales.y.beginAtZero=true; o.scales.y.ticks.callback=v=>utFmt(v);
+      o.layout={padding:{top:14}};   // เว้นที่ให้ป้ายบนแท่งสูงสุด
       return {type:'bar',data:{labels:lbl,datasets:d.has.map(b=>({type:'bar',label:`${BM_NAMES[b]||b} (${b})`,
-        data:d.months.map(mo=>d.by[b][mo]?+d.by[b][mo][key].toFixed(2):null),backgroundColor:BM_COLORS[b],borderRadius:3,maxBarThickness:28}))},options:o};
+        data:d.months.map(mo=>d.by[b][mo]?+d.by[b][mo][key].toFixed(2):null),backgroundColor:BM_COLORS[b],borderRadius:3,maxBarThickness:28}))},
+        options:o,plugins:[utFlagPlugin]};
     };
     utMake(`cUtilCmp_${type}U`,cfg('units',false));
     utMake(`cUtilCmp_${type}A`,cfg('amt',true));
@@ -243,8 +302,9 @@ CT_ALT.cUtilCmp={line(cfg){
 // ── สรุปส่วนมิเตอร์รายวัน: ต้องดูตอนนี้ = มิเตอร์ที่เปิดอยู่ ธงล่าสุดแดง/สงสัยรั่ว หรือขาดจด ──
 function utSummary(c){
   const act=c.meters.filter(m=>utilTrue(m.active)), read=act.filter(m=>m._res.last);
-  const watch=act.filter(m=>['red','leak'].includes(m._full?.level)||(m._res.stale&&m._res.last));
-  const name=m=>(UT_TYPE[m.type]||'').split(' ')[0]+' '+utEsc(m.location||m.meter_id);
+  const billHi=new Set(canSeeUtilMoney()?utRecentHigh(UT.br||activeBranch).map(x=>x.meter_id):[]);   // UTIL-09
+  const watch=c.meters.filter(m=>(utilTrue(m.active)&&(['red','leak'].includes(m._full?.level)||(m._res.stale&&m._res.last)))||billHi.has(m.meter_id));
+  const name=m=>(UT_TYPE[m.type]||'').split(' ')[0]+' '+utEsc(m.location||m.meter_id)+(billHi.has(m.meter_id)?' (บิลสูง)':'');
   // ยังไม่มีอะไรให้ตัดสิน ≠ ปกติ — สาขาปิด / ยังไม่เริ่มจด บอกตรงๆ ไม่ขึ้น ✅
   const [cls,val,sub]=!act.length?['','ปิดใช้แล้ว','ทุกมิเตอร์ปิดใช้ · ดูข้อมูลย้อนหลังได้']
     :watch.length?['red',watch.length+' มิเตอร์',watch.map(name).join(' · ')]
@@ -429,7 +489,9 @@ function utBills(m,c,res,n){
     const md=res.days.filter(d=>d.date.startsWith(use)), got=md.reduce((s,d)=>s+d.units,0);
     const [y,mm]=use.split('-').map(Number), nDays=new Date(y,mm,0).getDate(), cov=md.reduce((s,d)=>s+d.cover,0);
     const meas=md.length?`${utFmt(got,0)}${cov<nDays-0.5?` <span class="ut-sub">(${Math.round(cov)}/${nDays} วัน)</span>`:''}`:'—';
-    return `<tr><td>${utEsc(b.bill_month)}</td><td class="n">${utFmt(units)}</td><td class="n">${utFmt(amt,2)}</td>
+    const f=c.chk&&c.chk[m.meter_id+'@'+b.bill_month], ft=f?utFlagText(UT.br||activeBranch,f).map(x=>x.t.replace(/<[^>]+>/g,'')).join(' · '):'';
+    const mk=!f?'':f.high?` <span class="ut-mk hi" title="${utEsc(ft)}">⚠</span>`:` <span class="ut-mk q" title="${utEsc(ft)}">?</span>`;
+    return `<tr><td>${utEsc(b.bill_month)}${mk}</td><td class="n">${utFmt(units)}</td><td class="n">${utFmt(amt,2)}</td>
       <td class="n">${units&&amt!=null?utFmt(amt/units,2):'—'}</td><td class="n">${meas}</td></tr>`;
   }).join('');
   return `<div class="ut-bills${n?'':' ut-bills-all'}"><table>

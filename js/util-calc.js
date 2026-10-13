@@ -24,7 +24,9 @@ const UTIL_DEFAULTS={
   },
   baseline:{},       // ฐานตั้งต้นต่อมิเตอร์ {meter_id: หน่วย/วัน} — แก้ทับได้ (กระทบอดีต)
   rates:[],          // [{meter_id, field:'multiplier'|'rate', value, effective_from}] — ห้ามแก้ย้อน (ADR 0001)
-  billMonthOffset:-1 // บิลเดือน M = ใช้จริงเดือน M-1 (เทียบใบจดบางนา ก.ย.–ต.ค. 69) — รอบัญชียืนยัน
+  billMonthOffset:-1, // บิลเดือน M = ใช้จริงเดือน M-1 (เทียบใบจดบางนา ก.ย.–ต.ค. 69) — รอบัญชียืนยัน
+  // ตรวจบิลรายเดือน (UTIL-09) — เพิ่มหลังน้ำ BN บิล ก.ค.–ก.ย. 69 พุ่งแต่ตัวตรวจรายวันไม่เห็น (เริ่มจดรายวัน 4 ก.ย.)
+  billCheck:{ratio:1.3,lookback:6,minPrev:3,warmup:6,minDiff:{water:50,elec:3000},recent:3}
 };
 
 function utilHm(s){ const [h,m]=String(s).split(':').map(Number); return ((h||0)*60+(m||0))*60e3; }
@@ -157,6 +159,43 @@ function utilAnalyze(readings,meter,settings,now){
 function utilCost(units,meterId,iso,settings){
   const r=utilValueAt((settings||{}).rates,meterId,'rate',iso,null);
   return r==null?null:units*r;
+}
+
+// ── ตรวจบิลรายเดือน (UTIL-09) ──
+// ชั้น 1 สูงผิดปกติ: หน่วย > ค่ากลาง lookback บิลก่อนหน้าของมิเตอร์เดียวกัน × ratio และเกินฐานอย่างน้อย minDiff
+//   ฐานเป็นค่ากลาง ไม่ใช่ค่าเฉลี่ย (เดือนพุ่งเดือนเดียวไม่ดึงฐานขึ้น) · ต้องมีบิลก่อนหน้า ≥ minPrev
+//   ไม่ตรวจ warmup เดือนแรกนับจากบิลใบแรกของ "สาขา" (ช่วงเปิดสาขายอดไต่ขึ้นเป็นปกติ)
+//     ไม่นับจากมิเตอร์ — BN เปิด ม.ค. 69 แต่บิลน้ำเริ่ม มี.ค. ถ้านับจากมิเตอร์จะพลาดเคส ก.ค.–ก.ย. ที่ต้องจับ
+// ชั้น 2 ข้อมูลต้องเช็ค: หน่วย+เงินซ้ำกับบิลใดบิลหนึ่งใน lookback บิลก่อน (คัดลอกผิด) · หน่วยเลขกลมหลักพัน (ยอดประมาณ)
+// bills = [{bill_month, branch_code, type, meter_id, units, amount}] (ตัวเลขแล้ว · ไม่มีแถว void)
+// คืน [{bill_month, meter_id, branch_code, type, units, amount, high:{base,pct}|null, dup:'YYYY-MM'|null, round:bool}]
+function utilBillCheck(bills,settings){
+  const C={...UTIL_DEFAULTS.billCheck,...((settings||{}).billCheck||{})};
+  C.minDiff={...UTIL_DEFAULTS.billCheck.minDiff,...(((settings||{}).billCheck||{}).minDiff||{})};
+  const first={}, byMeter={};
+  for(const b of bills||[]){
+    if(!first[b.branch_code]||b.bill_month<first[b.branch_code]) first[b.branch_code]=b.bill_month;
+    (byMeter[b.meter_id]=byMeter[b.meter_id]||[]).push(b);
+  }
+  const mIdx=ym=>{ const [y,m]=ym.split('-').map(Number); return y*12+m-1; };
+  const out=[];
+  for(const rows of Object.values(byMeter)){
+    rows.sort((a,b)=>a.bill_month<b.bill_month?-1:1);
+    rows.forEach((b,i)=>{
+      const prev=rows.slice(Math.max(0,i-C.lookback),i), u=Number(b.units)||0;
+      const r={bill_month:b.bill_month,meter_id:b.meter_id,branch_code:b.branch_code,type:b.type,units:u,amount:b.amount,high:null,dup:null,round:false};
+      const pu=prev.map(p=>Number(p.units)||0).filter(x=>x>0);
+      if(u>0&&pu.length>=C.minPrev&&mIdx(b.bill_month)-mIdx(first[b.branch_code])>=C.warmup){
+        const base=utilMedian(pu), min=C.minDiff[b.type]??0;
+        if(u>base*C.ratio&&u-base>=min) r.high={base,pct:(u/base-1)*100};
+      }
+      const d=[...prev].reverse().find(p=>u>0&&Number(p.units)===u&&Number(p.amount)===Number(b.amount));
+      if(d) r.dup=d.bill_month;
+      r.round=u>=1000&&u%1000===0;
+      out.push(r);
+    });
+  }
+  return out;
 }
 
 // เดือนในบิล → เดือนที่ใช้จริง ('2026-10', -1 → '2026-09')

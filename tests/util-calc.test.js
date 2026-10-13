@@ -6,7 +6,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('fs'),path=require('path'),vm=require('vm');
 vm.runInThisContext(fs.readFileSync(path.join(__dirname,'..','js','util-calc.js'),'utf8')+
-  '\n;Object.assign(globalThis,{utilAnalyze,utilValueAt,utilCost,utilBillUsageMonth,utilMedian,utilBands,UTIL_DEFAULTS});');
+  '\n;Object.assign(globalThis,{utilAnalyze,utilValueAt,utilCost,utilBillUsageMonth,utilMedian,utilBands,utilBillCheck,UTIL_DEFAULTS});');
 
 const OFFICE={meter_id:'BN-W-OFFICE',type:'water',branch_code:'BN'};
 const TOILET={meter_id:'BN-W-TOILET',type:'water',branch_code:'BN'};
@@ -213,4 +213,43 @@ test('เส้นเกณฑ์บนกราฟตรงกับธงท�
     n++;
   }
   assert.ok(n>40);
+});
+
+// ── ตรวจบิลรายเดือน (UTIL-09) · หน่วยจากบิลจริง · ยอดเงินสมมติ (repo สาธารณะ ห้ามใส่ยอดจริง) ──
+const bill=(br,type,meter_id,pairs)=>pairs.map(([bill_month,units])=>({bill_month,branch_code:br,type,meter_id,units,amount:units*16}));
+const BN_BILLS=[
+  ...bill('BN','elec','BN-E-MAIN',[['2026-01',3000]]),   // สาขาเปิด ม.ค. 69 (บิลน้ำเริ่ม มี.ค.)
+  ...bill('BN','water','BN-W-OFFICE',[['2026-03',68],['2026-04',82],['2026-05',131],['2026-06',116],['2026-07',153],['2026-08',219],['2026-09',245],['2026-10',142]]),
+  ...bill('BN','water','BN-W-TOILET',[['2026-03',960],['2026-04',844],['2026-05',646],['2026-06',727],['2026-07',887],['2026-08',1156],['2026-09',1282],['2026-10',1035]])];
+const highs=r=>r.filter(x=>x.high).map(x=>x.meter_id+'@'+x.bill_month);
+
+test('ตรวจบิล: จับน้ำบางนาพุ่ง บิล ก.ค.–ก.ย. 69 ที่ตัวตรวจรายวันไม่เห็น',()=>{
+  assert.deepEqual(highs(utilBillCheck(BN_BILLS)).sort(),
+    ['BN-W-OFFICE@2026-07','BN-W-OFFICE@2026-08','BN-W-OFFICE@2026-09','BN-W-TOILET@2026-08','BN-W-TOILET@2026-09']);
+  const r=utilBillCheck(BN_BILLS).find(x=>x.meter_id==='BN-W-OFFICE'&&x.bill_month==='2026-09');
+  assert.equal(r.high.base,123.5); near(r.high.pct,245/123.5*100-100);    // ค่ากลาง 6 บิลก่อน (116+131)/2
+});
+
+test('ตรวจบิล: ช่วงเปิดสาขา 6 เดือนแรกไม่ตรวจ (นับจากบิลใบแรกของสาขา ไม่ใช่ของมิเตอร์)',()=>{
+  const bg=bill('BG','elec','BG-E-1',[['2023-10',651],['2023-11',14931],['2023-12',18693],['2024-01',21397],['2024-02',22123],['2024-03',32448],['2024-04',31039]]);
+  assert.deepEqual(highs(utilBillCheck(bg)),['BG-E-1@2024-04']);          // ม.ค.–มี.ค. 67 ไต่ขึ้นช่วงเปิด ไม่ขึ้นธง
+  // ถ้านับจากมิเตอร์ BN น้ำ (เริ่ม มี.ค.) จะไม่ตรวจถึง ก.ย. — นับจากสาขา (ม.ค.) ต้องตรวจตั้งแต่ ก.ค.
+  assert.ok(highs(utilBillCheck(BN_BILLS)).includes('BN-W-OFFICE@2026-07'));
+});
+
+test('ตรวจบิล: เพิ่มน้อยกว่าขั้นต่ำไม่ขึ้นธง แม้เกิน 30%',()=>{
+  const r=utilBillCheck(bill('SS','water','W',[['2026-01',20],['2026-02',22],['2026-03',21],['2026-04',40]]),{billCheck:{warmup:0}});
+  assert.deepEqual(highs(r),[]);                                          // +19 หน่วย < 50
+});
+
+test('ตรวจบิล: ข้อมูลต้องเช็ค — ซ้ำบิลก่อนทุกหลัก (ย้อนได้ 6 ใบ) · เลขกลมหลักพัน',()=>{
+  const rows=[...bill('BG','water','BG-W-MAIN',[['2026-06',645],['2026-07',607],['2026-08',646],['2026-09',607]]),
+              ...bill('BN','elec','BN-E-MAIN',[['2026-08',40000],['2026-09',33000],['2026-10',33417]])];
+  const r=utilBillCheck(rows), at=(m,mo)=>r.find(x=>x.meter_id===m&&x.bill_month===mo);
+  assert.equal(at('BG-W-MAIN','2026-09').dup,'2026-07');                  // ไม่ใช่เดือนติดกันก็จับได้
+  assert.equal(at('BG-W-MAIN','2026-08').dup,null);
+  assert.equal(at('BN-E-MAIN','2026-09').round,true);
+  assert.equal(at('BN-E-MAIN','2026-10').round,false);
+  const diffAmt=[...bill('X','water','X',[['2026-01',100]]),{bill_month:'2026-02',branch_code:'X',type:'water',meter_id:'X',units:100,amount:1}];
+  assert.equal(utilBillCheck(diffAmt)[1].dup,null);                       // หน่วยเท่าแต่เงินต่าง = ไม่ใช่คัดลอก
 });

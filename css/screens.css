@@ -186,3 +186,13 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 }
 .ut-range{display:inline-flex;align-items:center;gap:6px;}
 .ut-range select{background:var(--surface2);color:var(--ink);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font:inherit;font-size:12px;}
+/* UTIL-09 ผลตรวจบิล */
+.ut-check{border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;line-height:1.7;border:1px solid var(--border);}
+.ut-check.ok{background:var(--surface);color:var(--ink2);}
+.ut-check.bad{background:var(--surface);border-color:var(--red);border-left-width:4px;color:var(--ink);}
+.ut-check ul,.ut-flagbox ul{margin:4px 0 6px;padding-left:18px;}
+.ut-flagbox{font-size:12px;line-height:1.7;margin:-2px 0 12px;color:var(--ink2);}
+.ut-fh{color:var(--red);font-weight:700;}
+.ut-fq{color:var(--ink3);cursor:pointer;font-weight:600;}
+.ut-mk{font-weight:700;cursor:help;}
+.ut-mk.hi{color:var(--red);} .ut-mk.q{color:var(--ink3);}
