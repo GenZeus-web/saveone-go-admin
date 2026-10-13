@@ -64,10 +64,10 @@ CSS: `night.css` ต้องหลัง `screens.css` · `responsive.css` ต�
 
 1. **แก้ + ทดสอบ** — `node --check` + ทดสอบจริงบนเบราว์เซอร์ถ้าแตะ UI
 2. **bump version 3 จุด** — ป้ายหัว `index.html` (ข้างชื่อ "เซฟวันโก") + หัวข้อใหม่ใน `CHANGELOG.md`
-   + `?v=` ท้าย `<script>`/`<link>` ทุกตัวใน `index.html` (28 จุด · `sed -i 's/?v=3\.0\.3"/?v=X.Y.Z"/g' index.html` — เปลี่ยน 3.0.3 เป็นเลขปัจจุบัน · นับซ้ำหลังแทน)
+   + `?v=` ท้าย `<script>`/`<link>` ทุกตัวใน `index.html` (31 จุด · `sed -i 's/?v=3\.2\.0"/?v=X.Y.Z"/g' index.html` — เปลี่ยน 3.2.0 เป็นเลขปัจจุบัน · นับซ้ำหลังแทน)
    ⚠️ ห้ามลืม — GitHub Pages ให้แคช 10 นาทีต่อไฟล์ ถ้าไม่เปลี่ยน `?v=` เบราว์เซอร์ได้ไฟล์เก่าปนใหม่
    แล้วพังแบบ `canSeeRev is not defined` (เจอจริง v3.0.1) · import ภายใน `js/firebase/` ไม่มี `?v=` — แก้ไฟล์ในนั้นให้เข้ากับตัวเก่าได้
-   **ตัวเช็คกั้นให้แล้ว (CACHE-03):** `node tools/check-version.js` — ?v= ทุกจุด (29) / ป้ายหัวเว็บ / CHANGELOG ต้องตรงกัน
+   **ตัวเช็คกั้นให้แล้ว (CACHE-03):** `node tools/check-version.js` — ?v= ทุกจุด (31 · เพิ่ม/ลบไฟล์ต้องแก้เลขใน tests/version.test.js) / ป้ายหัวเว็บ / CHANGELOG ต้องตรงกัน
    และถ้าแก้ js/css/assets เทียบ `origin/main` แต่เลขยังเท่าเว็บจริง = ไม่ผ่าน · รันเองทุก commit ผ่าน `.githooks/pre-commit`
    clone ใหม่ต้องเปิดครั้งเดียว: `git config core.hooksPath .githooks` · ห้ามข้ามด้วย `--no-verify`
    ทดสอบในเครื่องแล้วไฟล์ไม่อัปเดต = แคชเหมือนกัน → bump `?v=` ก่อนทดสอบ (หรือเปิด DevTools → Disable cache)
