@@ -137,17 +137,32 @@ function utCmpData(type){
     o.units+=utNum(x.units)||0; o.amt+=utNum(x.amount_incl_vat)||0; }); });
   const has=brs.filter(b=>Object.keys(by[b]).length);
   if(!has.length) return null;
-  const L=has.map(b=>Object.keys(by[b]).sort().pop()).sort().pop();
-  const months=[...Array(12)].map((_,k)=>utAddMonth(L,k-11));
-  const overlap=months.filter(mo=>has.every(b=>by[b][mo]));
-  const stat=has.map(b=>{
+  // เดือนบิลทั้งหมดที่มี (เติมเดือนที่ขาดให้แกนต่อเนื่อง) → ตัดตามช่วงเวลาในเมนูข้าง
+  const ks=has.flatMap(b=>Object.keys(by[b])).sort(), all=[];
+  for(let mo=ks[0];mo<=ks[ks.length-1];mo=utAddMonth(mo,1)) all.push(mo);
+  const months=utPeriodMonths(all), L=ks[ks.length-1];
+  // เทียบเฉพาะสาขาที่มีบิลในช่วงนี้ (สาขาที่ยังไม่เปิด/ปิดไปแล้ว ไม่ทำให้ "ช่วงที่ทับกัน" หายหมด)
+  const hasW=has.filter(b=>months.some(mo=>by[b][mo]));
+  if(!hasW.length) return {type,has:hasW,by,months:[],overlap:[],stat:[],last:L};
+  const overlap=months.filter(mo=>hasW.every(b=>by[b][mo]));
+  const stat=hasW.map(b=>{
     const ms=overlap.length?overlap:months.filter(mo=>by[b][mo]);
     const u=ms.reduce((s,mo)=>s+by[b][mo].units,0), a=ms.reduce((s,mo)=>s+by[b][mo].amt,0);
     const inWin=months.filter(mo=>by[b][mo]);
     return {b,n:ms.length,units:u,amt:a,avgU:ms.length?u/ms.length:null,avgA:ms.length?a/ms.length:null,rate:u?a/u:null,
             from:inWin[0],to:inWin[inWin.length-1]};
   });
-  return {type,has,by,months,overlap,stat};
+  return {type,has:hasW,by,months,overlap,stat,last:L};
+}
+// เดือนบิลที่อยู่ในช่วงเวลาของเมนูข้าง (ตัวแปรเดียวกับ applyPeriod ใน filters.js)
+//   เดือนไหนมีวันใดวันหนึ่งอยู่ในช่วง = นับ · เลือกเดือน = เฉพาะเดือนนั้น · ทั้งหมด = ทุกเดือน
+function utPeriodMonths(all){
+  if(selMonth) return all.filter(mo=>mo===selMonth);
+  let from=null,to=null;
+  if(customFrom&&customTo){ from=customFrom; to=customTo; }
+  else if(period>0){ to=new Date(); from=new Date(); from.setDate(from.getDate()-period); }
+  if(!from) return all;
+  return all.filter(mo=>{ const [y,m]=mo.split('-').map(Number); return new Date(y,m-1,1)<=to&&new Date(y,m,0,23,59,59)>=from; });
 }
 function utCompareHtml(){
   const ok=utCmpReadable(), sel=new Set(utCmpBranches());
@@ -156,9 +171,11 @@ function utCompareHtml(){
     const d=utCmpData(type);
     const t=`<div class="ut-sec-t">${k+1}. ${icon} ${name} — หน่วยใช้และ${money}</div>`;
     if(!d) return `<div class="sc ut-sec">${t}<div class="ut-empty">ยังไม่มีบิล${name}ของสาขาที่เลือก</div></div>`;
+    if(!d.months.length) return `<div class="sc ut-sec">${t}<div class="ut-empty">ไม่มีบิล${name}ในช่วงเวลาที่เลือก · บิลล่าสุด ${utMonthTh(d.last)}<br>
+      <button class="mc-pill" style="margin-top:8px" onclick="setPeriod(0,document.getElementById('p0'))">ดูทั้งหมด</button></div></div>`;
     const nm=b=>utEsc(BM_NAMES[b]||b), dot=b=>`<i class="ut-dot" style="background:${sc(BM_COLORS[b])}"></i>`;
     const ov=d.overlap.length;
-    const range=d.stat.map(s=>`${nm(s.b)}มีข้อมูล ${utMonthTh(s.from)} – ${utMonthTh(s.to)}`).join(' · ')
+    const mm=d.months, range=`บิล ${utMonthTh(mm[0])} – ${utMonthTh(mm[mm.length-1])} (ตามช่วงเวลาในเมนูข้าง) · `+d.stat.map(s=>`${nm(s.b)}มีข้อมูล ${utMonthTh(s.from)} – ${utMonthTh(s.to)}`).join(' · ')
       +(d.has.length>1?(ov?` · ตัวเลขเทียบใช้ช่วงที่ทับกัน ${utMonthTh(d.overlap[0])} – ${utMonthTh(d.overlap[ov-1])} (${ov} เดือน)`:' · ไม่มีเดือนที่ทับกัน (เฉลี่ยแยกตามข้อมูลของแต่ละสาขา)'):'');
     const ref=d.stat[0];
     const vs=key=>d.stat.length<2||ref[key]==null?'':d.stat.slice(1).map(s=>{
@@ -183,7 +200,7 @@ function utCompareHtml(){
 }
 function utCompareCharts(){
   UT_SECS.forEach(([type])=>{
-    const d=utCmpData(type); if(!d) return;
+    const d=utCmpData(type); if(!d||!d.months.length) return;
     const lbl=d.months.map(utMonthTh);
     const cfg=(key,money)=>{
       const o=cOpts();
