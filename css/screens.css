@@ -199,3 +199,4 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 .ut-mk.hi{color:var(--red);} .ut-mk.q{color:var(--ink3);}
 .ut-mknote{display:block;font-size:10px;font-weight:400;color:var(--ink3);margin-top:2px;}
 .ut-mknote b{color:var(--ink2);} .ut-mknote b.hi{color:var(--red);}
+.ut-sep{width:1px;align-self:stretch;background:var(--border);margin:0 4px;}
