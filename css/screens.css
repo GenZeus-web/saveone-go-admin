@@ -122,7 +122,7 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 .ut-ln.yel{border-top-color:var(--gold);}
 .ut-ln.red{border-top:2px solid var(--red);}
 .ut-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:12px;}
-.ut-card{border-left:3px solid var(--border);}
+.ut-card{border-left:3px solid var(--border);position:relative;}   /* relative = เมนูแบบกราฟ (ct-menu) ยึดการ์ด */
 .ut-card.lv-green{border-left-color:var(--green);}
 .ut-card.lv-yellow{border-left-color:var(--gold);}
 .ut-card.lv-red{border-left-color:var(--red);}
@@ -144,3 +144,26 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 .ut-bills th{text-align:left;font-weight:600;color:var(--ink3);padding:4px 6px;border-bottom:1px solid var(--border);}
 .ut-bills td{padding:4px 6px;border-bottom:1px solid var(--border);color:var(--ink2);}
 .ut-bills .n{text-align:right;font-family:'JetBrains Mono',monospace;}
+/* v3.2.1: แถบสรุป · แตะกราฟขยาย · หน้าขยาย */
+.ut-kpis{margin-bottom:14px;}
+.ut-kpis .kpi-sub{line-height:1.6;}
+.ut-up{color:var(--red);font-weight:600;}      /* ค่าใช้จ่ายขึ้น = ไม่ดี */
+.ut-down{color:var(--green);font-weight:600;}
+.ut-top .ct-btn--inline{margin-left:6px;}
+.ut-zoom{cursor:zoom-in;}
+.ut-zbtn{flex:none;width:32px;height:32px;margin-left:6px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);
+  color:var(--ink2);font-size:16px;line-height:1;cursor:pointer;}
+.ut-zbtn:hover{color:var(--ink);border-color:var(--ink3);}
+.ut-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8600;align-items:flex-start;justify-content:center;
+  padding:24px 16px;overflow-y:auto;}
+.ut-mcard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;width:min(1200px,100%);
+  display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow);}
+.ut-msec{position:relative;}
+.ut-chart-big{height:min(55vh,460px);position:relative;}
+.ut-chart-mid{height:260px;position:relative;}
+.ut-bills-all{max-height:260px;overflow-y:auto;}
+@media (max-width:640px){
+  .ut-modal{padding:0;}
+  .ut-mcard{border-radius:0;min-height:100%;padding:12px;}
+  .ut-chart-big{height:60vh;}
+}

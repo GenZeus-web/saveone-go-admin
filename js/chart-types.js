@@ -47,8 +47,15 @@ const CT_ICONS={
   pct:'<path d="M8 1.5V14.5" stroke-width="1.2" opacity=".6"/><rect x="8" y="2.5" width="6" height="3" rx="1"/><rect x="3" y="6.5" width="5" height="3" rx="1"/><rect x="8" y="10.5" width="3.5" height="3" rx="1"/>',
   dumbbell:'<path d="M4 4.5H12M6 11.5H13" stroke-width="1.6" opacity=".55"/><circle cx="3.5" cy="4.5" r="1.9" fill="none" stroke-width="1.3"/><circle cx="12.5" cy="4.5" r="2.1"/><circle cx="5.5" cy="11.5" r="1.9" fill="none" stroke-width="1.3"/><circle cx="13" cy="11.5" r="2.1"/>',
 };
+// UTIL-03: กราฟที่มีหลายตัวในหน้าเดียว (cUtil_0 · cUtil_1 · cUtil_big) ใช้ตัวเลือกชุดเดียวกัน = คีย์ก่อนขีดล่าง
+//   เลือกแบบที่การ์ดไหน ทุกการ์ดเปลี่ยนตาม (จำค่าเดียว) · ไฟล์ views ลงทะเบียน CT_SPEC/CT_ALT ของตัวเองได้ (views/util.js)
+function ctK(id){
+  if(CT_SPEC[id]) return id;
+  const m=/^(.+?)_\w+$/.exec(id);
+  return m&&CT_SPEC[m[1]]?m[1]:id;
+}
 function ctIcon(id,k){
-  const name=k==='orig'?CT_SPEC[id].icon:k;
+  const name=k==='orig'?CT_SPEC[ctK(id)].icon:k;
   return `<svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor" stroke="currentColor" aria-hidden="true">${CT_ICONS[name]||CT_ICONS.bar}</svg>`;
 }
 
@@ -60,19 +67,19 @@ function ctSave(){ try{ localStorage.setItem(CT_KEY,JSON.stringify(ctPref)); }ca
 const ctLast={}; // id → config ล่าสุดที่ view ส่งมา (ไว้วาดใหม่ตอนสลับแบบ โดยไม่ต้อง render ทั้งหน้า)
 
 function ctBlocked(id,k){
-  const f=CT_SPEC[id]?.need?.[k];
+  const f=CT_SPEC[ctK(id)]?.need?.[k];
   return f&&ctLast[id] ? f(ctLast[id]) : '';
 }
 // แบบที่จะวาดจริง: ค่าที่จำไว้ ถ้ายังมีตัวเลือกนี้และใช้ได้ตอนนี้ — ไม่งั้นแบบเดิม (แต่ไม่ลบค่าที่จำไว้)
 function ctMode(id){
-  const k=ctPref[id];
-  if(!k||!CT_SPEC[id].opts.some(o=>o[0]===k)) return 'orig';
+  const k=ctPref[ctK(id)];
+  if(!k||!CT_SPEC[ctK(id)].opts.some(o=>o[0]===k)) return 'orig';
   return ctBlocked(id,k)?'orig':k;
 }
 
 /* ── เรียกจาก makeChart() ── */
 function ctResolve(id,config){
-  const spec=CT_SPEC[id];
+  const spec=CT_SPEC[ctK(id)];
   if(!spec) return config;
   ctLast[id]=config;
   const {_ct,...cfg}=config;
@@ -80,7 +87,7 @@ function ctResolve(id,config){
   ctSetHeight(id,m,cfg);
   if(m==='orig') return cfg;
   try{
-    const alt=CT_ALT[id][m](cfg,_ct||{});
+    const alt=CT_ALT[ctK(id)][m](cfg,_ct||{});
     if(alt) return alt;
   }catch(e){ console.warn('chart-types: แปลง #'+id+' เป็น '+m+' ไม่ได้ — ใช้แบบเดิม',e.message); }
   ctSetHeight(id,'orig',cfg);
@@ -90,14 +97,14 @@ function ctSetHeight(id,m,cfg){
   const box=document.getElementById(id)?.parentElement;
   if(!box) return;
   if(box.dataset.ctH===undefined) box.dataset.ctH=box.style.height||'';
-  const h=CT_SPEC[id].h?.[m];
+  const h=CT_SPEC[ctK(id)].h?.[m];
   const px=typeof h==='function'?h(cfg):h;
   box.style.height=px?px+'px':box.dataset.ctH;
 }
 
 /* ── ปุ่มไอคอนมุมการ์ด + เมนู ── */
 function ctMount(id){
-  if(!CT_SPEC[id]) return;
+  if(!CT_SPEC[ctK(id)]) return;
   const canvas=document.getElementById(id);
   const card=canvas?.closest('.sc,.main-chart-card');
   if(!card) return;
@@ -107,11 +114,11 @@ function ctMount(id){
     btn.type='button';btn.className='ct-btn';btn.dataset.ct=id;
     btn.setAttribute('aria-haspopup','menu');btn.setAttribute('aria-expanded','false');
     btn.addEventListener('click',e=>{e.stopPropagation();ctToggleMenu(id,btn);});
-    const head=card.querySelector('.mc-header');
+    const head=card.querySelector('.mc-header,.ut-top');   // ut-top = หัวการ์ดน้ำ-ไฟ (UTIL-03)
     if(head){ btn.classList.add('ct-btn--inline'); head.appendChild(btn); }
     else { card.classList.add('ct-card'); card.appendChild(btn); }
   }
-  const m=ctMode(id),opt=CT_SPEC[id].opts.find(o=>o[0]===m);
+  const m=ctMode(id),opt=CT_SPEC[ctK(id)].opts.find(o=>o[0]===m);
   btn.innerHTML=ctIcon(id,m);
   btn.title=`แบบกราฟ: ${opt[1]} — กดเพื่อเปลี่ยน`;
   btn.setAttribute('aria-label',btn.title);
@@ -130,7 +137,7 @@ function ctToggleMenu(id,btn){
   const cur=ctMode(id);
   const menu=document.createElement('div');
   menu.className='ct-menu';menu.dataset.ct=id;menu.setAttribute('role','menu');
-  menu.innerHTML=CT_SPEC[id].opts.map(([k,l,d])=>{
+  menu.innerHTML=CT_SPEC[ctK(id)].opts.map(([k,l,d])=>{
     const why=ctBlocked(id,k);
     return `<button type="button" role="menuitemradio" data-k="${k}" aria-checked="${cur===k}"${why?' disabled':''}>
       ${ctIcon(id,k)}<span>${l}${k==='orig'?' <em>(เดิม)</em>':''}<small>${why||d}</small></span><span class="ct-ck">${cur===k?'✓':''}</span></button>`;
@@ -154,9 +161,12 @@ function ctToggleMenu(id,btn){
   (menu.querySelector('[aria-checked="true"]')||menu.querySelector('button:not(:disabled)'))?.focus();
 }
 function ctPick(id,k){
-  if(k==='orig') delete ctPref[id]; else ctPref[id]=k;
+  const key=ctK(id);
+  if(k==='orig') delete ctPref[key]; else ctPref[key]=k;
   ctSave();
-  if(ctLast[id]) charts[id]=makeChart(id,ctLast[id]);
+  // วาดใหม่ทุกกราฟที่ใช้ตัวเลือกชุดนี้และยังอยู่บนหน้า (กราฟปกติ = ตัวเดียว)
+  Object.keys(ctLast).filter(x=>ctK(x)===key&&document.getElementById(x)?.isConnected)
+    .forEach(x=>{ charts[x]=makeChart(x,ctLast[x]); });
 }
 document.addEventListener('click',()=>ctCloseMenu(false));
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') ctCloseMenu(true); });
