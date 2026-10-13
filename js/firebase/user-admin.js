@@ -59,9 +59,9 @@ window.closeUsersPanel = function(){
   if(m) m.style.display = 'none';
 };
 
-const PERM_KEYS = ['showRevenue','showElec','showExport','showPriceNote','showFreeday','showWhatIf','showCompare','showForecast','showRawData','showHeatmap','showBenchmark','showMap3D'];
+const PERM_KEYS = ['showRevenue','showElec','showExport','showPriceNote','showFreeday','showWhatIf','showCompare','showForecast','showRawData','showHeatmap','showBenchmark','showMap3D','showUtil','showUtilMoney'];
 // WI-01: ป้าย What If บอกด้วยว่ามันอยู่ในแท็บพยากรณ์ — คนตั้งสิทธิ์จะได้เห็นความสัมพันธ์
-const PERM_LABEL = {showRevenue:'รายรับ',showElec:'ค่าไฟ',showExport:'Export',showPriceNote:'หมายเหตุราคา',showFreeday:'วันฝน',showWhatIf:'What If (อยู่ในแท็บพยากรณ์)',showCompare:'เปรียบเทียบเดือน',showForecast:'พยากรณ์',showRawData:'ข้อมูลดิบ',showHeatmap:'ปฏิทินล็อก',showBenchmark:'Benchmark',showMap3D:'ผัง 3D'};
+const PERM_LABEL = {showRevenue:'รายรับ',showElec:'ค่าไฟ',showExport:'Export',showPriceNote:'หมายเหตุราคา',showFreeday:'วันฝน',showWhatIf:'What If (อยู่ในแท็บพยากรณ์)',showCompare:'เปรียบเทียบเดือน',showForecast:'พยากรณ์',showRawData:'ข้อมูลดิบ',showHeatmap:'ปฏิทินล็อก',showBenchmark:'Benchmark',showMap3D:'ผัง 3D',showUtil:'น้ำ-ไฟ',showUtilMoney:'น้ำ-ไฟ: ยอดเงินบิล'};
 /* PERM-06 (v2.10.0): คีย์ที่ตั้งต้นเป็น "เปิด" ตอนสร้าง manager ใหม่
    + showFreeday  — ปลอดภัย ตัวเลขเงินในแท็บถูกซ่อนด้วย .col-rev อยู่แล้ว (FD-01) เห็นแค่จำนวนล็อก/วัน
    + showWhatIf   — คู่กับ showForecast ที่เปิดอยู่แล้ว (WI-01)
@@ -165,6 +165,8 @@ window.editUser = async function(uid){
     + '</div></td>';
   syncEditRole(uid);
   // WI-01: ผูก What If เข้ากับ พยากรณ์ (แถวถูกสร้างใหม่ทุกครั้ง → ไม่มี listener ซ้อน)
+  bindWhatIfPair(document.getElementById('edP_' + uid + '_showUtilMoney'),   // UTIL-03: สิทธิ์ย่อยคู่แม่ แบบเดียวกับ What If
+                 document.getElementById('edP_' + uid + '_showUtil'));
   bindWhatIfPair(document.getElementById('edP_' + uid + '_showWhatIf'),
                  document.getElementById('edP_' + uid + '_showForecast'));
 };
@@ -222,6 +224,7 @@ window.saveUser = async function(uid){
   });
   // WI-01: normalize อีกชั้นก่อนเขียน — กันข้อมูลเก่าที่ค้างสถานะขัดกันอยู่แล้ว
   if(payload.showWhatIf === true) payload.showForecast = true;
+  if(payload.showUtilMoney === true) payload.showUtil = true;   // UTIL-03: สิทธิ์ย่อยต้องมีแม่
 
   try{
     await setDoc(doc(db, 'users', uid), payload, { merge: true });
@@ -272,6 +275,7 @@ window.openAddUser = function(){
   if(!nuPairBound){
     nuPairBound = true;
     bindWhatIfPair(document.getElementById('nuShowWhatIf'), document.getElementById('nuShowForecast'));
+    bindWhatIfPair(document.getElementById('nuShowUtilMoney'), document.getElementById('nuShowUtil'));
   }
   window.syncNuRole();
   m.style.display = 'flex';
@@ -344,6 +348,7 @@ window.submitAddUser = async function(){
     });
     // WI-01: normalize อีกชั้นก่อนเขียน
     if(payload.showWhatIf === true) payload.showForecast = true;
+    if(payload.showUtilMoney === true) payload.showUtil = true;   // UTIL-03: สิทธิ์ย่อยต้องมีแม่
     await setDoc(doc(db, 'users', newUid), payload);
 
     window.closeAddUser();

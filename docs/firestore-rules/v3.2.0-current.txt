@@ -85,6 +85,17 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // UTIL-03 (v3.2.0): บิลน้ำ-ไฟ + ยอดเงิน — Apps Script เขียนเอง (OAuth เจ้าของสคริปต์ ข้ามกฎ) · docId = สาขา
+    //   อ่านได้: admin ทุกสาขา · หรือสาขาที่ดูแล + ติ๊กทั้ง showUtil และ showUtilMoney
+    //   เลขไมล์ (data/{BR}_UTIL) ไม่มีเงิน ใช้กฎ data/ เดิม
+    match /utilbill/{branch} {
+      allow get: if isAdmin()
+                 || (hasProfile() && branch in myBranches()
+                     && myDoc().showUtil == true && myDoc().showUtilMoney == true);
+      allow list: if false;
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

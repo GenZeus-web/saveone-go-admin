@@ -48,7 +48,7 @@
 | เอกสาร | เนื้อหา | Rules |
 |---|---|---|
 | `data/{BR}_UTIL` | `{csv, metersCsv, rows, branch, ts}` | กฎ `data/` เดิมครอบแล้ว (`"BN_UTIL".split('_')[0]` = `BN`) · ⚠️ ผู้มี `bmBranches` อ่านได้ด้วย (แบบ SEC-08) — ไม่มีเงินในเอกสารนี้ |
-| `utilbill/{BR}` | `{csv, rows, branch, ts}` | ยังไม่มีกฎ = deny-all ท้ายไฟล์กันอยู่ · เปิดทีหลังเพิ่มบล็อกเดียว (ผูก `canSeeRevenue()` หรือสิทธิ์ใหม่) |
+| `utilbill/{BR}` | `{csv, rows, branch, ts}` | v3.2.0: admin · หรือสาขาที่ดูแล + `showUtil` + `showUtilMoney` (บล็อก `utilbill/` ใน `docs/firestore-rules/v3.2.0-current.txt`) |
 | `settings/utility` | ค่าตั้งค่า (ด้านล่าง) | อ่าน: `hasProfile()` · เขียน: `isAdmin()` · **วางกฎก่อน push** โค้ดที่อ่าน |
 
 `csv` ของ `data/{BR}_UTIL` = แท็บ `readings` ของสาขานั้น ครบทุกแถว**รวม void** (เว็บกรองเอง)

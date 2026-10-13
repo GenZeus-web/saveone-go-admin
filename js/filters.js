@@ -88,7 +88,7 @@ function setView(v,btn){
   view=v;
   document.querySelectorAll('.vtab').forEach(x=>x.classList.remove('active'));
   btn.classList.add('active');
-  ['overview','freeday','forecast','pricenote','rawdata','compare','heatmap','benchmark'].forEach(id=>{
+  ['overview','freeday','forecast','pricenote','rawdata','compare','heatmap','benchmark','util'].forEach(id=>{
     const el=document.getElementById('view-'+id);
     if(el)el.style.display=id===v?'block':'none';
   });
@@ -149,6 +149,7 @@ function applyAll(){
   else if(view==='compare') renderCompare();
   else if(view==='heatmap') renderHeatmap();
   else if(view==='benchmark') renderBenchmark();
+  else if(view==='util') renderUtil();   // UTIL-03
   else if(view==='pricenote'&&typeof window.renderPriceNote==='function') window.renderPriceNote(); // SET-01
 }
 

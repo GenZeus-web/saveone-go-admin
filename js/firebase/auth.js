@@ -44,7 +44,11 @@ onAuthStateChanged(auth, async (user) => {
       showRawData: true,
       showHeatmap: true,
       showBenchmark: true,
-      showMap3D: true
+      showMap3D: true,
+      // UTIL-03: น้ำ-ไฟ · ข้อมูลใหม่ ไม่มีใครเห็นมาก่อน → ตั้งต้น "ปิด" (=== true)
+      //   showUtilMoney = สิทธิ์ย่อย ยอดเงินในบิล · มีผลเฉพาะเมื่อเปิด showUtil ด้วย · ด่านจริง = กฎ utilbill/
+      showUtil: false,
+      showUtilMoney: false
     };
 
     try {
@@ -69,7 +73,9 @@ onAuthStateChanged(auth, async (user) => {
             showRawData: true,
             showHeatmap: true,
             showBenchmark: true,
-            showMap3D: true
+            showMap3D: true,
+            showUtil: true,
+            showUtilMoney: true
           };
           bmBranches = ['SS','BG','BN'];   // BM-04: admin เทียบได้ทุกสาขาเสมอ
         } else {
@@ -88,6 +94,8 @@ onAuthStateChanged(auth, async (user) => {
           perms.showHeatmap = d.showHeatmap !== false;
           perms.showBenchmark = d.showBenchmark !== false;
           perms.showMap3D = d.showMap3D !== false;
+          perms.showUtil = d.showUtil === true;
+          perms.showUtilMoney = perms.showUtil && d.showUtilMoney === true;
         }
       } else {
         // ERR-02: ล็อกอินได้แต่ไม่มีเอกสาร users/{uid} (สร้างบัญชีนอกหน้าจัดการผู้ใช้ / ถูกลบโปรไฟล์)
@@ -196,7 +204,7 @@ onAuthStateChanged(auth, async (user) => {
 
     // PERM-03: แท็บใหม่ที่เพิ่งมีสิทธิ์คุม (v2.9.0)
     [['tab-compare','showCompare'],['tab-forecast','showForecast'],
-     ['tab-rawdata','showRawData'],['tab-heatmap','showHeatmap']].forEach(([id,key]) => {
+     ['tab-rawdata','showRawData'],['tab-heatmap','showHeatmap'],['tab-util','showUtil']].forEach(([id,key]) => {
       const el = document.getElementById(id);
       if(el) el.style.display = perms[key] ? '' : 'none';
     });
@@ -320,6 +328,27 @@ window.fetchBundleFromFirestore = async function(docIds){
   });
   await Promise.all(jobs);   // อ่าน Firestore ขนานได้เต็มที่ ไม่มีปัญหาแบบ Apps Script
   return { csv:out, meta, errs };
+};
+
+// UTIL-03: น้ำ-ไฟ ของสาขาเดียว · data/{BR}_UTIL = เลขไมล์ + รายการมิเตอร์ (กฎ data/ เดิม)
+//   withBills = อ่าน utilbill/{BR} ด้วย (ยอดเงิน · กฎแยก ต้องมี showUtilMoney) · ไม่มีสิทธิ์อย่าส่ง true
+//   ไม่มีเอกสาร = ค่าว่าง ไม่ใช่ error (สาขาที่ยังไม่เคยจด)
+window.fetchUtilFromFirestore = async function(branch, withBills){
+  const read = async (col, id) => {
+    const snap = await getDoc(doc(db, col, id));
+    return snap.exists() ? snap.data() : null;
+  };
+  // บิลอ่านไม่ได้ (กฎยังไม่วาง / ถูกถอดสิทธิ์) ต้องไม่ล้มทั้งแท็บ → เลขไมล์ยังขึ้น แค่บอกว่าบิลอ่านไม่ได้
+  let billsErr = '';
+  const [u, b] = await Promise.all([read('data', branch + '_UTIL'),
+    withBills ? read('utilbill', branch).catch(e => { billsErr = e.code || e.message || String(e); return null; }) : null]);
+  return {
+    billsErr,
+    csv: u && typeof u.csv === 'string' ? u.csv : '',
+    metersCsv: u && typeof u.metersCsv === 'string' ? u.metersCsv : '',
+    ts: u ? Number(u.ts) || 0 : 0,
+    billsCsv: b && typeof b.csv === 'string' ? b.csv : ''
+  };
 };
 
 // ดึง ID token ของ user ปัจจุบัน (ไว้แนบไป Apps Script)

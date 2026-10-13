@@ -113,3 +113,34 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 .layout{transition:all .3s ease;}
 
 
+
+/* ── UTIL-03: แท็บน้ำ-ไฟ (js/views/util.js) · ใช้ token สีเดิมทั้งหมด ── */
+.ut-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;margin-bottom:14px;font-size:13px;}
+.ut-sub{font-size:11px;color:var(--ink3);font-weight:400;}
+.ut-legend{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:11px;color:var(--ink2);}
+.ut-ln{display:inline-block;width:18px;height:0;border-top:2px dashed var(--ink2);vertical-align:middle;margin-right:5px;}
+.ut-ln.yel{border-top-color:var(--gold);}
+.ut-ln.red{border-top:2px solid var(--red);}
+.ut-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:12px;}
+.ut-card{border-left:3px solid var(--border);}
+.ut-card.lv-green{border-left-color:var(--green);}
+.ut-card.lv-yellow{border-left-color:var(--gold);}
+.ut-card.lv-red{border-left-color:var(--red);}
+.ut-card.lv-leak{border-left-color:var(--purple);}
+.ut-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;}
+.ut-name{font-size:13px;font-weight:700;color:var(--ink);}
+.ut-badge{font-size:11px;font-weight:600;white-space:nowrap;padding:3px 8px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);}
+.ut-meta{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--ink2);margin-bottom:8px;}
+.ut-warn{color:var(--red);font-weight:600;}
+.ut-flags{font-size:11px;color:var(--ink2);margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.ut-chip{padding:2px 8px;border-radius:999px;font-weight:600;border:1px solid currentColor;}
+.ut-chip.yellow{color:var(--gold);} .ut-chip.red{color:var(--red);} .ut-chip.leak{color:var(--purple);}
+.ut-chart{height:200px;position:relative;}
+.ut-anom{margin-top:8px;font-size:11px;color:var(--orange);line-height:1.6;}
+.ut-empty{padding:24px 12px;text-align:center;font-size:12px;color:var(--ink3);}
+.ut-err{color:var(--red);}
+.ut-bills{margin-top:10px;overflow-x:auto;}
+.ut-bills table{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap;}
+.ut-bills th{text-align:left;font-weight:600;color:var(--ink3);padding:4px 6px;border-bottom:1px solid var(--border);}
+.ut-bills td{padding:4px 6px;border-bottom:1px solid var(--border);color:var(--ink2);}
+.ut-bills .n{text-align:right;font-family:'JetBrains Mono',monospace;}
