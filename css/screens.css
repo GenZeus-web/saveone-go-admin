@@ -167,3 +167,20 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
   .ut-mcard{border-radius:0;min-height:100%;padding:12px;}
   .ut-chart-big{height:60vh;}
 }
+/* v3.2.2: แท็บย่อย + เทียบสาขาจากบิล (ต้นแบบจาก ผอ.) */
+.ut-subtabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.ut-pills{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:var(--ink2);margin-bottom:12px;}
+.ut-sec{margin-bottom:14px;}
+.ut-sec-t{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;}
+.ut-ckpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px;}
+.ut-ckpi .kpi-lbl{margin-bottom:8px;}
+.ut-crow{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);line-height:1.9;}
+.ut-crow b{font-size:16px;color:var(--ink);font-family:'JetBrains Mono',monospace;margin-left:6px;}
+.ut-dot{display:inline-block;width:9px;height:9px;border-radius:2px;flex:none;margin-right:4px;vertical-align:middle;}
+.ut-csub{margin-bottom:12px;}
+.ut-c2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;}
+.ut-c2 .ut-csub{margin-bottom:0;}
+.ut-bills th.n{text-align:right;}
+@media (max-width:760px){
+  .ut-ckpis,.ut-c2{grid-template-columns:minmax(0,1fr);}
+}
