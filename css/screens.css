@@ -184,3 +184,5 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 @media (max-width:760px){
   .ut-ckpis,.ut-c2{grid-template-columns:minmax(0,1fr);}
 }
+.ut-range{display:inline-flex;align-items:center;gap:6px;}
+.ut-range select{background:var(--surface2);color:var(--ink);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font:inherit;font-size:12px;}

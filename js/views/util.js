@@ -140,7 +140,7 @@ function utCmpData(type){
   // เดือนบิลทั้งหมดที่มี (เติมเดือนที่ขาดให้แกนต่อเนื่อง) → ตัดตามช่วงเวลาในเมนูข้าง
   const ks=has.flatMap(b=>Object.keys(by[b])).sort(), all=[];
   for(let mo=ks[0];mo<=ks[ks.length-1];mo=utAddMonth(mo,1)) all.push(mo);
-  const months=utPeriodMonths(all), L=ks[ks.length-1];
+  const months=utRangeMonths(all), L=ks[ks.length-1];
   // เทียบเฉพาะสาขาที่มีบิลในช่วงนี้ (สาขาที่ยังไม่เปิด/ปิดไปแล้ว ไม่ทำให้ "ช่วงที่ทับกัน" หายหมด)
   const hasW=has.filter(b=>months.some(mo=>by[b][mo]));
   if(!hasW.length) return {type,has:hasW,by,months:[],overlap:[],stat:[],last:L};
@@ -154,28 +154,48 @@ function utCmpData(type){
   });
   return {type,has:hasW,by,months,overlap,stat,last:L};
 }
-// เดือนบิลที่อยู่ในช่วงเวลาของเมนูข้าง (ตัวแปรเดียวกับ applyPeriod ใน filters.js)
-//   เดือนไหนมีวันใดวันหนึ่งอยู่ในช่วง = นับ · เลือกเดือน = เฉพาะเดือนนั้น · ทั้งหมด = ทุกเดือน
-function utPeriodMonths(all){
-  if(selMonth) return all.filter(mo=>mo===selMonth);
-  let from=null,to=null;
-  if(customFrom&&customTo){ from=customFrom; to=customTo; }
-  else if(period>0){ to=new Date(); from=new Date(); from.setDate(from.getDate()-period); }
-  if(!from) return all;
-  return all.filter(mo=>{ const [y,m]=mo.split('-').map(Number); return new Date(y,m-1,1)<=to&&new Date(y,m,0,23,59,59)>=from; });
+// ช่วงเปรียบเทียบ = เดือนล้วน (บิลออกเดือนละใบ) · แท็บนี้ไม่ใช้ปุ่มช่วงเวลาในเมนูข้าง (7 วัน = บิลทั้งเดือน ชวนงง) — เจ้าของเลือก 13 ต.ค.
+//   n เดือน = n เดือนบิลล่าสุดของชนิดนั้น (บิลน้ำกับไฟออกไม่พร้อมกัน) · จาก–ถึง = ช่วงเดียวกันทั้งสองส่วน
+function utRange(){
+  if(!UT.range){ let r=null; try{ r=JSON.parse(localStorage.getItem('utCmpRange')||'null'); }catch(e){}
+    UT.range=r&&(['3','6','12','all'].includes(r.p)||(r.p==='custom'&&r.from&&r.to))?r:{p:'12'}; }
+  return UT.range;
+}
+function setUtRange(p,from,to){
+  UT.range=p==='custom'?{p,from,to}:{p};
+  try{ localStorage.setItem('utCmpRange',JSON.stringify(UT.range)); }catch(e){}
+  renderUtil();
+}
+function utRangeMonths(all){
+  const r=utRange();
+  if(r.p==='all') return all;
+  if(r.p==='custom'){ const [f,t]=r.from<=r.to?[r.from,r.to]:[r.to,r.from]; return all.filter(mo=>mo>=f&&mo<=t); }
+  return all.slice(-Number(r.p));
+}
+function utRangeHtml(){
+  const r=utRange(), brs=utCmpBranches().filter(b=>UT.cache[b]&&UT.cache[b].bills);
+  const ms=[...new Set(brs.flatMap(b=>UT.cache[b].bills.map(x=>x.bill_month)))].sort();
+  if(!ms.length) return '';
+  const from=r.p==='custom'?r.from:ms[Math.max(0,r.p==='all'?0:ms.length-Number(r.p))], to=r.p==='custom'?r.to:ms[ms.length-1];
+  const opt=v=>ms.map(mo=>`<option value="${mo}"${mo===v?' selected':''}>${utMonthTh(mo)}</option>`).join('');
+  const btn=(p,t)=>`<button class="mc-pill${r.p===p?' sel':''}" onclick="setUtRange('${p}')">${t}</button>`;
+  return `<div class="ut-pills">ช่วงเปรียบเทียบ: ${btn('3','3 เดือน')}${btn('6','6 เดือน')}${btn('12','12 เดือน')}${btn('all','ทั้งหมด')}
+    <span class="ut-range">จาก <select id="utFrom" onchange="setUtRange('custom',this.value,document.getElementById('utTo').value)">${opt(from)}</select>
+    ถึง <select id="utTo" onchange="setUtRange('custom',document.getElementById('utFrom').value,this.value)">${opt(to)}</select></span>
+    <span class="ut-sub">เดือน = เดือนที่บิลออก · แท็บนี้ไม่ใช้ช่วงเวลาในเมนูข้าง</span></div>`;
 }
 function utCompareHtml(){
   const ok=utCmpReadable(), sel=new Set(utCmpBranches());
   const pills=ok.length>1?`<div class="ut-pills">เทียบสาขา: ${ok.map(b=>`<button class="mc-pill${sel.has(b)?' sel':''}" onclick="toggleUtCmp('${b}')">${utEsc(BM_NAMES[b]||b)} (${b})${b==='SS'?' · ปิดแล้ว':''}</button>`).join('')}</div>`:'';
-  return pills+UT_SECS.map(([type,icon,name,money,unit],k)=>{
+  return pills+utRangeHtml()+UT_SECS.map(([type,icon,name,money,unit],k)=>{
     const d=utCmpData(type);
     const t=`<div class="ut-sec-t">${k+1}. ${icon} ${name} — หน่วยใช้และ${money}</div>`;
     if(!d) return `<div class="sc ut-sec">${t}<div class="ut-empty">ยังไม่มีบิล${name}ของสาขาที่เลือก</div></div>`;
-    if(!d.months.length) return `<div class="sc ut-sec">${t}<div class="ut-empty">ไม่มีบิล${name}ในช่วงเวลาที่เลือก · บิลล่าสุด ${utMonthTh(d.last)}<br>
-      <button class="mc-pill" style="margin-top:8px" onclick="setPeriod(0,document.getElementById('p0'))">ดูทั้งหมด</button></div></div>`;
+    if(!d.months.length) return `<div class="sc ut-sec">${t}<div class="ut-empty">ไม่มีบิล${name}ในช่วงที่เลือก · บิลล่าสุด ${utMonthTh(d.last)}<br>
+      <button class="mc-pill" style="margin-top:8px" onclick="setUtRange('12')">12 เดือนล่าสุด</button></div></div>`;
     const nm=b=>utEsc(BM_NAMES[b]||b), dot=b=>`<i class="ut-dot" style="background:${sc(BM_COLORS[b])}"></i>`;
     const ov=d.overlap.length;
-    const mm=d.months, range=`บิล ${utMonthTh(mm[0])} – ${utMonthTh(mm[mm.length-1])} (ตามช่วงเวลาในเมนูข้าง) · `+d.stat.map(s=>`${nm(s.b)}มีข้อมูล ${utMonthTh(s.from)} – ${utMonthTh(s.to)}`).join(' · ')
+    const mm=d.months, range=`บิล ${utMonthTh(mm[0])} – ${utMonthTh(mm[mm.length-1])} · `+d.stat.map(s=>`${nm(s.b)}มีข้อมูล ${utMonthTh(s.from)} – ${utMonthTh(s.to)}`).join(' · ')
       +(d.has.length>1?(ov?` · ตัวเลขเทียบใช้ช่วงที่ทับกัน ${utMonthTh(d.overlap[0])} – ${utMonthTh(d.overlap[ov-1])} (${ov} เดือน)`:' · ไม่มีเดือนที่ทับกัน (เฉลี่ยแยกตามข้อมูลของแต่ละสาขา)'):'');
     const ref=d.stat[0];
     const vs=key=>d.stat.length<2||ref[key]==null?'':d.stat.slice(1).map(s=>{
