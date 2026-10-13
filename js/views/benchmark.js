@@ -71,6 +71,7 @@ Chart.register({id:'bmVals',afterDatasetsDraw(ch,args,o){
   ctx.lineJoin='round';ctx.lineWidth=3;ctx.strokeStyle=ctSurf();ctx.fillStyle=chartClr().lbl;
   ch.data.datasets.forEach((ds,di)=>{
     if(!ch.isDatasetVisible(di)) return;
+    if(o.only&&!o.only.includes(di)) return;     // UTIL: เลือกเฉพาะบาง dataset (กราฟน้ำ-ไฟไม่ใส่ตัวเลขบนเส้นเกณฑ์) · Benchmark ไม่ส่ง = ทุกตัวเหมือนเดิม
     const meta=ch.getDatasetMeta(di),isBar=meta.type==='bar';
     meta.data.forEach((el,i)=>{
       const raw=ds.data[i],v=raw&&typeof raw==='object'?raw.y:raw;

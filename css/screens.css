@@ -168,7 +168,8 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
   .ut-chart-big{height:60vh;}
 }
 /* v3.2.2: แท็บย่อย + เทียบสาขาจากบิล (ต้นแบบจาก ผอ.) */
-.ut-subtabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.ut-subtabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;justify-content:space-between;align-items:center;}
+.ut-subtabs-l{display:flex;flex-wrap:wrap;gap:8px;}
 .ut-pills{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:var(--ink2);margin-bottom:12px;}
 .ut-sec{margin-bottom:14px;}
 .ut-sec-t{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;}
@@ -196,3 +197,5 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 .ut-fq{color:var(--ink3);cursor:pointer;font-weight:600;}
 .ut-mk{font-weight:700;cursor:help;}
 .ut-mk.hi{color:var(--red);} .ut-mk.q{color:var(--ink3);}
+.ut-mknote{display:block;font-size:10px;font-weight:400;color:var(--ink3);margin-top:2px;}
+.ut-mknote b{color:var(--ink2);} .ut-mknote b.hi{color:var(--red);}

@@ -81,8 +81,7 @@ function utDraw(host,br){
   // แท็บย่อย: 📊 เทียบสาขา (บิลรายเดือน · แบบที่ ผอ. ส่งมา · หน้าหลัก) | 📟 มิเตอร์รายวัน (ตรวจรั่ว)
   //   ไม่มีสิทธิ์ยอดเงิน = เทียบสาขาอ่านบิลไม่ได้ → เหลือมิเตอร์รายวันอย่างเดียว ไม่มีแถบแท็บย่อย
   const sub=money?utSub():'meter';
-  const bar=money?`<div class="ut-subtabs" role="tablist">${[['cmp','📊 เทียบสาขา (บิลรายเดือน)'],['meter','📟 มิเตอร์รายวัน · ตรวจรั่ว']]
-    .map(([k,t])=>`<button class="mc-pill${sub===k?' sel':''}" role="tab" aria-selected="${sub===k}" onclick="setUtSub('${k}')">${t}</button>`).join('')}</div>`:'';
+  const bar=utToolbar(money,sub);
   if(sub==='cmp'){
     host.innerHTML=bar+utCompareHtml();
     UT.br=br; utCompareCharts();
@@ -115,6 +114,21 @@ function utDraw(host,br){
 // แท็บย่อยที่เลือก จำในเครื่อง (ค่าตั้งต้น = เทียบสาขา) · localStorage อาจใช้ไม่ได้ (โหมดส่วนตัว) → ค่าตั้งต้น
 function utSub(){ if(!UT.sub){ try{ UT.sub=localStorage.getItem('utSub'); }catch(e){} if(UT.sub!=='meter') UT.sub='cmp'; } return UT.sub; }
 function setUtSub(k){ UT.sub=k; try{ localStorage.setItem('utSub',k); }catch(e){} renderUtil(); }
+// ตัวเลขบนแท่ง/จุด (ใช้ plugin bmVals ของ Benchmark) · ค่าเริ่มต้น = ซ่อน แบบ Benchmark · จำในเครื่อง แยกจาก Benchmark
+function utVals(){ if(UT.vals==null){ try{ UT.vals=localStorage.getItem('utShowVals')==='1'; }catch(e){ UT.vals=false; } } return UT.vals; }
+function toggleUtVals(){ UT.vals=!utVals(); try{ localStorage.setItem('utShowVals',UT.vals?'1':'0'); }catch(e){} renderUtil(); }
+// only = index ของ dataset ที่จะใส่ตัวเลข (ไม่ส่ง = ทุกตัว) · เปิดแล้วเว้นที่ด้านบนแกน Y ให้ป้ายไม่ชนขอบ
+function utValOpts(o,only){
+  o.plugins.bmVals={on:utVals(),only};
+  if(utVals()) o.scales.y.afterDataLimits=s=>{ s.max+=(s.max-s.min)*0.14; };
+  return o;
+}
+function utToolbar(money,sub){
+  const tabs=money?[['cmp','📊 เทียบสาขา (บิลรายเดือน)'],['meter','📟 มิเตอร์รายวัน · ตรวจรั่ว']]
+    .map(([k,t])=>`<button class="mc-pill${sub===k?' sel':''}" role="tab" aria-selected="${sub===k}" onclick="setUtSub('${k}')">${t}</button>`).join(''):'';
+  return `<div class="ut-subtabs"><div class="ut-subtabs-l" role="tablist">${tabs}</div>
+    <button class="mc-pill" onclick="toggleUtVals()" aria-pressed="${utVals()}">🔢 ${utVals()?'ซ่อนตัวเลข':'แสดงตัวเลข'}</button></div>`;
+}
 function utMake(id,cfg){ if(cfg&&makeChart(id,cfg)) UT.chartIds.push(id); }
 
 // ── ส่วน 1–2: เทียบสาขาจากบิลรายเดือน (ต้นแบบจาก ผอ.) ──
@@ -190,6 +204,7 @@ function utRangeHtml(){
     <span class="ut-sub">เดือน = เดือนที่บิลออก · แท็บนี้ไม่ใช้ช่วงเวลาในเมนูข้าง</span></div>`;
 }
 // ── ผลตรวจบิล (UTIL-09) ──
+const UT_MK_NOTE='<span class="ut-mknote"><b class="hi">⚠</b> บิลสูงผิดปกติ · <b>?</b> บิลต้องเช็คกับบัญชี (ซ้ำบิลก่อน / หน่วยเลขกลม อาจเป็นยอดประมาณ) · ชี้ที่แท่งดูเหตุผล</span>';
 function utMeterName(b,id){ const m=(UT.cache[b]?.meters||[]).find(x=>x.meter_id===id); return (m&&m.location)||id; }
 function utFlagText(b,x){
   const who=`${utEsc(BM_NAMES[b]||b)} · ${UT_TYPE[x.type]?UT_TYPE[x.type].split(' ')[0]+' ':''}${utEsc(utMeterName(b,x.meter_id))}`;
@@ -231,7 +246,8 @@ const utFlagPlugin={id:'utFlag',afterDatasetsDraw(ch){
   const ctx=ch.ctx; ctx.save(); ctx.textAlign='center'; ctx.textBaseline='bottom'; ctx.font='bold 12px "Noto Sans Thai",sans-serif';
   ch.data.datasets.forEach((ds,di)=>{ const meta=ch.getDatasetMeta(di); if(meta.hidden) return;
     meta.data.forEach((el,i)=>{ const m=marks[di]&&marks[di][i]; if(!m||el.y==null) return;
-      ctx.fillStyle=m==='high'?sc('rgba(224,92,92,1)'):chartClr().tick; ctx.fillText(m==='high'?'⚠':'?',el.x,el.y-3); }); });
+      ctx.fillStyle=m==='high'?sc('rgba(224,92,92,1)'):chartClr().tick;
+      ctx.fillText(m==='high'?'⚠':'?',el.x,el.y-(ch.options.plugins.bmVals?.on?16:3)); }); });   // เปิดตัวเลข = ยกขึ้นเหนือตัวเลข
   ctx.restore(); }};
 function utMonthFlags(b,type,mo){ return (UT.cache[b].check||[]).filter(x=>x.type===type&&x.bill_month===mo&&(x.high||x.dup||x.round)); }
 
@@ -261,9 +277,9 @@ function utCompareHtml(){
     return `<div class="sc ut-sec">${t}<div class="ut-sub" style="margin-bottom:10px">${range}</div>
       <div class="ut-ckpis">${kpi(`หน่วย${name==='ไฟฟ้า'?'ไฟ':'น้ำ'}เฉลี่ยต่อเดือน (${unit})`,'avgU',0)}${kpi(`${money}เฉลี่ยต่อเดือน (บาท)`,'avgA',0)}${kpi(`${money}ต่อหน่วย (บาท)`,'rate',2)}</div>
       ${utSecFlags(d)}
-      <div class="sc ut-csub"><div class="sc-title">หน่วย${name==='ไฟฟ้า'?'ไฟ':'น้ำ'}ที่ใช้รายเดือน (${unit})</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}U"></canvas></div></div>
+      <div class="sc ut-csub"><div class="sc-title">หน่วย${name==='ไฟฟ้า'?'ไฟ':'น้ำ'}ที่ใช้รายเดือน (${unit}) ${UT_MK_NOTE}</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}U"></canvas></div></div>
       <div class="ut-c2">
-        <div class="sc ut-csub"><div class="sc-title">${money}รายเดือน (บาท)</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}A"></canvas></div></div>
+        <div class="sc ut-csub"><div class="sc-title">${money}รายเดือน (บาท) ${UT_MK_NOTE}</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}A"></canvas></div></div>
         <div class="sc ut-csub"><div class="sc-title">สรุป${name} ${sumT}</div>
           <div class="ut-bills"><table><thead><tr><th>สาขา</th><th class="n">หน่วยรวม</th><th class="n">${money}รวม (บาท)</th><th class="n">บาท/หน่วย</th></tr></thead><tbody>${rows}</tbody></table></div>
           <div class="ut-sub" style="margin-top:8px">ยอดตามบิล (รวม VAT) ทุกมิเตอร์ของสาขา · เดือน = เดือนที่บิลออก</div></div>
@@ -285,6 +301,7 @@ function utCompareCharts(){
           .map(f=>(f.k==='high'?'⚠ ':'? ')+f.t.replace(/^.*?บิล [^:]+: /,'').replace(/<[^>]+>/g,''))}};
       o.scales.y.beginAtZero=true; o.scales.y.ticks.callback=v=>utFmt(v);
       o.layout={padding:{top:14}};   // เว้นที่ให้ป้ายบนแท่งสูงสุด
+      utValOpts(o);
       return {type:'bar',data:{labels:lbl,datasets:d.has.map(b=>({type:'bar',label:`${BM_NAMES[b]||b} (${b})`,
         data:d.months.map(mo=>d.by[b][mo]?+d.by[b][mo][key].toFixed(2):null),backgroundColor:BM_COLORS[b],borderRadius:3,maxBarThickness:28}))},
         options:o,plugins:[utFlagPlugin]};
@@ -374,6 +391,7 @@ function utDailyCfg(m,days,big){
     }}};
   o.scales.y.beginAtZero=true;
   if(big) o.scales.x.ticks.maxTicksLimit=24;
+  utValOpts(o,[0]);
   return {type:'bar',data:{labels:days.map(d=>utDM(d.date)),datasets:[
     {type:'bar',label:'ใช้ (หน่วย)',data:days.map(d=>+d.units.toFixed(2)),backgroundColor:days.map(fill),borderRadius:3,order:2},
     line('ปกติ','base',chartClr().lbl,[4,4]),
@@ -402,6 +420,7 @@ function utBillCfg(m,c,big){
   o.plugins.legend={display:true,labels:o.plugins.legend.labels};
   o.plugins.tooltip={callbacks:{label:it=>`${it.dataset.label}: ${it.raw==null?'—':utFmt(it.raw,2)}`}};
   o.scales.y.beginAtZero=true; o.scales.y.ticks.callback=v=>'฿'+utFmt(v);
+  utValOpts(o,[0]);
   return {type:'bar',data:{labels:s.labels,datasets:[
     {type:'bar',label:'ยอดบิล (ปีนี้)',data:s.amt.cur,backgroundColor:'rgba(240,165,0,.75)',borderRadius:3,order:2},
     {type:'line',label:'เดือนเดียวกันปีก่อน',data:s.amt.prev,borderColor:'rgba(74,158,255,.9)',backgroundColor:'rgba(74,158,255,.9)',
@@ -496,5 +515,5 @@ function utBills(m,c,res,n){
   }).join('');
   return `<div class="ut-bills${n?'':' ut-bills-all'}"><table>
     <thead><tr><th>เดือนในบิล</th><th>หน่วยบิล</th><th>ยอดเงิน (รวม VAT)</th><th>บาท/หน่วย</th><th>จดได้ (เดือนก่อนบิล)</th></tr></thead>
-    <tbody>${tr}</tbody></table></div>`;
+    <tbody>${tr}</tbody></table></div>${tr.includes('ut-mk')?`<div class="ut-sub" style="margin-top:4px">${UT_MK_NOTE.replace('ชี้ที่แท่ง','ชี้ที่เครื่องหมาย')}</div>`:''}`;
 }
