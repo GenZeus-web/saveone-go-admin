@@ -77,7 +77,7 @@ function renderUtil(){
 function utDraw(host,br){
   const c=UT.cache[br];
   UT.chartIds.forEach(dChart); UT.chartIds=[];
-  UT.br=br;   // ต้องตั้งก่อนสร้างการ์ด (utSummary/utBills อ่านธงบิลของสาขานี้)
+  UT.br=br;   // ต้องตั้งก่อนสร้างการ์ด (utSummary/util-meter อ่านธงบิลของสาขานี้)
   const money=canSeeUtilMoney();
   // แท็บย่อย: 📊 เทียบสาขา (บิลรายเดือน · แบบที่ ผอ. ส่งมา · หน้าหลัก) | 📟 มิเตอร์รายวัน (ตรวจรั่ว)
   //   ไม่มีสิทธิ์ยอดเงิน = เทียบสาขาอ่านบิลไม่ได้ → เหลือมิเตอร์รายวันอย่างเดียว ไม่มีแถบแท็บย่อย
@@ -93,26 +93,15 @@ function utDraw(host,br){
   if(c.err) meters=`<div class="ut-empty ut-err">${utEsc(c.err)}</div>`;
   else if(!c.meters.length) meters='<div class="ut-empty">สาขานี้ยังไม่มีข้อมูลจดมิเตอร์</div>';
   else{
-    const now=Date.now(), S=utilSettings({},br), bm=money&&!c.billsErr;
-    const cards=c.meters.map((m,i)=>utCard(m,i,c,S,now,bm)).join('');   // ต้องก่อน utSummary (ตั้ง m._res)
-    meters=`<div class="ut-head">
-        <div class="ut-sub">ข้อมูล ณ ${c.ts?utWhen(c.ts):'—'} · แตะกราฟเพื่อขยาย</div>
-        <div class="ut-legend">
-          <span><i class="ut-ln base"></i>ปกติ</span>
-          <span><i class="ut-ln yel"></i>เส้นเหลือง</span><span><i class="ut-ln red"></i>เส้นแดง</span>
-          ${c.meters.some(m=>m.type==='elec')?`<span><i class="ut-ln bill"></i>เฉลี่ยจากบิล</span>`:''}
-        </div></div>`
+    const now=Date.now(), S=utilSettings({},br);
+    c.meters.forEach(m=>utPrep(m,c,S,now));   // ต้องก่อน utSummary / utMeterHtml (ตั้ง m._res ฯลฯ)
+    meters=`<div class="ut-head"><div class="ut-sub">ข้อมูล ณ ${c.ts?utWhen(c.ts):'—'} · แตะการ์ดหรือช่องเพื่อดูรายละเอียด</div></div>`
       +utHelpHtml(S,c.meters.some(m=>m.type==='elec'))
       +(c.billsErr?'<div class="ut-anom" style="margin:-6px 0 12px">⚠️ อ่านบิลไม่ได้ ('+utEsc(c.billsErr)+') · แสดงเฉพาะเลขมิเตอร์</div>':'')
-      +utSummary(c)+'<div class="ut-grid">'+cards+'</div>';
+      +utSummary(c)+utMeterHtml(c);   // UTIL-15: views/util-meter.js
   }
   host.innerHTML=bar+`<div class="ut-sec-t">📟 มิเตอร์ · ${utEsc(BM_NAMES[br]||br)}</div>`+meters;
   UT.br=br;
-  if(!c.err) c.meters.forEach((m,i)=>{
-    if(document.getElementById('cUtilWk_'+i)) utMake('cUtilWk_'+i,utWeeklyCfg(m,m._weeks));
-    else if(document.getElementById('cUtil_'+i)) utMake('cUtil_'+i,utDailyCfg(m,m._days));
-    else if(document.getElementById('cUtilBill_'+i)) utMake('cUtilBill_'+i,utBillCfg(m,c));
-  });
 }
 // ── กล่อง "❓ วิธีอ่าน · วิธีคำนวณเกณฑ์" (UTIL-14) — พับไว้เป็นค่าเริ่มต้น ──
 //   ตัวเลขทุกตัวดึงจาก S / UTIL_DEFAULTS (เกณฑ์จริง) และคำนวณตัวอย่างด้วยฟังก์ชันเดียวกับตัวตรวจ ไม่พิมพ์ตายตัว
@@ -175,27 +164,9 @@ function utValOpts(o,only){
 function utToolbar(money,sub){
   const tabs=money?[['cmp','📊 เทียบสาขา (บิลรายเดือน)'],['meter','📟 มิเตอร์ · ตรวจรั่ว']]
     .map(([k,t])=>`<button class="mc-pill${sub===k?' sel':''}" role="tab" aria-selected="${sub===k}" onclick="setUtSub('${k}')">${t}</button>`).join(''):'';
-  const cv=money&&sub==='meter'?`<span class="ut-sep"></span>${[['day','📈 กราฟจากเลขมิเตอร์'],['bill','🧾 กราฟบิลรายเดือน']]
-    .map(([k,t])=>`<button class="mc-pill${utCardView()===k?' sel':''}" onclick="setUtCardView('${k}')">${t}</button>`).join('')}`:'';
-  return `<div class="ut-subtabs"><div class="ut-subtabs-l" role="tablist">${tabs}${cv}</div>
-    <button class="mc-pill" onclick="toggleUtVals()" aria-pressed="${utVals()}">🔢 ${utVals()?'ซ่อนตัวเลข':'แสดงตัวเลข'}</button></div>`;
-}
-// กราฟในการ์ดมิเตอร์: รายวัน (ตั้งต้น) หรือบิลรายเดือน — ทุกการ์ดเหมือนกัน (เดิมการ์ดที่ไม่เคยจดเห็นบิล ที่จดแล้วเห็นรายวัน)
-//   มิเตอร์ที่ยังไม่มีข้อมูลรายวัน แสดงบิลเสมอ · เริ่มจดผ่านแอป 2 ครั้ง = เปลี่ยนเป็นรายวันเอง
-function utCardView(){ if(!UT.cardView){ try{ UT.cardView=localStorage.getItem('utCardView'); }catch(e){} if(UT.cardView!=='bill') UT.cardView='day'; } return UT.cardView; }
-function setUtCardView(v){ UT.cardView=v; try{ localStorage.setItem('utCardView',v); }catch(e){} renderUtil(); }
-// บาท/หน่วยของวันตลาด = บิลที่ครอบเดือนนั้น (บิลเดือน M = ใช้จริง M-1 ตาม billMonthOffset)
-//   ไม่มีบิลเดือนนั้น (ยังไม่ออก) = ใช้บิลล่าสุดก่อนหน้า แล้วติดป้าย "ประมาณ"
-function utDayRates(m,c,days){
-  if(!canSeeUtilMoney()||!c||c.billsErr) return null;
-  const by={}; c.bills.filter(b=>b.meter_id===m.meter_id).forEach(b=>{ const u=utNum(b.units), a=utNum(b.amount_incl_vat); if(u>0&&a!=null) by[b.bill_month]=a/u; });
-  const ks=Object.keys(by).sort(); if(!ks.length) return null;
-  return days.map(d=>{
-    const mo=utAddMonth(d.date.slice(0,7),-UTIL_DEFAULTS.billMonthOffset);
-    if(by[mo]!=null) return {rate:by[mo],mo,est:false};
-    const k=[...ks].reverse().find(x=>x<=mo)||ks[0];
-    return {rate:by[k],mo:k,est:true};
-  });
+  // ปุ่มตัวเลขบนกราฟ: เฉพาะเทียบสาขา (แท็บมิเตอร์ UTIL-15 ไม่มีป้ายตัวเลขบนกราฟ)
+  const vals=sub==='cmp'?`<button class="mc-pill" onclick="toggleUtVals()" aria-pressed="${utVals()}">🔢 ${utVals()?'ซ่อนตัวเลข':'แสดงตัวเลข'}</button>`:'';
+  return `<div class="ut-subtabs"><div class="ut-subtabs-l" role="tablist">${tabs}</div>${vals}</div>`;
 }
 function utMake(id,cfg){ if(cfg&&makeChart(id,cfg)) UT.chartIds.push(id); }
 
@@ -399,12 +370,14 @@ function utSummary(c){
   return `<div class="kpi-row ut-kpis">${h}</div>`;
 }
 
-// การ์ด 1 มิเตอร์ · ผลวิเคราะห์เก็บไว้ที่ m._res / m._days / m._full ให้กราฟ + สรุป + หน้าขยายใช้ต่อ (ไม่คำนวณซ้ำ)
-function utCard(m,i,c,S,now,money){
+// ผลวิเคราะห์ 1 มิเตอร์ เก็บที่ m._res / m._days / m._weeks / m._full / m._th / m._anoms
+//   ให้การ์ด สรุป ตาราง และกล่องรายละเอียด (views/util-meter.js) ใช้ต่อ ไม่คำนวณซ้ำ
+const UT_MIN_WEEKS=8;
+function utPrep(m,c,S,now){
   const meter={meter_id:m.meter_id,type:m.type,branch_code:m.branch_code};
   const res=utilAnalyze(c.readings,meter,{},now);
   const days=applyPeriod(res.days.map(d=>({date:new Date(d.date+'T00:00:00'),d}))).map(x=>x.d);
-  // ไฟจดทุกวันจันทร์ (UTIL-13) → ดูเป็นรายสัปดาห์ · สัปดาห์ที่คาบช่วงเวลาในเมนูข้าง แต่อย่างน้อย UT_MIN_WEEKS สัปดาห์ล่าสุด
+  // ไฟจดทุกวันจันทร์ (UTIL-13) → รายสัปดาห์ · สัปดาห์ที่คาบช่วงเวลาในเมนูข้าง แต่อย่างน้อย UT_MIN_WEEKS สัปดาห์ล่าสุด
   //   (เลือก 7/30 วัน ได้แท่งเดียวสองแท่ง ดูแนวโน้มไม่ได้)
   let weeks=null;
   if(m.type==='elec'){
@@ -412,245 +385,20 @@ function utCard(m,i,c,S,now,money){
     weeks=all.filter(w=>inP.has(w.idx));
     if(weeks.length<UT_MIN_WEEKS) weeks=all.slice(-UT_MIN_WEEKS);
   }
-  const full=weeks?[...weeks].reverse().find(w=>w.cover>=6.999):[...res.days].reverse().find(d=>d.cover>=0.999);
-  m._res=res; m._days=days; m._weeks=weeks; m._full=full; m._th=S.thresholds[m.type]||S.thresholds.water;
-  const lv=UT_LEVEL[full?.level]||UT_LEVEL.nodata;
-  const pts=weeks||days, unit=weeks?'สัปดาห์':'วัน', cnt=k=>pts.filter(d=>d.level===k).length;
-  const flags=[['leak','สงสัยรั่ว'],['red','แดง'],['yellow','เหลือง']].filter(([k])=>cnt(k))
-    .map(([k,t])=>`<span class="ut-chip ${k}">${t} ${cnt(k)} ${unit}</span>`).join('');
-  const bw=weeks&&full?utBillWeek(m,c,full):null;
-  const closed=res.closed.filter(x=>x.level).pop();
-  const anoms=res.anomalies.filter(a=>!days.length||a.t>=Date.parse(days[0].date)).slice(-3).map(a=>
+  m._res=res; m._days=days; m._weeks=weeks; m._th=S.thresholds[m.type]||S.thresholds.water;
+  m._full=weeks?[...weeks].reverse().find(w=>w.cover>=6.999):[...res.days].reverse().find(d=>d.cover>=0.999);
+  m._anoms=res.anomalies.filter(a=>!days.length||a.t>=Date.parse(days[0].date)).slice(-3).map(a=>
     a.kind==='backward'?`เลขถอยหลัง ${utFmt(a.from)} → ${utFmt(a.to)} (${utWhen(a.t)}) · ไม่นับแถวนี้`
                        :`เปลี่ยนมิเตอร์ (${utWhen(a.t)}) · เลขใหม่เป็นจุดตั้งต้น`);
-  const hasBills=money&&c.bills.some(b=>b.meter_id===m.meter_id);
-  // กล่องกราฟ: มีวันในช่วง = กราฟรายวัน · ไม่เคยจดแต่มีบิล = กราฟบิลรายเดือนแทน · ไม่งั้นบอกเหตุผล + ทางไปต่อ
-  let chart;
-  if(utCardView()==='bill'&&hasBills) chart=`<div class="ut-chart ut-zoom" onclick="utOpen(${i})"><canvas id="cUtilBill_${i}"></canvas></div>`;
-  else if(weeks&&weeks.length) chart=`<div class="ut-chart ut-zoom" onclick="utOpen(${i})"><canvas id="cUtilWk_${i}"></canvas></div>`;
-  else if(days.length) chart=`<div class="ut-chart ut-zoom" onclick="utOpen(${i})"><canvas id="cUtil_${i}"></canvas></div>`;
-  else if(!res.last&&hasBills) chart=`<div class="ut-chart ut-zoom" onclick="utOpen(${i})"><canvas id="cUtilBill_${i}"></canvas></div>
-    <div class="ut-sub" style="margin-top:4px">ยังไม่มีการจด · แสดงบิลรายเดือน</div>`;
-  else if(!res.last) chart=`<div class="ut-empty">ยังไม่มีการจดมิเตอร์นี้${utilTrue(m.active)?'<br>จด 2 ครั้งขึ้นไป กราฟจะขึ้นเอง':''}</div>`;
-  else chart=`<div class="ut-empty">ไม่มีการจดในช่วงเวลาที่เลือก · จดล่าสุด ${utWhen(res.last)}<br>
-    <button class="mc-pill" style="margin-top:8px" onclick="setPeriod(0,document.getElementById('p0'))">ดูทั้งหมด</button></div>`;
-  return `<div class="sc ut-card lv-${full?.level||'nodata'}">
-    <div class="ut-top">
-      <div style="flex:1;min-width:0"><div class="ut-name">${UT_TYPE[m.type]||utEsc(m.type)} · ${utEsc(m.location||m.meter_id)}</div>
-        <div class="ut-sub">${utEsc(m.meter_id)}${utilTrue(m.active)?'':' · ปิดใช้แล้ว (ดูย้อนหลัง)'}</div></div>
-      <div class="ut-badge">${lv.icon} ${lv.txt}</div>
-      ${days.length||weeks?.length||hasBills?`<button type="button" class="ut-zbtn" onclick="utOpen(${i})" title="ขยาย" aria-label="ขยายกราฟ">⤢</button>`:''}
-    </div>
-    <div class="ut-meta">
-      ${res.last?`<span>จดล่าสุด ${utWhen(res.last)} · ${utAgo(res.last)}</span>`:''}
-      ${res.stale&&res.last&&utilTrue(m.active)?`<span class="ut-warn">⚠️ ไม่มีการจดเกิน ${res.staleDays} วัน</span>`:''}
-      ${full&&weeks?`<span>สัปดาห์ ${utDM(full.date)}–${utDM(full.end)} ใช้ <b>${utFmt(full.units)}</b> หน่วย${full.base!=null?` · ปกติ ~${utFmt(full.base)}`:''}${bw?` · เฉลี่ยจากบิล ~${utFmt(bw.perWeek)} (${utPct(full.units/bw.perWeek)})`:''}</span>`
-        :full?`<span>วันที่ ${utDM(full.date)} ใช้ <b>${utFmt(full.units,1)}</b> ${utU(m)}${full.base!=null?` · ปกติ ~${utFmt(full.base,1)}`:''}</span>`:''}
-      ${weeks&&utilTrue(m.active)?'<span class="ut-sub">จดทุกวันจันทร์</span>':''}
-      ${closed?`<span>ช่วงตลาดปิดล่าสุด ${utFmt(closed.rate,2)} ${utU(m)}/ชม. ${closed.level==='red'?'🔴 เกินเกณฑ์':'✅'}</span>`:''}
-    </div>
-    ${flags?`<div class="ut-flags">ในช่วงที่เลือก: ${flags}</div>`:''}
-    ${chart}
-    ${anoms.length?`<div class="ut-anom">${anoms.map(a=>'⚠️ '+utEsc(a)).join('<br>')}</div>`:''}
-    ${hasBills?utBills(m,c,res,6):''}
-  </div>`;
 }
 
-// ── กราฟรายวัน: แท่งสีตามธง + เส้นปกติ/เหลือง/แดง · _ct ส่งข้อมูลดิบให้แบบอื่น (chart-types.js ตัดทิ้งก่อนวาด) ──
-function utDailyCfg(m,days,big){
-  const bands=days.map(d=>utilBands(d,m._th));
-  const fill=d=>`rgba(${(UT_LEVEL[d.level]||UT_LEVEL.nodata).rgb},${d.est?0.4:0.85})`;
-  const line=(label,key,color,dash)=>({type:'line',label,data:bands.map(b=>b[key]),borderColor:color,borderWidth:1.5,
-    borderDash:dash,pointRadius:0,stepped:'middle',spanGaps:false,fill:false,order:1});
-  const o=cOpts();
-  o.plugins.legend={display:!!big,labels:o.plugins.legend.labels};
-  o.plugins.tooltip={callbacks:{
-    title:it=>'วันที่ '+it[0].label,
-    afterBody:it=>{
-      const d=days[it[0].dataIndex], lv=UT_LEVEL[d.level]||UT_LEVEL.nodata;
-      return [lv.icon+' '+lv.txt+(d.est?' · ไม่ได้จด (ยอดเฉลี่ย)':'')+(d.baseFrom==='setting'?' · ปกติจากค่าที่ตั้งไว้':'')];
-    }}};
-  o.scales.y.beginAtZero=true;
-  if(big) o.scales.x.ticks.maxTicksLimit=24;
-  utValOpts(o,[0]);
-  return {type:'bar',data:{labels:days.map(d=>utDM(d.date)),datasets:[
-    {type:'bar',label:`ใช้ (${utU(m)})`,data:days.map(d=>+d.units.toFixed(2)),backgroundColor:days.map(fill),borderRadius:3,order:2},
-    line('ปกติ','base',chartClr().lbl,[4,4]),
-    line('เส้นเหลือง','yellow','rgba(240,165,0,.9)',[6,3]),
-    line('เส้นแดง','red','rgba(224,92,92,.95)',[])
-  ]},options:o,_ct:{days,bands,rates:utDayRates(m,UT.cache[UT.br],days),unit:utU(m)}};
-}
-
-// ── กราฟรายสัปดาห์ (ไฟ · UTIL-13): แท่งสีตามธง + เส้นปกติ/เหลือง/แดง + เส้นเฉลี่ยจากบิล ──
-//   เส้นบิล = เช็คว่าอ่านมิเตอร์/ตัวคูณถูก (แท่งห่างจากเส้นเป็นเท่าตัว = ผิด) · ต้องมีสิทธิ์ยอดเงินบิล (บิลอยู่ utilbill/)
-const UT_MIN_WEEKS=8;
-function utPct(r){ if(!Number.isFinite(r)) return '—'; const p=Math.round((r-1)*100); return (p>0?'+':'')+p+'%'; }
-function utBillsNum(c){
-  if(!canSeeUtilMoney()||!c||c.billsErr) return [];
-  return c._billsNum||(c._billsNum=c.bills.map(b=>({bill_month:b.bill_month,meter_id:b.meter_id,units:utNum(b.units)})));
-}
-function utBillWeek(m,c,w){ return utilBillWeekly(utBillsNum(c),m.meter_id,w.date); }
-function utWeeklyCfg(m,weeks,big){
-  const c=UT.cache[UT.br], bands=weeks.map(w=>utilWeekBands(w,m._th)), bill=weeks.map(w=>utBillWeek(m,c,w));
-  const fill=w=>`rgba(${(UT_LEVEL[w.level]||UT_LEVEL.nodata).rgb},${w.level==='partial'||w.est?0.4:0.85})`;
-  const line=(label,data,color,dash)=>({type:'line',label,data,borderColor:color,borderWidth:1.5,
-    borderDash:dash,pointRadius:0,stepped:'middle',spanGaps:false,fill:false,order:1});
-  const o=cOpts();
-  o.plugins.legend={display:!!big,labels:o.plugins.legend.labels};
-  o.plugins.tooltip={callbacks:{
-    title:it=>{ const w=weeks[it[0].dataIndex]; return `สัปดาห์ ${utDM(w.date)}–${utDM(w.end)}`; },
-    afterBody:it=>{
-      const i=it[0].dataIndex, w=weeks[i], b=bill[i], lv=UT_LEVEL[w.level]||UT_LEVEL.nodata, out=[];
-      out.push(w.level==='partial'?`⚪ จดไม่ครบสัปดาห์ (${utFmt(w.cover,1)}/7 วัน) · ไม่ตัดสินธง`
-        :lv.icon+' '+lv.txt+(w.baseFrom==='setting'?' · ปกติจากค่าที่ตั้งไว้':''));
-      if(w.est) out.push('มีช่วงไม่ได้จด (ยอดเฉลี่ย)');
-      if(b&&w.level!=='partial') out.push(`เทียบเฉลี่ยจากบิล ${utPct(w.units/b.perWeek)} (ใช้จริง ${utMonthTh(b.usageMonth)}${b.est?' · บิลเดือนนี้ยังไม่ออก':''})`);
-      return out;
-    }}};
-  o.scales.y.beginAtZero=true;
-  utValOpts(o,[0]);
-  const ds=[
-    {type:'bar',label:'ใช้ต่อสัปดาห์ (หน่วย)',data:weeks.map(w=>Math.round(w.units)),backgroundColor:weeks.map(fill),borderRadius:3,order:2},
-    line('ปกติ',bands.map(b=>b.base),chartClr().lbl,[4,4]),
-    line('เส้นเหลือง',bands.map(b=>b.yellow),'rgba(240,165,0,.9)',[6,3]),
-    line('เส้นแดง',bands.map(b=>b.red),'rgba(224,92,92,.95)',[])
-  ];
-  if(bill.some(Boolean)) ds.push(line('เฉลี่ยจากบิล',bill.map(b=>b?Math.round(b.perWeek):null),'rgba(74,158,255,.9)',[2,3]));
-  return {type:'bar',data:{labels:weeks.map(w=>utDM(w.date)),datasets:ds},options:o};
-}
-
-// ── บิลรายเดือน 12 เดือนล่าสุด เทียบเดือนเดียวกันปีก่อน ──
+// ── ชื่อเดือนไทย (แท็บเทียบสาขา + มิเตอร์) ──
 const UT_TH_MON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 function utAddMonth(ym,k){ const [y,m]=ym.split('-').map(Number), n=y*12+m-1+k; return `${Math.floor(n/12)}-${String(n%12+1).padStart(2,'0')}`; }
 function utMonthTh(ym){ const [y,m]=ym.split('-').map(Number); return `${UT_TH_MON[m-1]} ${String(y+543).slice(2)}`; }
-function utBillSeries(m,c){
-  const by={}; c.bills.filter(b=>b.meter_id===m.meter_id).forEach(b=>{
-    const o=by[b.bill_month]||(by[b.bill_month]={amt:0,units:0});
-    o.amt+=utNum(b.amount_incl_vat)||0; o.units+=utNum(b.units)||0; });
-  const L=Object.keys(by).sort().pop(); if(!L) return null;
-  const months=[...Array(12)].map((_,k)=>utAddMonth(L,k-11));
-  const pick=(mo,f)=>by[mo]?f(by[mo]):null;
-  const ser=f=>({cur:months.map(mo=>pick(mo,f)),prev:months.map(mo=>pick(utAddMonth(mo,-12),f))});
-  return {labels:months.map(utMonthTh),amt:ser(o=>o.amt),units:ser(o=>o.units||null),rate:ser(o=>o.units?o.amt/o.units:null)};
-}
-function utBillCfg(m,c,big){
-  const s=utBillSeries(m,c); if(!s) return null;
-  const o=cOpts();
-  o.plugins.legend={display:true,labels:o.plugins.legend.labels};
-  o.plugins.tooltip={callbacks:{label:it=>`${it.dataset.label}: ${it.raw==null?'—':utFmt(it.raw,2)}`}};
-  o.scales.y.beginAtZero=true; o.scales.y.ticks.callback=v=>'฿'+utFmt(v);
-  utValOpts(o,[0]);
-  return {type:'bar',data:{labels:s.labels,datasets:[
-    {type:'bar',label:'ยอดบิล (ปีนี้)',data:s.amt.cur,backgroundColor:'rgba(240,165,0,.75)',borderRadius:3,order:2},
-    {type:'line',label:'เดือนเดียวกันปีก่อน',data:s.amt.prev,borderColor:'rgba(74,158,255,.9)',backgroundColor:'rgba(74,158,255,.9)',
-     borderWidth:2,pointRadius:big?3:2,spanGaps:false,fill:false,order:1}
-  ]},options:o,_ct:s};
-}
-
-// ── แบบกราฟให้เลือก (CHT-04 ปุ่มมุมการ์ด) · ทุกการ์ดใช้ค่าเดียวกัน (cUtil_0 · cUtil_1 · cUtil_big → คีย์ cUtil) ──
-CT_SPEC.cUtil={icon:'combo',opts:[['orig','แท่ง+เส้นเกณฑ์','สีตามธง · เส้นปกติ/เหลือง/แดง'],['line','เส้น','แนวโน้ม · จุดสีตามธง'],
-  ['pct','% ของปกติ','ปกติ = 100% · เทียบมิเตอร์ต่างขนาดกันได้'],['cum','สะสม','ใช้ไปรวมเท่าไหร่ในช่วงที่เลือก'],
-  ['baht','เป็นเงิน (บาท)','หน่วย × บาท/หน่วยของบิลเดือนนั้น']],
-  need:{baht:()=>canSeeUtilMoney()?'':'ต้องมีสิทธิ์ "น้ำ-ไฟ: ยอดเงินบิล"'}};
-CT_SPEC.cUtilBill={icon:'bar',opts:[['orig','แท่ง เทียบปีก่อน','ยอดเงินรายเดือน'],['line','เส้น 2 ปี','แนวโน้มทั้งปี'],
-  ['units','หน่วยตามบิล','ใช้มากขึ้น หรือแค่ราคาขึ้น'],['rate','บาท/หน่วย','ราคาต่อหน่วยเปลี่ยนไหม']]};
-const utWith=(cfg,datasets,y)=>({...cfg,data:{labels:cfg.data.labels,datasets},
-  options:{...cfg.options,scales:{...cfg.options.scales,y:{...cfg.options.scales.y,...(y||{})}}}});
-CT_ALT.cUtil={
-  line(cfg){
-    const b=cfg.data.datasets[0];
-    return utWith({...cfg,type:'line'},[{type:'line',label:b.label,data:b.data,borderColor:chartClr().lbl,borderWidth:1.5,tension:.25,
-      pointRadius:3,pointBackgroundColor:b.backgroundColor,pointBorderColor:b.backgroundColor,order:2},...cfg.data.datasets.slice(1)]);
-  },
-  pct(cfg,{days,bands}){
-    const p=(v,i)=>bands[i].base?v/bands[i].base*100:null, ds=cfg.data.datasets;
-    return utWith(cfg,[{...ds[0],label:'% ของปกติ',data:days.map((d,i)=>p(d.units,i))},
-      {...ds[1],data:bands.map(b=>b.base?100:null)},{...ds[2],data:bands.map((b,i)=>p(b.yellow,i))},{...ds[3],data:bands.map((b,i)=>p(b.red,i))}],
-      {ticks:{...cfg.options.scales.y.ticks,callback:v=>v+'%'}});
-  },
-  // เป็นเงิน: แท่ง + เส้นเกณฑ์ คูณบาท/หน่วยของวันนั้น · มิเตอร์ที่ไม่มีบิล = คืน null → chart-types ใช้แบบเดิม
-  baht(cfg,{days,bands,rates}){
-    if(!rates) return null;
-    const ds=cfg.data.datasets, x=(v,i)=>v==null||!rates[i]?null:+(v*rates[i].rate).toFixed(2);
-    const tip=cfg.options.plugins.tooltip||{};
-    const out=utWith(cfg,[{...ds[0],label:'ค่าใช้จ่าย (บาท)',data:days.map((d,i)=>x(d.units,i))},
-      {...ds[1],data:bands.map((b,i)=>x(b.base,i))},{...ds[2],data:bands.map((b,i)=>x(b.yellow,i))},{...ds[3],data:bands.map((b,i)=>x(b.red,i))}],
-      {ticks:{...cfg.options.scales.y.ticks,callback:v=>'฿'+utFmt(v)}});
-    out.options={...out.options,plugins:{...out.options.plugins,tooltip:{...tip,callbacks:{...(tip.callbacks||{}),
-      label:it=>`${it.dataset.label}: ${it.raw==null?'—':'฿'+utFmt(it.raw,2)}`,
-      footer:it=>{ const r=rates[it[0].dataIndex]; return r?`บาท/หน่วย ${utFmt(r.rate,2)} จากบิล ${utMonthTh(r.mo)}${r.est?' (ประมาณ — บิลเดือนนี้ยังไม่ออก)':''}`:''; }}}}};
-    return out;
-  },
-  cum(cfg,{days,unit}){
-    let s=0; const data=days.map(d=>+(s+=d.units).toFixed(1));
-    return utWith({...cfg,type:'line'},[{type:'line',label:`ใช้สะสม (${unit||'หน่วย'})`,data,borderColor:'rgba(74,158,255,.9)',
-      backgroundColor:'rgba(74,158,255,.15)',fill:true,pointRadius:0,borderWidth:2}]);
-  }
-};
-CT_ALT.cUtilBill={
-  line(cfg){ const [a,b]=cfg.data.datasets;
-    return utWith({...cfg,type:'line'},[{type:'line',label:a.label,data:a.data,borderColor:a.backgroundColor,backgroundColor:a.backgroundColor,
-      borderWidth:2,pointRadius:3,spanGaps:false},{...b}]); },
-  units(cfg,s){ const [a,b]=cfg.data.datasets;
-    return utWith(cfg,[{...a,label:'หน่วยตามบิล (ปีนี้)',data:s.units.cur},{...b,data:s.units.prev}],
-      {ticks:{...cfg.options.scales.y.ticks,callback:v=>utFmt(v)}}); },
-  rate(cfg,s){ const [a,b]=cfg.data.datasets;
-    return utWith({...cfg,type:'line'},[{type:'line',label:'บาท/หน่วย (ปีนี้)',data:s.rate.cur,borderColor:a.backgroundColor,
-      backgroundColor:a.backgroundColor,borderWidth:2,pointRadius:3,spanGaps:false},{...b,data:s.rate.prev}],
-      {beginAtZero:false,ticks:{...cfg.options.scales.y.ticks,callback:v=>'฿'+utFmt(v,2)}}); }
-};
-
-// ── หน้าขยาย: กราฟรายวันใหญ่ + บิลรายเดือนเทียบปีก่อน + ตารางบิลทั้งหมด ──
-function utOpen(i){
-  const c=UT.cache[UT.br], m=c&&c.meters[i]; if(!m||!m._res) return;   // _res มีเฉพาะตอนวาดแท็บย่อยมิเตอร์แล้ว
-  let box=document.getElementById('utModal');
-  if(!box){
-    box=document.createElement('div'); box.id='utModal'; box.className='ut-modal';
-    box.addEventListener('click',e=>{ if(e.target===box) utClose(); });
-    document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&box.style.display==='flex') utClose(); });
-    document.body.appendChild(box);
-  }
-  const money=canSeeUtilMoney()&&!c.billsErr, hasBills=money&&c.bills.some(b=>b.meter_id===m.meter_id);
-  const lv=UT_LEVEL[m._full?.level]||UT_LEVEL.nodata;
-  box.innerHTML=`<div class="ut-mcard" role="dialog" aria-modal="true" aria-label="${utEsc(m.location||m.meter_id)}">
-    <div class="ut-top"><div style="flex:1;min-width:0"><div class="ut-name">${UT_TYPE[m.type]||''} · ${utEsc(m.location||m.meter_id)} <span class="ut-sub">${utEsc(m.meter_id)}</span></div>
-      <div class="ut-sub">${lv.icon} ${lv.txt}${m._res.last?' · จดล่าสุด '+utWhen(m._res.last):''}</div></div>
-      <button type="button" class="day-x" onclick="utClose()" aria-label="ปิด">✕</button></div>
-    ${m._weeks?.length?`<div class="sc ut-msec"><div class="ut-top"><div class="sc-title" style="flex:1;margin:0">ใช้ต่อสัปดาห์ · ${m._weeks.length} สัปดาห์</div></div>
-      <div class="ut-chart-big"><canvas id="cUtilWk_big"></canvas></div></div>`
-    :m._days.length?`<div class="sc ut-msec"><div class="ut-top"><div class="sc-title" style="flex:1;margin:0">ใช้ต่อวัน · ${m._days.length} วัน</div></div>
-      <div class="ut-chart-big"><canvas id="cUtil_big"></canvas></div></div>`:''}
-    ${hasBills?`<div class="sc ut-msec"><div class="ut-top"><div class="sc-title" style="flex:1;margin:0">บิลรายเดือน 12 เดือนล่าสุด เทียบเดือนเดียวกันปีก่อน</div></div>
-      <div class="ut-chart-mid"><canvas id="cUtilBill_big"></canvas></div>${utBills(m,c,m._res,0)}</div>`:''}
-  </div>`;
-  box.style.display='flex'; document.body.style.overflow='hidden';
-  // ไม่เข้า UT.chartIds — แท็บวาดใหม่ (รีเฟรช 5 นาที) ระหว่างเปิดอยู่ต้องไม่ลบกราฟในหน้าขยาย
-  if(m._weeks?.length) makeChart('cUtilWk_big',utWeeklyCfg(m,m._weeks,true));
-  else if(m._days.length) makeChart('cUtil_big',utDailyCfg(m,m._days,true));
-  if(hasBills) makeChart('cUtilBill_big',utBillCfg(m,c,true));
-}
+// ── ปิดกล่องรายละเอียด (#utModal · views/util-meter.js) ──
 function utClose(){
   const box=document.getElementById('utModal'); if(!box) return;
-  ['cUtil_big','cUtilWk_big','cUtilBill_big'].forEach(dChart);
+  dChart('cUmFull');
   box.style.display='none'; box.innerHTML=''; document.body.style.overflow='';
-}
-
-// บิลของมิเตอร์นี้ (n = กี่ใบล่าสุด · 0 = ทั้งหมด) · เทียบหน่วยที่จดได้ในเดือนที่ใช้จริง (bill_month เลื่อนตาม billMonthOffset)
-function utBills(m,c,res,n){
-  let rows=c.bills.filter(b=>b.meter_id===m.meter_id).sort((a,b)=>a.bill_month<b.bill_month?1:-1);
-  if(n) rows=rows.slice(0,n);
-  if(!rows.length) return '';
-  const tr=rows.map(b=>{
-    const units=utNum(b.units), amt=utNum(b.amount_incl_vat), use=utilBillUsageMonth(b.bill_month);
-    const md=res.days.filter(d=>d.date.startsWith(use)), got=md.reduce((s,d)=>s+d.units,0);
-    const [y,mm]=use.split('-').map(Number), nDays=new Date(y,mm,0).getDate(), cov=md.reduce((s,d)=>s+d.cover,0);
-    const meas=md.length?`${utFmt(got,0)}${cov<nDays-0.5?` <span class="ut-sub">(${Math.round(cov)}/${nDays} วัน)</span>`:''}`:'—';
-    const f=c.chk&&c.chk[m.meter_id+'@'+b.bill_month], ft=f?utFlagText(UT.br||activeBranch,f).map(x=>x.t.replace(/<[^>]+>/g,'')).join(' · '):'';
-    const mk=!f?'':f.high?` <span class="ut-mk hi" title="${utEsc(ft)}">⚠</span>`:` <span class="ut-mk q" title="${utEsc(ft)}">?</span>`;
-    return `<tr><td>${utEsc(b.bill_month)}${mk}</td><td class="n">${utFmt(units)}</td><td class="n">${utFmt(amt,2)}</td>
-      <td class="n">${units&&amt!=null?utFmt(amt/units,2):'—'}</td><td class="n">${meas}</td></tr>`;
-  }).join('');
-  return `<div class="ut-bills${n?'':' ut-bills-all'}"><table>
-    <thead><tr><th>เดือนในบิล</th><th>${utU(m)} ตามบิล</th><th>ยอดเงิน (รวม VAT)</th><th>บาท/หน่วย</th><th>จากเลขที่จด</th></tr></thead>
-    <tbody>${tr}</tbody></table></div>${tr.includes('ut-mk')?`<div class="ut-sub" style="margin-top:4px">${UT_MK_NOTE.replace('ชี้ที่แท่ง','ชี้ที่เครื่องหมาย')}</div>`:''}`;
 }

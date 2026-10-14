@@ -11,7 +11,7 @@ let bgStData=[],bgCarData=[],bgMerged=[];
 let bnStData=[],bnCarData=[],bnMerged=[];
 let period=90,selMonth='',zone='all',group='all',view='overview';
 let customFrom=null,customTo=null;
-let activeBranch='SS'; // SS, BG, BN
+let activeBranch='BG'; // SS, BG, BN · เปิดเว็บมาที่ประตูกรุงเทพ (เจ้าของสั่ง 14 ต.ค. 69 · SS ปิดสาขาแล้ว) — ไม่มีสิทธิ์ BG = auth.js ย้ายไปสาขาแรกที่มีสิทธิ์
 let targetLock=400; // เป้าล็อกต่อวัน ของสาขา+โซนที่เลือกอยู่ (คำนวณจาก TARGETS)
 
 // ── ENH-05: เป้าแยกสาขา × โซน ──

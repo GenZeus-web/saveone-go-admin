@@ -14,7 +14,7 @@ const log=ver=>`# CHANGELOG\n\n---\n\n## v${ver} (6 ต.ค. 2569) — ทดส
 test('ไฟล์จริงใน repo: ?v= ทุกตัว + CHANGELOG ตรงป้ายหัวเว็บ',()=>{
   const r=checkVersion(read('index.html'),read('CHANGELOG.md'));
   assert.deepEqual(r.problems,[]);
-  assert.equal(r.count,31); // 29 js/css (v3.2.0 +util-calc.js +views/util.js) + ไอคอนแอป 2 ตัว — เพิ่ม/ลบไฟล์ให้แก้เลขนี้ด้วย
+  assert.equal(r.count,32); // 30 js/css (v3.2.0 +util-calc.js +views/util.js · v3.3.0 +views/util-meter.js) + ไอคอนแอป 2 ตัว — เพิ่ม/ลบไฟล์ให้แก้เลขนี้ด้วย
 });
 
 test('ตรงกันหมด = ผ่าน · ข้าม CDN กับ manifest',()=>{
