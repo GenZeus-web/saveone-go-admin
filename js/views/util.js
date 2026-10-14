@@ -12,10 +12,11 @@ const UT_LEVEL={
   yellow: {rgb:'240,165,0',  icon:'🟡',txt:'สูงกว่าปกติ'},
   red:    {rgb:'224,92,92',  icon:'🔴',txt:'สูงผิดปกติ'},
   leak:   {rgb:'167,139,250',icon:'🟣',txt:'สูงต่อเนื่อง · สงสัยรั่ว'},
-  partial:{rgb:'140,148,170',icon:'⚪',txt:'ข้อมูลยังไม่ครบวัน'},
-  nodata: {rgb:'140,148,170',icon:'⚪',txt:'ยังไม่มีฐานเทียบ'}
+  partial:{rgb:'140,148,170',icon:'⚪',txt:'จดยังไม่ครบ'},
+  nodata: {rgb:'140,148,170',icon:'⚪',txt:'ข้อมูลยังไม่พอเทียบ'}
 };
 const UT_TYPE={water:'💧 น้ำ',elec:'⚡ ไฟ'};
+const utU=t=>(t&&t.type||t)==='water'?'ลบ.ม.':'หน่วย';   // หน่วยวัดตามชนิด (รับ meter หรือชนิด)
 
 function canSeeUtilMoney(){ return window.userPerms?.showUtilMoney===true; }
 function utEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -137,7 +138,7 @@ function utHelpHtml(S,hasElec){
 
       <div class="ut-help-h">วิธีคำนวณ</div>
       <ol>
-        <li><b>ใช้ต่อวัน</b> = เลขครั้งนี้ − เลขครั้งก่อน · 1 วันตลาด = ${H.open} ถึง ${H.open} วันถัดไป</li>
+        <li><b>ใช้ต่อวัน</b> = เลขครั้งนี้ − เลขครั้งก่อน · 1 วัน นับ ${H.open} ถึง ${H.open} วันถัดไป</li>
         <li><b>ปกติ</b> = ค่ากลางของวันเดียวกันในสัปดาห์ ย้อน ${S.baseWeeks} สัปดาห์ ไม่นับวันที่แดง · เช่น 30 · 34 · 36 · 80 → ${utFmt(utilMedian([30,34,36,80]))}</li>
         <li><b>เส้นเหลือง</b> = ค่าที่มากกว่าระหว่าง ปกติ × ${w.yellow} กับ ปกติ + ${w.minDiff}
           · <b>เส้นแดง</b> = ค่าที่มากกว่าระหว่าง ปกติ × ${w.red} กับ ปกติ + ${w.minDiff}<br>เช่น ${ex(35)} · ${ex(5)}</li>
@@ -276,9 +277,9 @@ function utMeterName(b,id){ const m=(UT.cache[b]?.meters||[]).find(x=>x.meter_id
 function utFlagText(b,x){
   const who=`${utEsc(BM_NAMES[b]||b)} · ${UT_TYPE[x.type]?UT_TYPE[x.type].split(' ')[0]+' ':''}${utEsc(utMeterName(b,x.meter_id))}`;
   const out=[];
-  if(x.high) out.push({k:'high',t:`${who} บิล ${utMonthTh(x.bill_month)}: ${utFmt(x.units)} หน่วย สูงกว่าปกติ +${x.high.pct.toFixed(0)}% (ปกติ ~${utFmt(x.high.base)})`});
+  if(x.high) out.push({k:'high',t:`${who} บิล ${utMonthTh(x.bill_month)}: ${utFmt(x.units)} ${utU(x.type)} สูงกว่าปกติ +${x.high.pct.toFixed(0)}% (ปกติ ~${utFmt(x.high.base)})`});
   if(x.dup) out.push({k:'q',t:`${who} บิล ${utMonthTh(x.bill_month)}: หน่วยและเงินซ้ำกับบิล ${utMonthTh(x.dup)} ทุกหลัก — อาจคัดลอกผิด`});
-  if(x.round) out.push({k:'q',t:`${who} บิล ${utMonthTh(x.bill_month)}: ${utFmt(x.units)} หน่วย เป็นเลขกลมหลักพัน — อาจเป็นยอดประมาณ`});
+  if(x.round) out.push({k:'q',t:`${who} บิล ${utMonthTh(x.bill_month)}: ${utFmt(x.units)} ${utU(x.type)} เป็นเลขกลมหลักพัน — อาจเป็นยอดประมาณ`});
   return out;
 }
 // ธงสูงผิดปกติใน n บิลล่าสุดของแต่ละมิเตอร์ (ของที่เพิ่งเกิด = ต้องดูตอนนี้)
@@ -444,9 +445,9 @@ function utCard(m,i,c,S,now,money){
       ${res.last?`<span>จดล่าสุด ${utWhen(res.last)} · ${utAgo(res.last)}</span>`:''}
       ${res.stale&&res.last&&utilTrue(m.active)?`<span class="ut-warn">⚠️ ไม่มีการจดเกิน ${res.staleDays} วัน</span>`:''}
       ${full&&weeks?`<span>สัปดาห์ ${utDM(full.date)}–${utDM(full.end)} ใช้ <b>${utFmt(full.units)}</b> หน่วย${full.base!=null?` · ปกติ ~${utFmt(full.base)}`:''}${bw?` · เฉลี่ยจากบิล ~${utFmt(bw.perWeek)} (${utPct(full.units/bw.perWeek)})`:''}</span>`
-        :full?`<span>วันตลาด ${utDM(full.date)} ใช้ <b>${utFmt(full.units,1)}</b> หน่วย${full.base!=null?` · ปกติ ~${utFmt(full.base,1)}`:''}</span>`:''}
+        :full?`<span>วันที่ ${utDM(full.date)} ใช้ <b>${utFmt(full.units,1)}</b> ${utU(m)}${full.base!=null?` · ปกติ ~${utFmt(full.base,1)}`:''}</span>`:''}
       ${weeks&&utilTrue(m.active)?'<span class="ut-sub">จดทุกวันจันทร์</span>':''}
-      ${closed?`<span>ช่วงตลาดปิดล่าสุด ${utFmt(closed.rate,2)} หน่วย/ชม. ${closed.level==='red'?'🔴 เกินเกณฑ์':'✅'}</span>`:''}
+      ${closed?`<span>ช่วงตลาดปิดล่าสุด ${utFmt(closed.rate,2)} ${utU(m)}/ชม. ${closed.level==='red'?'🔴 เกินเกณฑ์':'✅'}</span>`:''}
     </div>
     ${flags?`<div class="ut-flags">ในช่วงที่เลือก: ${flags}</div>`:''}
     ${chart}
@@ -464,20 +465,20 @@ function utDailyCfg(m,days,big){
   const o=cOpts();
   o.plugins.legend={display:!!big,labels:o.plugins.legend.labels};
   o.plugins.tooltip={callbacks:{
-    title:it=>'วันตลาด '+it[0].label,
+    title:it=>'วันที่ '+it[0].label,
     afterBody:it=>{
       const d=days[it[0].dataIndex], lv=UT_LEVEL[d.level]||UT_LEVEL.nodata;
-      return [lv.icon+' '+lv.txt+(d.est?' · เฉลี่ยจากช่วงขาดจด':'')+(d.baseFrom==='setting'?' · ฐานจากค่าตั้ง':'')];
+      return [lv.icon+' '+lv.txt+(d.est?' · ไม่ได้จด (ยอดเฉลี่ย)':'')+(d.baseFrom==='setting'?' · ปกติจากค่าที่ตั้งไว้':'')];
     }}};
   o.scales.y.beginAtZero=true;
   if(big) o.scales.x.ticks.maxTicksLimit=24;
   utValOpts(o,[0]);
   return {type:'bar',data:{labels:days.map(d=>utDM(d.date)),datasets:[
-    {type:'bar',label:'ใช้ (หน่วย)',data:days.map(d=>+d.units.toFixed(2)),backgroundColor:days.map(fill),borderRadius:3,order:2},
+    {type:'bar',label:`ใช้ (${utU(m)})`,data:days.map(d=>+d.units.toFixed(2)),backgroundColor:days.map(fill),borderRadius:3,order:2},
     line('ปกติ','base',chartClr().lbl,[4,4]),
     line('เส้นเหลือง','yellow','rgba(240,165,0,.9)',[6,3]),
     line('เส้นแดง','red','rgba(224,92,92,.95)',[])
-  ]},options:o,_ct:{days,bands,rates:utDayRates(m,UT.cache[UT.br],days)}};
+  ]},options:o,_ct:{days,bands,rates:utDayRates(m,UT.cache[UT.br],days),unit:utU(m)}};
 }
 
 // ── กราฟรายสัปดาห์ (ไฟ · UTIL-13): แท่งสีตามธง + เส้นปกติ/เหลือง/แดง + เส้นเฉลี่ยจากบิล ──
@@ -501,8 +502,8 @@ function utWeeklyCfg(m,weeks,big){
     afterBody:it=>{
       const i=it[0].dataIndex, w=weeks[i], b=bill[i], lv=UT_LEVEL[w.level]||UT_LEVEL.nodata, out=[];
       out.push(w.level==='partial'?`⚪ จดไม่ครบสัปดาห์ (${utFmt(w.cover,1)}/7 วัน) · ไม่ตัดสินธง`
-        :lv.icon+' '+lv.txt+(w.baseFrom==='setting'?' · ฐานจากค่าตั้ง':''));
-      if(w.est) out.push('มีช่วงขาดจด (ยอดเฉลี่ย)');
+        :lv.icon+' '+lv.txt+(w.baseFrom==='setting'?' · ปกติจากค่าที่ตั้งไว้':''));
+      if(w.est) out.push('มีช่วงไม่ได้จด (ยอดเฉลี่ย)');
       if(b&&w.level!=='partial') out.push(`เทียบเฉลี่ยจากบิล ${utPct(w.units/b.perWeek)} (ใช้จริง ${utMonthTh(b.usageMonth)}${b.est?' · บิลเดือนนี้ยังไม่ออก':''})`);
       return out;
     }}};
@@ -580,9 +581,9 @@ CT_ALT.cUtil={
       footer:it=>{ const r=rates[it[0].dataIndex]; return r?`บาท/หน่วย ${utFmt(r.rate,2)} จากบิล ${utMonthTh(r.mo)}${r.est?' (ประมาณ — บิลเดือนนี้ยังไม่ออก)':''}`:''; }}}}};
     return out;
   },
-  cum(cfg,{days}){
+  cum(cfg,{days,unit}){
     let s=0; const data=days.map(d=>+(s+=d.units).toFixed(1));
-    return utWith({...cfg,type:'line'},[{type:'line',label:'ใช้สะสม (หน่วย)',data,borderColor:'rgba(74,158,255,.9)',
+    return utWith({...cfg,type:'line'},[{type:'line',label:`ใช้สะสม (${unit||'หน่วย'})`,data,borderColor:'rgba(74,158,255,.9)',
       backgroundColor:'rgba(74,158,255,.15)',fill:true,pointRadius:0,borderWidth:2}]);
   }
 };
@@ -617,7 +618,7 @@ function utOpen(i){
       <button type="button" class="day-x" onclick="utClose()" aria-label="ปิด">✕</button></div>
     ${m._weeks?.length?`<div class="sc ut-msec"><div class="ut-top"><div class="sc-title" style="flex:1;margin:0">ใช้ต่อสัปดาห์ · ${m._weeks.length} สัปดาห์</div></div>
       <div class="ut-chart-big"><canvas id="cUtilWk_big"></canvas></div></div>`
-    :m._days.length?`<div class="sc ut-msec"><div class="ut-top"><div class="sc-title" style="flex:1;margin:0">ใช้ต่อวันตลาด · ${m._days.length} วัน</div></div>
+    :m._days.length?`<div class="sc ut-msec"><div class="ut-top"><div class="sc-title" style="flex:1;margin:0">ใช้ต่อวัน · ${m._days.length} วัน</div></div>
       <div class="ut-chart-big"><canvas id="cUtil_big"></canvas></div></div>`:''}
     ${hasBills?`<div class="sc ut-msec"><div class="ut-top"><div class="sc-title" style="flex:1;margin:0">บิลรายเดือน 12 เดือนล่าสุด เทียบเดือนเดียวกันปีก่อน</div></div>
       <div class="ut-chart-mid"><canvas id="cUtilBill_big"></canvas></div>${utBills(m,c,m._res,0)}</div>`:''}
@@ -650,6 +651,6 @@ function utBills(m,c,res,n){
       <td class="n">${units&&amt!=null?utFmt(amt/units,2):'—'}</td><td class="n">${meas}</td></tr>`;
   }).join('');
   return `<div class="ut-bills${n?'':' ut-bills-all'}"><table>
-    <thead><tr><th>เดือนในบิล</th><th>หน่วยบิล</th><th>ยอดเงิน (รวม VAT)</th><th>บาท/หน่วย</th><th>จดได้ (เดือนก่อนบิล)</th></tr></thead>
+    <thead><tr><th>เดือนในบิล</th><th>${utU(m)} ตามบิล</th><th>ยอดเงิน (รวม VAT)</th><th>บาท/หน่วย</th><th>จากเลขที่จด</th></tr></thead>
     <tbody>${tr}</tbody></table></div>${tr.includes('ut-mk')?`<div class="ut-sub" style="margin-top:4px">${UT_MK_NOTE.replace('ชี้ที่แท่ง','ชี้ที่เครื่องหมาย')}</div>`:''}`;
 }
