@@ -280,7 +280,7 @@ function umMeterDetail(i){
           <td class="n">${umPct(x)||'—'}</td><td class="n">${amt[k]?utFmt(amt[k],2):'—'}</td><td class="n">${amt[k]?utFmt(amt[k]/x.units,2):'—'}</td><td class="n">${md.length?utFmt(got):'—'}</td></tr>`; }).join('');
       bills=`<div class="um-dh">บิลรายเดือน · % จากค่ากลาง ${UTIL_DEFAULTS.billCheck.lookback} บิลก่อน</div>${row}
         <div class="um-key"><span>เลขบน = % จากค่ากลาง · เลขล่าง = ค่ากลาง · กรอบแดง = ⚠ บิลสูงผิดปกติ · กดช่องหรือแถวดูวิธีคิด</span></div>
-        <div class="ut-bills ut-bills-all"><table><thead><tr><th>เดือนในบิล</th><th>${unit} ตามบิล</th><th>ค่ากลาง</th><th>%</th><th>ยอดเงิน (รวม VAT)</th><th>บาท/${unit}</th><th>จากเลขที่จด</th></tr></thead><tbody>${tr}</tbody></table></div>`;
+        <div class="ut-bills ut-bills-all"><table><thead><tr><th>เดือนในบิล</th><th class="n">${unit} ตามบิล</th><th class="n">ค่ากลาง</th><th class="n">%</th><th class="n">ยอดเงิน (รวม VAT)</th><th class="n">บาท/${unit}</th><th class="n">จากเลขที่จด</th></tr></thead><tbody>${tr}</tbody></table></div>`;
     }
   }
   umModal(`${umName(m)}${hi.has(m.meter_id)?UM_HI_TAG:''}${m.location?` <span class="ut-sub">${utEsc(m.meter_id)}</span>`:''}`,

@@ -243,7 +243,7 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 .ut-csub{margin-bottom:12px;}
 .ut-c2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;}
 .ut-c2 .ut-csub{margin-bottom:0;}
-.ut-bills th.n{text-align:right;}
+.ut-bills th.n{text-align:right;font-family:inherit;}
 @media (max-width:760px){
   .ut-ckpis,.ut-c2{grid-template-columns:minmax(0,1fr);}
 }
