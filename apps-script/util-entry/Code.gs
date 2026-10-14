@@ -13,7 +13,9 @@ const LOG_ROWS = 10;                     // log ในแอป: จดล่า
 const DEFAULT_ROUNDS = '14:00';          // เวลารอบจด ถ้าแท็บ branches ช่อง rounds ว่าง (เจ้าของเลือก 14 ต.ค.: น้ำวันละรอบ)
 const ELEC_WEEKDAY = 1;                  // ไฟจดสัปดาห์ละครั้ง วันนี้ (0 = อาทิตย์ · 1 = จันทร์) เวลา = รอบแรกของสาขา
 const ROUND_EARLY_MIN = 60, ROUND_LATE_MIN = 60;   // จดได้ก่อน/หลังเวลารอบกี่นาที (±1 ชม.)
-const BILL_ROWS = 12;                    // หน้าบัญชี: บิลล่าสุดกี่รายการ
+const JUMP_X = 3;                        // เลขเพิ่มเกินกี่เท่าของปกติ → หน้าแอปถามยืนยันก่อนบันทึก (พิมพ์เกิน เช่น 1,211 แทน 1,121)
+const RATE_PAIRS = 7, RATE_MIN_PAIRS = 3; // ปกติ = ค่ากลางของช่วงจดล่าสุดกี่ช่วง · ต้องมีอย่างน้อยกี่ช่วง
+const BILL_ROWS = 12;                  // หน้าบัญชี: บิลล่าสุดกี่รายการ
 const PHOTO_FOLDER_NAME = 'UTIL รูปมิเตอร์'; // อยู่โฟลเดอร์เดียวกับชีต · ไม่มี = สร้างให้
 const MONEY_FMT = '#,##0.00';            // รูปแบบช่องยอดเงินในแท็บ bills (ตรงกับแถวเก่าจาก Excel)
 const HEAD_ROW = 2, DATA_ROW = 3;        // แถว 1 = ชื่อไทย · แถว 2 = ชื่อคอลัมน์ที่ระบบใช้ · ข้อมูลเริ่มแถว 3
@@ -390,8 +392,8 @@ function state_(me) {
     .filter(r => String(r.meter_id) in loc && r.reading !== '' && r.reading != null)
     .map(r => ({ r: r, t: when_(r) })).filter(x => x.t != null)
     .sort((a, b) => a.t - b.t);
-  const last = {};   // แถว ok ล่าสุดของแต่ละมิเตอร์
-  rows.forEach(x => { if (String(x.r.status) !== 'void') last[String(x.r.meter_id)] = x; });
+  const last = {}, hist = {};   // แถว ok ล่าสุด / แถว ok ทั้งหมด (เรียงเวลา) ของแต่ละมิเตอร์
+  rows.forEach(x => { if (String(x.r.status) !== 'void') { const id = String(x.r.meter_id); last[id] = x; (hist[id] = hist[id] || []).push(x); } });
   const log = rows.slice(-LOG_ROWS).reverse().map(x => {
     const id = String(x.r.meter_id), isVoid = String(x.r.status) === 'void';
     return {
@@ -405,12 +407,28 @@ function state_(me) {
     const l = last[String(m.meter_id)], r = String(m.type) === 'elec' ? wk : rd;
     return {
       meter_id: String(m.meter_id), type: String(m.type), location: String(m.location || ''),
-      last: l ? { reading: Number(l.r.reading), at: fmt_(new Date(l.t), 'd/M HH:mm') } : null,
+      last: l ? { reading: Number(l.r.reading), at: fmt_(new Date(l.t), 'd/M HH:mm'), t: l.t } : null,
+      rate: rate_(hist[String(m.meter_id)] || []),
       status: !r ? null : (l && l.t >= r.start) ? 'done' : r.open ? 'due' : 'late'
     };
   });
-  return { meters: meters, log: log, round: rd && { label: rd.label, open: rd.open },
+  return { meters: meters, log: log, jumpX: JUMP_X, round: rd && { label: rd.label, open: rd.open },
            week: wk && ms.some(m => String(m.type) === 'elec') ? { label: wk.label } : null };
+}
+
+// ใช้ปกติต่อวัน = ค่ากลางของช่วงจดล่าสุด RATE_PAIRS ช่วง (ข้ามเปลี่ยนมิเตอร์ · เลขถอยหลัง · ช่วงสั้นกว่าครึ่งวัน)
+// มีไม่ถึง RATE_MIN_PAIRS ช่วง = null → หน้าแอปไม่ถามยืนยัน (มิเตอร์ใหม่)
+function rate_(xs) {
+  const r = [];
+  for (let i = xs.length - 1; i > 0 && r.length < RATE_PAIRS; i--) {
+    const d = Number(xs[i].r.reading) - Number(xs[i - 1].r.reading), days = (xs[i].t - xs[i - 1].t) / 864e5;
+    if (truthy_(xs[i].r.meter_reset) || d < 0 || days < 0.5) continue;
+    r.push(d / days);
+  }
+  if (r.length < RATE_MIN_PAIRS) return null;
+  r.sort((a, b) => a - b);
+  const k = r.length >> 1;
+  return r.length % 2 ? r[k] : (r[k - 1] + r[k]) / 2;
 }
 
 // เวลาของแถว: ts (แอป) หรือ read_date 14:00 (ใบจดกระดาษ — ตรงกับ js/util-calc.js)

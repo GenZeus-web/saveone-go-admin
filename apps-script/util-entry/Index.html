@@ -197,14 +197,14 @@ $('outBtn').onclick = function(){ S.token = null; show('vPin'); };
 // ── รายการ + log ──
 // st = {meters, log} จาก server (login / submit / cancel / refresh ส่งรูปเดียวกัน)
 function apply(st){
-  S.meters = st.meters; S.log = st.log;
+  S.meters = st.meters; S.log = st.log; S.jumpX = st.jumpX || 3;
   var done = S.meters.filter(function(m){ return m.status === 'done'; }).length;
   $('roundInfo').textContent = st.round ? 'น้ำ: รอบ ' + st.round.label + (st.week ? ' · ไฟ: ทุก' + st.week.label : '') +
     ' · จดแล้ว ' + done + '/' + S.meters.length + ' มิเตอร์' : '';
   renderList(); renderLog($('log'), S.log, true);
   if (S.cur) {
     var m = S.meters.filter(function(x){ return x.meter_id === S.cur.meter_id; })[0];
-    if (m) S.cur.last = m.last;
+    if (m) { S.cur.last = m.last; S.cur.rate = m.rate; }
     renderLog($('fLog'), S.log.filter(function(x){ return x.meter_id === S.cur.meter_id; }), false);
   }
 }
@@ -270,8 +270,19 @@ function openForm(m){
   $('photoBox').innerHTML = '📷 แตะเพื่อถ่ายรูป';
   $('reading').value = ''; $('note').value = ''; $('reset').checked = false; $('diff').textContent = '';
   renderLog($('fLog'), S.log.filter(function(x){ return x.meter_id === m.meter_id; }), false);
-  msg($('fErr'), '', 'err'); syncReset(); show('vForm');
+  msg($('fErr'), '', 'err'); syncReset(); unconfirm(); show('vForm');
 }
+// เลขเพิ่มเกิน jumpX เท่าของปกติ (ใช้ต่อวัน × วันที่ผ่านไป · อย่างน้อย 1 วัน) → ถามยืนยันก่อนบันทึก
+//   กันพิมพ์เกิน (1,211 แทน 1,121) — แอปรับ แต่ครั้งถัดไปจดเลขถูกจะติด "น้อยกว่าครั้งก่อน"
+function jumpWarn(v){
+  var c = S.cur, L = c && c.last;
+  if (!L || !c.rate || !L.t || $('reset').checked) return '';
+  var days = Math.max(1, (Date.now() - L.t) / 864e5), usual = c.rate * days, d = v - L.reading;
+  if (!(d > usual * S.jumpX)) return '';
+  return '⚠️ เพิ่มขึ้น ' + d.toLocaleString('th-TH') + ' · ปกติประมาณ ' + Math.round(usual).toLocaleString('th-TH') +
+         ' · เช็คตัวเลขอีกครั้ง ถ้าถูกแล้วกด "ยืนยัน บันทึก"';
+}
+function unconfirm(){ var b = $('saveBtn'); b.dataset.ok = ''; b.textContent = 'บันทึก'; }
 $('backBtn').onclick = function(){ S.cur = null; show('vList'); };
 $('photoBox').onclick = function(){ $('photoIn').click(); };
 
@@ -307,6 +318,7 @@ function shrink(file, label){
 
 $('reading').addEventListener('input', function(){
   var v = Number(this.value.replace(/[,\s]/g, '')), L = S.cur && S.cur.last;
+  unconfirm();
   if (!L || this.value.trim() === '' || !isFinite(v)) { $('diff').textContent = ''; return; }
   var d = v - L.reading;
   $('diff').textContent = d < 0 ? '⚠️ น้อยกว่าครั้งก่อน ' + (-d).toLocaleString('th-TH') + ' · เช็คตัวเลขอีกครั้ง'
@@ -320,6 +332,8 @@ $('saveBtn').onclick = function(){
   var b = this;
   if (!S.photo && S.photoRequired) return msg($('fErr'), 'ยังไม่ได้ถ่ายรูปหน้ามิเตอร์', 'err');
   if (!$('reading').value.trim()) return msg($('fErr'), 'ใส่เลขไมล์', 'err');
+  var jw = jumpWarn(Number($('reading').value.replace(/[,\s]/g, '')));
+  if (jw && b.dataset.ok !== '1') { b.dataset.ok = '1'; b.textContent = 'ยืนยัน บันทึก'; return msg($('fErr'), jw, 'err'); }
   b.disabled = true; b.textContent = 'กำลังบันทึก…'; msg($('fErr'), '', 'err');
   call('submit', [S.token, { meter_id:S.cur.meter_id, reading:$('reading').value, meter_reset:$('reset').checked,
                               note:$('note').value, photo:S.photo }],
