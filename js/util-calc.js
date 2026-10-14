@@ -88,9 +88,9 @@ function utilDaily(segs,meterId,S){
     for(let k=utilMarketIdx(p.t,S.openMs);utilMarketStart(k,S.openMs)<q.t;k++){
       const s=Math.max(p.t,utilMarketStart(k,S.openMs)), e=Math.min(q.t,utilMarketStart(k+1,S.openMs));
       if(e<=s) continue;
-      const iso=utilIso(k), o=days.get(k)||{idx:k,date:iso,units:0,cover:0,est:false};
+      const iso=utilIso(k), o=days.get(k)||{idx:k,date:iso,units:0,cover:0,est:false,span:0};
       o.units+=d*(e-s)/span*utilValueAt(S.rates,meterId,'multiplier',iso,1);
-      o.cover+=(e-s)/UTIL_DAY; o.est=o.est||est;
+      o.cover+=(e-s)/UTIL_DAY; o.est=o.est||est; o.span=Math.max(o.span,span/UTIL_DAY);   // span = ช่วงจดยาวสุดที่คาบวันนี้ (วัน)
       days.set(k,o);
     }
   }
@@ -154,6 +154,60 @@ function utilAnalyze(readings,meter,settings,now){
   const ageDays=last?(now-last.t)/UTIL_DAY:null, staleDays=S.thresholds[meter.type]?.staleDays??S.staleDays;
   return {days:utilFlags(utilDaily(segs,meter.meter_id,S),meter,S),closed:utilClosed(segs,meter,S),anomalies,
           last:last&&last.t,ageDays,staleDays,stale:last==null||ageDays>staleDays};
+}
+
+// ── รายสัปดาห์ (UTIL-13 · ไฟจดทุกวันจันทร์ 14:00) ──
+// รวมวันตลาดเป็นสัปดาห์ จันทร์–อาทิตย์ · วันตลาดเริ่ม 14:00 → จดจันทร์ 14:00 = ขอบสัปดาห์พอดี (1 ช่วงจด = 1 สัปดาห์เต็ม)
+//   ธงรายวันใช้กับไฟไม่ได้: ช่วงจด 7 วันถูกเฉลี่ยเท่ากันทุกวัน แท่งรายวันแบนเหมือนจดทุกวันทั้งที่ไม่ได้จด
+//   ฐาน = ค่ากลางสัปดาห์เต็มย้อน baseWeeks สัปดาห์ (ข้ามสัปดาห์แดง · น้อยกว่า baseMinDays = ฐานตั้งต้น × 7)
+//   เกณฑ์ "กี่เท่า" เท่ารายวัน · "เพิ่มขั้นต่ำ" = minDiff ต่อวัน × 7 · ไม่มีธงรั่ว (3 รอบติด = 3 สัปดาห์ ช้าเกินมีความหมาย)
+// days = ผลจาก utilAnalyze().days · คืน [{idx, date (จันทร์), end (อาทิตย์), units, cover (วัน), est, base, ratio, diff, level}]
+function utilWeekIdx(dayIdx){ return dayIdx-((dayIdx+3)%7); }   // idx 0 = 1970-01-01 วันพฤหัส → (idx+3)%7 = 0 คือวันจันทร์
+function utilWeekly(days,meter,S){
+  const th=S.thresholds[meter.type]||S.thresholds.water, by=new Map();
+  for(const d of days||[]){
+    const w=utilWeekIdx(d.idx), o=by.get(w)||{idx:w,date:utilIso(w),end:utilIso(w+6),units:0,cover:0,est:false};
+    // est ของสัปดาห์ = ช่วงจดยาวเกิน 7.5 วัน (ขาดจดวันจันทร์) · est รายวัน (>1.5 วัน) จริงทุกสัปดาห์สำหรับไฟ ใช้ไม่ได้
+    o.units+=d.units; o.cover+=d.cover; o.est=o.est||(d.span||0)>7.5; by.set(w,o);
+  }
+  const weeks=[...by.values()].sort((a,b)=>a.idx-b.idx), bad=new Set(), minDiff=th.minDiff*7;
+  for(const w of weeks){
+    if(w.cover<6.999){ w.level='partial'; continue; }
+    const hist=[];
+    for(let k=1;k<=S.baseWeeks;k++){ const h=by.get(w.idx-7*k); if(h&&h.cover>=6.999&&!bad.has(h.idx)) hist.push(h.units); }
+    const fromMedian=hist.length>=S.baseMinDays, setting=S.baseline[meter.meter_id];
+    w.base=fromMedian?utilMedian(hist):setting==null?null:setting*7;
+    w.baseFrom=fromMedian?'median':w.base==null?null:'setting';
+    if(w.base==null){ w.level='nodata'; continue; }
+    w.ratio=w.base>0?w.units/w.base:Infinity; w.diff=w.units-w.base;
+    const over=x=>w.ratio>x&&w.diff>=minDiff;
+    w.level=over(th.red)?'red':over(th.yellow)?'yellow':'green';
+    if(w.level==='red') bad.add(w.idx);
+  }
+  return weeks;
+}
+// เส้นเกณฑ์ของสัปดาห์ — สูตรเดียวกับ over() ใน utilWeekly
+function utilWeekBands(w,th){
+  if(!w||w.base==null) return {base:null,yellow:null,red:null};
+  const b=w.base, line=x=>Math.max(b*x,b+th.minDiff*7);
+  return {base:b,yellow:line(th.yellow),red:line(th.red)};
+}
+// ค่าเฉลี่ยต่อสัปดาห์จากบิล = เส้นอ้างอิง (อ่านมิเตอร์ถูก + ตัวคูณถูก → แท่งสัปดาห์ใกล้เส้นนี้)
+//   เดือนของสัปดาห์ = เดือนของวันพฤหัส (กลางสัปดาห์) · บิลเดือน M = ใช้จริง M + billMonthOffset
+//   หน่วย/วันของเดือนที่ใช้จริง × 7 · บิลเดือนนั้นยังไม่ออก = บิลล่าสุดก่อนหน้า (est) · ไม่มีบิลก่อนหน้าเลย = null
+// bills = [{bill_month, meter_id, units}] (ตัวเลข · ไม่มีแถว void)
+function utilBillWeekly(bills,meterId,weekIso,offset){
+  const per={};
+  for(const b of bills||[]){
+    if(b.meter_id!==meterId||!(Number(b.units)>0)) continue;
+    const u=utilBillUsageMonth(b.bill_month,offset);
+    per[u]=(per[u]||0)+Number(b.units);
+  }
+  const mid=utilIso(utilIdx(weekIso)+3).slice(0,7);
+  const k=Object.keys(per).sort().filter(x=>x<=mid).pop();
+  if(!k) return null;
+  const [y,m]=k.split('-').map(Number), n=new Date(Date.UTC(y,m,0)).getUTCDate();
+  return {perWeek:per[k]/n*7,usageMonth:k,est:k!==mid};
 }
 
 // เป็นเงิน = หน่วย × บาท/หน่วยที่มีผลวันนั้น · ไม่มีราคา = null (อย่าเดาเป็น 0)

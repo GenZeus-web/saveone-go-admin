@@ -121,6 +121,7 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 .ut-ln{display:inline-block;width:18px;height:0;border-top:2px dashed var(--ink2);vertical-align:middle;margin-right:5px;}
 .ut-ln.yel{border-top-color:var(--gold);}
 .ut-ln.red{border-top:2px solid var(--red);}
+.ut-ln.bill{border-top:2px dotted var(--blue);}
 .ut-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:12px;}
 .ut-card{border-left:3px solid var(--border);position:relative;}   /* relative = เมนูแบบกราฟ (ct-menu) ยึดการ์ด */
 .ut-card.lv-green{border-left-color:var(--green);}
