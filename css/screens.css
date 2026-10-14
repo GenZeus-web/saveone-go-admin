@@ -122,6 +122,17 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 .ut-ln.yel{border-top-color:var(--gold);}
 .ut-ln.red{border-top:2px solid var(--red);}
 .ut-ln.bill{border-top:2px dotted var(--blue);}
+.ut-help{margin:-4px 0 12px;font-size:12px;color:var(--ink2);}
+.ut-help>summary{cursor:pointer;font-weight:600;color:var(--ink2);width:max-content;max-width:100%;}
+.ut-help-b{margin-top:8px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface);line-height:1.7;}
+.ut-help-b p{margin:0 0 6px;}
+.ut-help-h{font-weight:700;color:var(--ink);margin:4px 0 4px;}
+.ut-help-h~.ut-help-h{margin-top:10px;padding-top:8px;border-top:1px solid var(--border);}
+.ut-help-b ol{margin:0;padding-left:20px;}
+.ut-help-b li{margin-bottom:6px;}
+.ut-help-b table{border-collapse:collapse;margin:2px 0 8px;}
+.ut-help-b th,.ut-help-b td{padding:2px 12px 2px 0;text-align:left;vertical-align:top;}
+.ut-help-b th{color:var(--ink3);font-weight:600;}
 .ut-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:12px;}
 .ut-card{border-left:3px solid var(--border);position:relative;}   /* relative = เมนูแบบกราฟ (ct-menu) ยึดการ์ด */
 .ut-card.lv-green{border-left-color:var(--green);}

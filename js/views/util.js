@@ -103,6 +103,7 @@ function utDraw(host,br){
           ${c.meters.some(m=>m.type==='elec')?`<span><i class="ut-ln bill"></i>เฉลี่ยจากบิล</span>
           <span class="ut-sub">⚡ ไฟ = แท่งรายสัปดาห์ (จดทุกจันทร์) · ฐาน = ค่ากลาง ${S.baseWeeks} สัปดาห์ก่อน</span>`:''}
         </div></div>`
+      +utHelpHtml(S,c.meters.some(m=>m.type==='elec'))
       +(c.billsErr?'<div class="ut-anom" style="margin:-6px 0 12px">⚠️ อ่านบิลไม่ได้ ('+utEsc(c.billsErr)+') · แสดงเฉพาะเลขมิเตอร์</div>':'')
       +utSummary(c)+'<div class="ut-grid">'+cards+'</div>';
   }
@@ -114,6 +115,54 @@ function utDraw(host,br){
     else if(document.getElementById('cUtil_'+i)) utMake('cUtil_'+i,utDailyCfg(m,m._days));
     else if(document.getElementById('cUtilBill_'+i)) utMake('cUtilBill_'+i,utBillCfg(m,c));
   });
+}
+// ── กล่อง "❓ วิธีอ่าน · วิธีคำนวณเกณฑ์" (UTIL-14 · เจ้าของขอ hint + ลอจิกไว้อธิบายต่อ) — พับไว้เป็นค่าเริ่มต้น ──
+//   ตัวเลขทุกตัวดึงจาก S / UTIL_DEFAULTS (เกณฑ์จริง) และคำนวณตัวอย่างด้วยฟังก์ชันเดียวกับตัวตรวจ ไม่พิมพ์ตายตัว
+//   เปิดค้างไว้แล้วแท็บวาดใหม่ (รีเฟรช 5 นาที) ต้องไม่หุบเอง → จำใน UT.helpOpen
+function utHelpHtml(S,hasElec){
+  const w=S.thresholds.water, e=S.thresholds.elec, B=UTIL_DEFAULTS.billCheck, H=S.hours.default;
+  const yl=(n,th)=>Math.max(n*th.yellow,n+th.minDiff), rl=(n,th)=>Math.max(n*th.red,n+th.minDiff);
+  const ex=(n,th)=>yl(n,th)>=rl(n,th)?`ปกติ ${n} → ต้องเกิน ${utFmt(rl(n,th),1)} ถึงขึ้นธง (ขึ้นแดงเลย)`
+    :`ปกติ ${n} → เหลืองเมื่อเกิน ${utFmt(yl(n,th),1)} · แดงเมื่อเกิน ${utFmt(rl(n,th),1)}`;
+  // ตัวอย่างจริง: บิลน้ำสำนักงานบางนา ก.ค. 69 (บิล มี.ค.–มิ.ย. = 68 · 82 · 131 · 116)
+  const bPrev=[68,82,131,116], bBase=utilMedian(bPrev), bNow=153;
+  const shut=((utilHm(H.open)-utilHm(H.close))/3600e3+24)%24, cRate=8.5/shut;
+  return `<details class="ut-help"${UT.helpOpen?' open':''} ontoggle="UT.helpOpen=this.open">
+    <summary>❓ วิธีอ่าน · วิธีคำนวณเกณฑ์เหลือง/แดง</summary>
+    <div class="ut-help-b">
+      <div class="ut-help-h">อ่านยังไง</div>
+      <p><b>ดูแค่ 2 จุด:</b> กล่อง "ต้องดูตอนนี้" ด้านบน (✅ = จบ ไม่ต้องดูต่อ) และป้ายมุมขวาบนของแต่ละการ์ด · กราฟไว้ดูย้อนหลังว่าเริ่มสูงตั้งแต่เมื่อไหร่</p>
+      <table><tr><th></th><th>เมื่อไหร่</th><th>ทำอะไร</th></tr>
+        <tr><td>✅ ปกติ</td><td>ไม่เกินเส้นเหลือง</td><td>ไม่ต้องทำอะไร</td></tr>
+        <tr><td>🟡 เหลือง</td><td>เกินเส้นเหลือง (~${w.yellow} เท่าของปกติ)</td><td>จับตาดู</td></tr>
+        <tr><td>🔴 แดง</td><td>เกินเส้นแดง (~${w.red} เท่าของปกติ)</td><td>ไปดูหน้างาน</td></tr>
+        <tr><td>🟣 ม่วง</td><td>สูงกว่าปกติติดกัน ${w.streak} วัน</td><td>น่าจะรั่ว · เช็คท่อ/ก๊อก</td></tr></table>
+      <p><b>แท่งจาง</b> = วันที่ไม่ได้จด ระบบเฉลี่ยให้ · <b>แท่งเทา</b> = ข้อมูลยังไม่ครบวัน${hasElec?'/สัปดาห์':''} ยังไม่ตัดสิน
+        ${hasElec?'· <b>⚡ ไฟ</b> แท่งละ 1 สัปดาห์ (จดทุกวันจันทร์) · <b>เส้นจุดฟ้า</b> = เฉลี่ยจากบิล แท่งใกล้เส้น = อ่านมิเตอร์ถูก':''}</p>
+
+      <div class="ut-help-h">🧮 วิธีคำนวณ (ไว้อธิบายลอจิก)</div>
+      <ol>
+        <li><b>ใช้ต่อวัน</b> = เลขมิเตอร์ครั้งนี้ − ครั้งก่อน · 1 วันตลาด = ${H.open} ถึง ${H.open} วันถัดไป (ตลาดเปิด ${H.open}–${H.close})
+          · จดห่างหลายวัน = แบ่งหน่วยตามเวลาให้แต่ละวันเท่าๆ กัน (แท่งจาง)</li>
+        <li><b>ปกติ</b> = <u>ค่ากลาง</u> (median) ของวันเดียวกันในสัปดาห์ ย้อน ${S.baseWeeks} สัปดาห์ เช่น จันทร์นี้เทียบ 4 จันทร์ก่อน (คนมาตลาดต่างกันตามวัน)
+          · ต้องมีวันที่ข้อมูลครบอย่างน้อย ${S.baseMinDays} วัน · วันที่แดงไปแล้วไม่เอามาคิด<br>
+          ทำไมใช้ค่ากลาง ไม่ใช้ค่าเฉลี่ย: 30 · 34 · 36 · 80 → ค่ากลาง <b>${utFmt(utilMedian([30,34,36,80]),1)}</b> (ค่าเฉลี่ยจะได้ 45 — วันพุ่งวันเดียวดึงปกติขึ้น แล้วจับวันพุ่งถัดไปไม่ได้)</li>
+        <li><b>เส้นเหลือง</b> = ค่าที่มากกว่าระหว่าง ปกติ × ${w.yellow} กับ ปกติ + ${w.minDiff}
+          · <b>เส้นแดง</b> = ค่าที่มากกว่าระหว่าง ปกติ × ${w.red} กับ ปกติ + ${w.minDiff} (น้ำ · ลบ.ม./วัน)<br>
+          "+${w.minDiff}" คือขั้นต่ำ กันมิเตอร์เล็กขึ้นธงเพราะใช้เพิ่มนิดเดียว — ${ex(35,w)} · ${ex(5,w)}</li>
+        <li><b>ม่วง (สงสัยรั่ว)</b> = วันที่เหลือง และเป็นวันที่ ${w.streak} ที่สูงกว่าปกติติดกัน · ใช้น้ำมากผิดปกติวันเดียวอาจเป็นงานล้าง/กิจกรรม แต่สูงติดกันหลายวันมักเป็นรั่ว</li>
+        ${hasElec?`<li><b>⚡ ไฟ (รายสัปดาห์)</b> = สูตรเดียวกัน แต่นับทั้งสัปดาห์ จันทร์–อาทิตย์ · ปกติ = ค่ากลาง ${S.baseWeeks} สัปดาห์ก่อน
+          · ขั้นต่ำ = ${utFmt(e.minDiff)} × 7 = ${utFmt(e.minDiff*7)} หน่วย/สัปดาห์ · ไม่มีธงม่วง
+          · เส้นบิล = หน่วยในบิล ÷ จำนวนวันในเดือน × 7</li>`:''}
+        <li><b>⚠ บิลรายเดือน</b> = หน่วยในบิล > ค่ากลางของ ${B.lookback} บิลก่อน × ${B.ratio} <u>และ</u> เกินฐานอย่างน้อย น้ำ ${B.minDiff.water} / ไฟ ${utFmt(B.minDiff.elec)} หน่วย
+          · ต้องมีบิลก่อนหน้า ≥ ${B.minPrev} ใบ · ไม่ตรวจ ${B.warmup} เดือนแรกของสาขา (ช่วงเปิดใหม่ยอดไต่ขึ้นเป็นปกติ)<br>
+          ตัวอย่างจริง น้ำสำนักงานบางนา บิล ก.ค. 69 = ${bNow} · บิลก่อนหน้า ${bPrev.join(' · ')} → ค่ากลาง ${utFmt(bBase,1)}
+          → ${bNow} > ${utFmt(bBase,1)} × ${B.ratio} = ${utFmt(bBase*B.ratio,1)} และเกิน ${utFmt(bNow-bBase,1)} ≥ ${B.minDiff.water} → <b>⚠ +${utFmt((bNow/bBase-1)*100)}%</b></li>
+        <li><b>ช่วงตลาดปิด</b> = (เลขตอนเปิด ${H.open} − เลขตอนปิด ${H.close}) ÷ ${utFmt(shut)} ชม. > ${w.closedRate} ลบ.ม./ชม. → แดงทันที
+          · เช่น ปิดตลาดได้ 1,200.0 · เปิดได้ 1,208.5 → 8.5 ÷ ${utFmt(shut)} = ${utFmt(cRate,2)} ลบ.ม./ชม. = ${cRate>w.closedRate?'🔴 แดง':'✅'} (ไม่มีคนแต่น้ำไหล)
+          · ต้องจดวันละ 2 รอบ (ปิด + เปิดตลาด)</li>
+      </ol>
+    </div></details>`;
 }
 // แท็บย่อยที่เลือก จำในเครื่อง (ค่าตั้งต้น = เทียบสาขา) · localStorage อาจใช้ไม่ได้ (โหมดส่วนตัว) → ค่าตั้งต้น
 function utSub(){ if(!UT.sub){ try{ UT.sub=localStorage.getItem('utSub'); }catch(e){} if(UT.sub!=='meter') UT.sub='cmp'; } return UT.sub; }
