@@ -171,7 +171,8 @@ CSS: `night.css` ต้องหลัง `screens.css` · `responsive.css` ต�
   เปิดเว็บจากที่อยู่อื่น (Live Server `127.0.0.1:5500` · โดเมนใหม่) = ล็อกอินไม่ได้ จนกว่าจะเพิ่มในรายการ
   GitGuardian เตือน key นี้ = false positive · เจ้าของยังต้องกด mark ใน GitGuardian
 - **ผัง 3D:** v0.14.0 (20 ส.ค. 2569)
-- **Firestore Rules:** Publish 13 ต.ค. 2569 ~15:10 (เพิ่มบล็อก `utilbill/` ของ v3.2.0) — **ฉบับเต็มอยู่ที่ `docs/firestore-rules/v3.3.0-current.txt`** (v3.3.0 เพิ่มบล็อก `settings/utility` — ⚠️ เช็คว่าวางใน Console แล้วหรือยัง)
+- **Firestore Rules:** Publish 14 ต.ค. 2569 17:07 (เพิ่มบล็อก `settings/utility` ของ v3.3.0 · Claude วางผ่าน Console ตามที่เจ้าของสั่ง · เทียบก่อนวาง: Console = repo ทุกตัวอักษร) — **ฉบับเต็มอยู่ที่ `docs/firestore-rules/v3.3.0-current.txt`** (ตรงกับ Console)
+  ทดสอบหลังวาง (admin · localhost · รอกฎกระจาย ~1 นาที): บันทึกเกณฑ์ได้ · ตั้งจดขาด 3 วัน → เตือนน้ำ BN หาย → ตั้งกลับ 2
   ทดสอบหลังวาง (admin · localhost): อ่านบิลได้ BN 27 · BG 79 · SS 48 แถว
   ราคา `settings/pricing` อ่านได้เฉพาะ `canSeeRevenue()` · `settingsLog` ต้อง `hasProfile()` · รายละเอียด `docs/firestore-rules-settings.md`
   ⚠️ กฎเป็น OR — เพิ่มบล็อกใหม่ "เปิด" ได้อย่างเดียว จะ "ปิด" ต้องลบบล็อกเดิม · แก้ครั้งหน้าให้วางทั้งไฟล์จาก repo (เคยวางทับ `settings/targets` หาย)
