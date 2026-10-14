@@ -154,6 +154,10 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 .um-hg{display:grid;gap:2px;align-items:stretch;min-width:max-content;}
 .um-hg .rl{font-size:12px;padding-right:10px;white-space:nowrap;display:flex;align-items:center;cursor:pointer;}
 .um-hg .ch{font-size:10px;color:var(--ink3);text-align:center;padding-bottom:2px;}
+.um-tip{position:fixed;z-index:9000;display:none;pointer-events:none;max-width:340px;white-space:nowrap;padding:9px 12px;border-radius:8px;
+  background:var(--surface);border:1px solid var(--border);box-shadow:0 6px 20px rgba(0,0,0,.35);color:var(--ink);font-size:13px;line-height:1.55;}
+.um-tip b{display:block;font-size:13.5px;margin-bottom:2px;}
+.um-tip small{display:block;margin-top:4px;font-size:11px;color:var(--ink2);}
 .um-hg .c{height:26px;min-width:22px;border-radius:3px;font-size:10px;display:flex;align-items:center;justify-content:center;color:var(--ink);cursor:pointer;}
 .um-hg .c.mo{min-width:52px;height:36px;flex-direction:column;line-height:1.15;}
 .um-hg .c.mo small{font-size:9px;color:inherit;}

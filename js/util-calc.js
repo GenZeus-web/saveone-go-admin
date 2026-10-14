@@ -224,9 +224,13 @@ function utilCost(units,meterId,iso,settings){
 // ชั้น 2 ข้อมูลต้องเช็ค: หน่วย+เงินซ้ำกับบิลใดบิลหนึ่งใน lookback บิลก่อน (คัดลอกผิด) · หน่วยเลขกลมหลักพัน (ยอดประมาณ)
 // bills = [{bill_month, branch_code, type, meter_id, units, amount}] (ตัวเลขแล้ว · ไม่มีแถว void)
 // คืน [{bill_month, meter_id, branch_code, type, units, amount, high:{base,pct}|null, dup:'YYYY-MM'|null, round:bool}]
+// เกณฑ์ตรวจบิล = ค่าตั้งต้น + ค่าจาก settings/utility (แก้แค่บางช่องได้) — ใช้ร่วมกับหน้าจอ (ค่ากลางบิล · กล่องวิธีคิด)
+function utilBillCfg(settings){
+  const s=(settings||{}).billCheck||{}, D=UTIL_DEFAULTS.billCheck;
+  return {...D,...s,minDiff:{...D.minDiff,...(s.minDiff||{})}};
+}
 function utilBillCheck(bills,settings){
-  const C={...UTIL_DEFAULTS.billCheck,...((settings||{}).billCheck||{})};
-  C.minDiff={...UTIL_DEFAULTS.billCheck.minDiff,...(((settings||{}).billCheck||{}).minDiff||{})};
+  const C=utilBillCfg(settings);
   const first={}, byMeter={};
   for(const b of bills||[]){
     if(!first[b.branch_code]||b.bill_month<first[b.branch_code]) first[b.branch_code]=b.bill_month;

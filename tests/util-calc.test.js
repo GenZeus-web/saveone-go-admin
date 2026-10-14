@@ -6,7 +6,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('fs'),path=require('path'),vm=require('vm');
 vm.runInThisContext(fs.readFileSync(path.join(__dirname,'..','js','util-calc.js'),'utf8')+
-  '\n;Object.assign(globalThis,{utilAnalyze,utilValueAt,utilCost,utilBillUsageMonth,utilMedian,utilBands,utilBillCheck,utilWeekly,utilWeekBands,utilBillWeekly,utilSettings,UTIL_DEFAULTS});');
+  '\n;Object.assign(globalThis,{utilAnalyze,utilValueAt,utilCost,utilBillUsageMonth,utilMedian,utilBands,utilBillCheck,utilBillCfg,utilWeekly,utilWeekBands,utilBillWeekly,utilSettings,UTIL_DEFAULTS});');
 
 const OFFICE={meter_id:'BN-W-OFFICE',type:'water',branch_code:'BN'};
 const TOILET={meter_id:'BN-W-TOILET',type:'water',branch_code:'BN'};
@@ -320,4 +320,24 @@ test('รายสัปดาห์: จดครบทุกจันทร์
   assert.deepEqual(ok.map(w=>w.est),[false,false]);
   const gap=weekly([mon('2026-10-19',0),mon('2026-11-02',13200)]);   // ข้าม 26 ต.ค.
   assert.deepEqual(gap.map(w=>w.est),[true,true]);
+});
+
+// ── UTIL-16 หน้าตั้งค่าเกณฑ์ (settings/utility) ──
+test('เกณฑ์บิลจากหน้าตั้งค่า: แก้บางช่อง ที่เหลือใช้ค่าตั้งต้น', ()=>{
+  const C=utilBillCfg({billCheck:{ratio:1.5,minDiff:{water:80}}});
+  assert.equal(C.ratio,1.5); assert.equal(C.lookback,UTIL_DEFAULTS.billCheck.lookback);
+  assert.deepEqual(C.minDiff,{water:80,elec:UTIL_DEFAULTS.billCheck.minDiff.elec});
+  assert.deepEqual(utilBillCfg(null),{...UTIL_DEFAULTS.billCheck,minDiff:{...UTIL_DEFAULTS.billCheck.minDiff}});
+});
+test('เกณฑ์บิลจากหน้าตั้งค่ามีผลกับตัวตรวจ: ×1.3 → ×2 บิลน้ำสำนักงาน ก.ค. 69 (+55%) ไม่ขึ้นธง', ()=>{
+  const hi=s=>utilBillCheck(BN_BILLS,s).filter(x=>x.high).map(x=>x.meter_id+'@'+x.bill_month);
+  assert.ok(hi().includes('BN-W-OFFICE@2026-07'));
+  assert.ok(!hi({billCheck:{ratio:2}}).includes('BN-W-OFFICE@2026-07'));
+});
+test('เกณฑ์รายวันจากหน้าตั้งค่า: น้ำ minDiff 10 → 3 มิเตอร์เล็กขึ้นเหลืองได้', ()=>{
+  const S=utilSettings({thresholds:{water:{minDiff:3,staleDays:5}}},'BN');
+  assert.equal(S.thresholds.water.minDiff,3); assert.equal(S.thresholds.water.yellow,1.5);
+  assert.deepEqual(utilBands({base:4},S.thresholds.water),{base:4,yellow:7,red:8});
+  const a=utilAnalyze([],OFFICE,{thresholds:{water:{staleDays:5}}},NOW);
+  assert.equal(a.staleDays,5);
 });

@@ -98,6 +98,7 @@ export async function loadSettings(){
 }
 
 async function fetchSettings(){
+  fetchUtil();   // เกณฑ์น้ำ-ไฟ แยกต่างหาก — อ่านไม่ได้ (กฎยังไม่วาง) ต้องไม่ทำให้ราคา/เป้ายอดพังตาม
   try{
     const readP = mayReadPricing();
     const [p, t] = await Promise.all([readP ? getDoc(doc(db,'settings','pricing')) : null, getDoc(doc(db,'settings','targets'))]);
@@ -201,13 +202,13 @@ function resetDraft(){
   S.baseId = lv.id;
   S.effective = minEffective();
 }
-window.setTab = function(t){ S.tab = t; render(); if(t==='history') loadHistory(); };
+window.setTab = function(t){ S.tab = t; if(t==='util') S.util = utilCur(); render(); if(t==='history') loadHistory(); };
 window.setBr = function(b){ S.br = b; render(); };
 
 function render(){
   const body = document.getElementById('setBody');
   if(!body) return;
-  const tabs = [['price','💰 ราคา'],['season','📅 ฤดูกาล'],['target','🎯 เป้ายอด']];
+  const tabs = [['price','💰 ราคา'],['season','📅 ฤดูกาล'],['target','🎯 เป้ายอด'],['util','💧 เกณฑ์น้ำ-ไฟ']];
   if(isOwner()) tabs.push(['history','🗂 ประวัติการแก้']);
   let h = `<div class="vtabs set-tabs">${tabs.map(([k,l]) =>
     `<button class="vtab${S.tab===k?' active':''}" onclick="setTab('${k}')">${l}</button>`).join('')}</div>`;
@@ -217,6 +218,8 @@ function render(){
     h += saveBarHtml();
   }else if(S.tab==='target'){
     h += targetHtml();
+  }else if(S.tab==='util'){
+    h += utilHtml();
   }else{
     h += `<div id="setHistory" class="set-muted">กำลังโหลดประวัติ…</div>`;
   }
@@ -545,6 +548,162 @@ window.saveTargetsTab = async function(){
   await window.saveSharedTargets(TARGETS, before);
 };
 
+// ═══════════════════════════════════════════════════════════════
+//  เกณฑ์น้ำ-ไฟ (settings/utility) — แท็บ 💧 ในหน้าตั้งค่า
+// ═══════════════════════════════════════════════════════════════
+// เอกสาร { thresholds:{water:{…},elec:{…}}, baseWeeks, baseMinDays, billCheck:{…} } รูปเดียวกับ UTIL_DEFAULTS (js/util-calc.js)
+//   ไม่มีเอกสาร / อ่านไม่ได้ = ใช้ค่าตั้งต้น · ทุกคนที่มีโปรไฟล์อ่านได้ · admin เขียน (เหมือนเป้ายอด: ไม่ต้องใส่รหัส แต่เก็บประวัติ)
+//   มีผลทันทีและคิดย้อนหลังทั้งหมด (สีในอดีตเปลี่ยนตาม) — ต่างจากราคาที่มีวันเริ่มใช้ (ADR 0001) เพราะไม่มีเงินเกี่ยว
+// หน้าจอเป็นประโยคสูตรมีช่องกรอกในตัว "ค่ากลาง × [1.5] < ที่ใช้" (เจ้าของสั่ง 14 ต.ค.: ช่องสูตรแบบเข้าใจง่าย)
+async function fetchUtil(){
+  try{
+    const u = await getDoc(doc(db,'settings','utility'));
+    setUtil(u.exists() ? u.data() : null);
+  }catch(e){ console.warn('settings: อ่านเกณฑ์น้ำ-ไฟไม่ได้ ใช้ค่าตั้งต้น', e); }
+}
+function setUtil(d){
+  const next = {};
+  if(d) Object.keys(d).forEach(k => { if(k !== 'updatedAt' && k !== 'updatedBy') next[k] = d[k]; });   // เก็บช่องอื่นด้วย (hours · baseline · rates — docs/util-data-contract.md)
+  if(JSON.stringify(next) === JSON.stringify(window.UTIL_SETTINGS || {})) return;
+  window.UTIL_SETTINGS = next;
+  // ผลตรวจบิลคิดตอนโหลด (UT.cache) → ล้างให้คิดใหม่ · วาดใหม่เฉพาะตอนเปิดแท็บน้ำ-ไฟอยู่
+  try{ if(typeof UT !== 'undefined') UT.cache = {}; }catch(e){}
+  try{ if(typeof view !== 'undefined' && view === 'util' && typeof renderUtil === 'function') renderUtil(); }catch(e){}
+}
+// ค่าที่ใช้อยู่ = ค่าตั้งต้น + ค่าที่บันทึกไว้
+function utilCur(){
+  const D = UTIL_DEFAULTS, s = window.UTIL_SETTINGS || {}, th = s.thresholds || {}, B = utilBillCfg(s);
+  return {
+    thresholds:{ water:{...D.thresholds.water, staleDays:D.staleDays, ...(th.water||{})}, elec:{...D.thresholds.elec, ...(th.elec||{})} },
+    baseWeeks: s.baseWeeks ?? D.baseWeeks, baseMinDays: s.baseMinDays ?? D.baseMinDays,
+    billCheck:{ ratio:B.ratio, lookback:B.lookback, minPrev:B.minPrev, warmup:B.warmup, minDiff:{water:B.minDiff.water, elec:B.minDiff.elec} },
+  };
+}
+// ช่องกรอก: path → [ชื่อในประวัติ, ต่ำสุด, สูงสุด, จำนวนเต็ม, คูณตอนแสดง]
+//   ไฟ "ค่ากลาง +" เก็บเป็นต่อวัน (util-calc คูณ 7 เอง) แต่แสดง/กรอกเป็นต่อสัปดาห์
+const UF = {
+  'baseWeeks':                  ['ค่ากลาง · ย้อนกี่สัปดาห์', 2, 12, true],
+  'baseMinDays':                ['ค่ากลาง · ต้องมีอย่างน้อย', 1, 12, true],
+  'thresholds.water.yellow':    ['น้ำ · เหลือง ค่ากลาง ×', 1.01, 10],
+  'thresholds.water.red':       ['น้ำ · แดง ค่ากลาง ×', 1.01, 20],
+  'thresholds.water.minDiff':   ['น้ำ · ค่ากลาง +', 0, 10000],
+  'thresholds.water.streak':    ['น้ำ · ม่วง เหลืองติดกันกี่วัน', 2, 14, true],
+  'thresholds.water.staleDays': ['น้ำ · เตือนจดขาดเกินกี่วัน', 1, 30],
+  'thresholds.water.closedRate':['น้ำ · ช่วงตลาดปิด ลบ.ม./ชม.', 0, 100],
+  'thresholds.elec.yellow':     ['ไฟ · เหลือง ค่ากลาง ×', 1.01, 10],
+  'thresholds.elec.red':        ['ไฟ · แดง ค่ากลาง ×', 1.01, 20],
+  'thresholds.elec.minDiff':    ['ไฟ · ค่ากลาง + (ต่อสัปดาห์)', 0, 1000000, false, 7],
+  'thresholds.elec.staleDays':  ['ไฟ · เตือนจดขาดเกินกี่วัน', 1, 60],
+  'billCheck.ratio':            ['บิล · ค่ากลาง ×', 1.01, 10],
+  'billCheck.minDiff.water':    ['บิลน้ำ · ค่ากลาง +', 0, 100000],
+  'billCheck.minDiff.elec':     ['บิลไฟ · ค่ากลาง +', 0, 10000000],
+  'billCheck.lookback':         ['บิล · ค่ากลางจากกี่บิลก่อน', 2, 24, true],
+  'billCheck.minPrev':          ['บิล · ต้องมีบิลก่อนหน้าอย่างน้อย', 1, 24, true],
+  'billCheck.warmup':           ['บิล · ไม่ตรวจกี่เดือนแรกของสาขา', 0, 36, true],
+};
+const getP = (o,p) => p.split('.').reduce((x,k) => x?.[k], o);
+function setP(o,p,v){ const ks = p.split('.'), last = ks.pop(); ks.reduce((x,k) => x[k] ??= {}, o)[last] = v; }
+const ufShow = (p,v) => +(v * (UF[p][4] || 1)).toFixed(4);
+function uin(p){
+  const v = getP(S.util, p), old = getP(utilCur(), p);
+  return `<input type="number" step="any" min="${UF[p][1]}" max="${UF[p][2]}" class="set-num set-uin${v!==old?' changed':''}" value="${ufShow(p,v)}"
+    title="${v!==old?'เดิม '+ufShow(p,old):''}" onchange="setUtilF('${p}',this.value)">`;
+}
+window.setUtilF = function(p,raw){
+  const f = UF[p], n = Number(String(raw).replace(/,/g,''));
+  if(!f || !isFinite(n)) return render();
+  let v = Math.min(f[2], Math.max(f[1], f[3] ? Math.round(n) : n));
+  if(f[4]) v = v / f[4];
+  setP(S.util, p, v); render();
+};
+window.resetUtilDefaults = function(){
+  const D = UTIL_DEFAULTS, B = D.billCheck;
+  S.util = { thresholds:{ water:{...D.thresholds.water, staleDays:D.staleDays}, elec:{...D.thresholds.elec} },
+    baseWeeks:D.baseWeeks, baseMinDays:D.baseMinDays,
+    billCheck:{ ratio:B.ratio, lookback:B.lookback, minPrev:B.minPrev, warmup:B.warmup, minDiff:{...B.minDiff} } };
+  render();
+};
+function utilErrs(){
+  const U = S.util, e = [], W = U.thresholds.water, E = U.thresholds.elec, B = U.billCheck;
+  if(!(W.red > W.yellow)) e.push('น้ำ: ตัวคูณแดงต้องมากกว่าเหลือง');
+  if(!(E.red > E.yellow)) e.push('ไฟ: ตัวคูณแดงต้องมากกว่าเหลือง');
+  if(U.baseMinDays > U.baseWeeks) e.push('ค่ากลาง: "ต้องมีอย่างน้อย" ต้องไม่เกินจำนวนสัปดาห์ที่ย้อน');
+  if(B.minPrev > B.lookback) e.push('บิล: "ต้องมีบิลก่อนหน้าอย่างน้อย" ต้องไม่เกินจำนวนบิลที่ย้อน');
+  return e;
+}
+function utilDiff(){
+  const cur = utilCur();
+  return Object.keys(UF).filter(p => getP(cur,p) !== getP(S.util,p))
+    .map(p => ({label:UF[p][0], from:ufShow(p,getP(cur,p)), to:ufShow(p,getP(S.util,p))}));
+}
+function utilHtml(){
+  const U = S.util || (S.util = utilCur()), W = U.thresholds.water, E = U.thresholds.elec, B = U.billCheck;
+  const nf = (v,dp=1) => Number(v).toLocaleString('th-TH', {maximumFractionDigits:dp});
+  // ตัวอย่างคำนวณสด จากค่าที่กำลังแก้ (สูตรเดียวกับ utilBands / utilBillCheck)
+  const line = (b,x,d) => Math.max(b*x, b+d);
+  const ex = (b,T,d,u) => { const y = line(b,T.yellow,d), r = line(b,T.red,d);
+    return `เช่น ค่ากลาง ${nf(b)} ${u} → ` + (y >= r ? `เกิน ${nf(r)} = 🔴 เลย` : `เกิน ${nf(y)} = 🟡 · เกิน ${nf(r)} = 🔴`); };
+  const row = (icon, a, b) => `<div class="set-frow"><span class="set-ficon">${icon}</span><span>${a}</span>${b?`<span class="set-fand">และ</span><span>${b}</span>`:''}</div>`;
+  const ch = utilDiff(), errs = utilErrs();
+  const saved = window.UTIL_SETTINGS && Object.keys(window.UTIL_SETTINGS).length;
+  return `
+    <div class="set-card">
+      <div class="set-h">📐 ค่ากลาง (ใช้ทั้งน้ำและไฟ)</div>
+      ${row('', `ค่ากลาง = ตัวกลางของวันเดียวกัน ย้อน ${uin('baseWeeks')} สัปดาห์`, `ต้องมีอย่างน้อย ${uin('baseMinDays')} สัปดาห์`)}
+      <div class="set-muted">ไม่นับวันที่แดงแล้ว · ไฟนับเป็นสัปดาห์ เทียบกับสัปดาห์ก่อนๆ</div>
+    </div>
+    <div class="set-card">
+      <div class="set-h">💧 น้ำ · ดูรายวัน</div>
+      ${row('🟡', `ค่ากลาง × ${uin('thresholds.water.yellow')} &lt; ที่ใช้`, `ค่ากลาง + ${uin('thresholds.water.minDiff')} ≤ ที่ใช้`)}
+      ${row('🔴', `ค่ากลาง × ${uin('thresholds.water.red')} &lt; ที่ใช้`, `ค่ากลาง + ${nf(W.minDiff,2)} ≤ ที่ใช้`)}
+      ${row('🟣', `เกินเส้นเหลืองติดกัน ${uin('thresholds.water.streak')} วัน (วันนั้นเหลือง)`)}
+      ${row('⚠️', `ไม่มีการจดเกิน ${uin('thresholds.water.staleDays')} วัน`)}
+      ${row('🌙', `ช่วงตลาดปิด ใช้เกิน ${uin('thresholds.water.closedRate')} ลบ.ม./ชม. = 🔴`)}
+      <div class="set-muted">${ex(20,W,W.minDiff,'ลบ.ม.')}<br>${ex(5,W,W.minDiff,'ลบ.ม.')}<br>"ค่ากลาง +" ใช้ทั้งเหลืองและแดง · ช่วงตลาดปิดใช้ได้เมื่อจดวันละ 2 รอบ</div>
+    </div>
+    <div class="set-card">
+      <div class="set-h">⚡ ไฟ · ดูรายสัปดาห์</div>
+      ${row('🟡', `ค่ากลาง × ${uin('thresholds.elec.yellow')} &lt; ที่ใช้`, `ค่ากลาง + ${uin('thresholds.elec.minDiff')} ≤ ที่ใช้`)}
+      ${row('🔴', `ค่ากลาง × ${uin('thresholds.elec.red')} &lt; ที่ใช้`, `ค่ากลาง + ${nf(E.minDiff*7,0)} ≤ ที่ใช้`)}
+      ${row('⚠️', `ไม่มีการจดเกิน ${uin('thresholds.elec.staleDays')} วัน`)}
+      <div class="set-muted">${ex(6500,E,E.minDiff*7,'หน่วย')} · ไฟไม่มีม่วง</div>
+    </div>
+    <div class="set-card">
+      <div class="set-h">🧾 บิลรายเดือน</div>
+      ${row('📐', `ค่ากลาง = ตัวกลางของ ${uin('billCheck.lookback')} บิลก่อน`, `ต้องมีบิลก่อนหน้าอย่างน้อย ${uin('billCheck.minPrev')} ใบ`)}
+      ${row('⚠', `ค่ากลาง × ${uin('billCheck.ratio')} &lt; บิลนี้`, `ค่ากลาง + ${uin('billCheck.minDiff.water')} (น้ำ) / ${uin('billCheck.minDiff.elec')} (ไฟ) ≤ บิลนี้`)}
+      ${row('⏸', `ไม่ตรวจ ${uin('billCheck.warmup')} เดือนแรกของสาขา`)}
+      <div class="set-muted">เช่น บิลน้ำ ค่ากลาง 200 → เกิน ${nf(line(200,B.ratio,B.minDiff.water))} = ⚠</div>
+    </div>
+    ${errs.length?`<div class="set-warn">${errs.map(esc).join('<br>')}</div>`:''}
+    <div class="set-savebar">
+      <span class="set-muted">${ch.length?`แก้ ${ch.length} ช่อง (ช่องสีทอง)`:saved?'ใช้ค่าที่บันทึกไว้':'ใช้ค่าตั้งต้น'} · บันทึกแล้วมีผลทันที คิดย้อนหลังทั้งหมด</span>
+      <span style="flex:1"></span>
+      <button class="set-btn" onclick="resetUtilDefaults()">ค่าตั้งต้น</button>
+      <button class="set-btn" onclick="setTab('util')">ล้างที่แก้</button>
+      <button class="set-btn primary" onclick="saveUtilTab()"${errs.length||!ch.length?' disabled':''}>บันทึกเกณฑ์</button>
+    </div>`;
+}
+window.saveUtilTab = async function(){
+  if(!isAdmin() || utilErrs().length) return;
+  const changes = utilDiff();
+  if(!changes.length) return;
+  const email = auth.currentUser?.email || '', next = clone(S.util);
+  try{
+    await runTransaction(db, async tx => {
+      // merge: แตะเฉพาะช่องในหน้านี้ — ช่องอื่นในเอกสาร (hours · baseline · rates) ไม่หาย
+      tx.set(doc(db,'settings','utility'), {...next, updatedAt:serverTimestamp(), updatedBy:email}, {merge:true});
+      tx.set(doc(collection(db,'settingsLog')), {at:serverTimestamp(), by:email, device:deviceLabel(),
+        action:'util_save', effective:null, changes});
+    });
+    setUtil({...(window.UTIL_SETTINGS||{}), ...next}); S.util = utilCur(); render();
+    toast('บันทึกเกณฑ์น้ำ-ไฟแล้ว · มีผลทันที');
+  }catch(e){
+    console.error('บันทึกเกณฑ์น้ำ-ไฟไม่สำเร็จ', e);
+    toast('❌ บันทึกไม่สำเร็จ: ' + errText(e), true);
+  }
+};
+
 // ── แท็บประวัติ (เฉพาะเจ้าของระบบ) ──
 async function loadHistory(){
   const box = document.getElementById('setHistory');
@@ -553,7 +712,7 @@ async function loadHistory(){
   try{
     const snap = await getDocs(query(collection(db,'settingsLog'), orderBy('at','desc'), limit(300)));
     if(snap.empty){ box.textContent = 'ยังไม่มีประวัติการแก้'; return; }
-    const act = {price_save:'💰 บันทึกราคา', price_cancel:'↩️ ยกเลิกราคาที่รอมีผล', target_save:'🎯 แก้เป้ายอด'};
+    const act = {price_save:'💰 บันทึกราคา', price_cancel:'↩️ ยกเลิกราคาที่รอมีผล', target_save:'🎯 แก้เป้ายอด', util_save:'💧 แก้เกณฑ์น้ำ-ไฟ'};
     box.innerHTML = snap.docs.map(d => {
       const x = d.data();
       const at = x.at?.toDate ? x.at.toDate().toLocaleString('th-TH') : '—';

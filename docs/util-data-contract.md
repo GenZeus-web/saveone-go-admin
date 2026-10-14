@@ -48,7 +48,7 @@
 | เอกสาร | เนื้อหา | Rules |
 |---|---|---|
 | `data/{BR}_UTIL` | `{csv, metersCsv, rows, branch, ts}` | กฎ `data/` เดิมครอบแล้ว (`"BN_UTIL".split('_')[0]` = `BN`) · ⚠️ ผู้มี `bmBranches` อ่านได้ด้วย (แบบ SEC-08) — ไม่มีเงินในเอกสารนี้ |
-| `utilbill/{BR}` | `{csv, rows, branch, ts}` | v3.2.0: admin · หรือสาขาที่ดูแล + `showUtil` + `showUtilMoney` (บล็อก `utilbill/` ใน `docs/firestore-rules/v3.2.0-current.txt`) |
+| `utilbill/{BR}` | `{csv, rows, branch, ts}` | v3.2.0: admin · หรือสาขาที่ดูแล + `showUtil` + `showUtilMoney` (บล็อก `utilbill/` ใน `docs/firestore-rules/v3.3.0-current.txt`) |
 | `settings/utility` | ค่าตั้งค่า (ด้านล่าง) | อ่าน: `hasProfile()` · เขียน: `isAdmin()` · **วางกฎก่อน push** โค้ดที่อ่าน |
 
 `csv` ของ `data/{BR}_UTIL` = แท็บ `readings` ของสาขานั้น ครบทุกแถว**รวม void** (เว็บกรองเอง)
@@ -66,9 +66,10 @@
 {
   hours: { default: {open:'14:00', close:'01:00'}, BN: {...} },  // เวลาตลาดต่อสาขาได้
   thresholds: {
-    water: { yellow:1.5, red:2, minDiff:10,  streak:3, closedRate:0.5 },
-    elec:  { yellow:1.5, red:2, minDiff:100, streak:3, closedRate:null } // ไฟ: ค่าเดา รอข้อมูลจริง
+    water: { yellow:1.5, red:2, minDiff:10,  streak:3, closedRate:0.5, staleDays:2 },
+    elec:  { yellow:1.5, red:2, minDiff:100, streak:3, closedRate:null, staleDays:8 } // ไฟ: ค่าเดา รอข้อมูลจริง · minDiff ต่อวัน (หน้าตั้งค่าแสดง ×7)
   },
+  billCheck: { ratio:1.3, lookback:6, minPrev:3, warmup:6, minDiff:{water:50, elec:3000} },   // ตรวจบิล (UTIL-09)
   baseline: { 'BN-W-TOILET': 29 },                                  // ฐานตั้งต้น — แก้ทับได้
   rates: [ { meter_id, field:'multiplier'|'rate', value, effective_from:'YYYY-MM-DD' } ], // ห้ามแก้ย้อน (ADR 0001)
   edgeMin:15, staleDays:2, baseWeeks:4, baseMinDays:2, billMonthOffset:-1
@@ -76,6 +77,7 @@
 ```
 
 ช่องที่ไม่ใส่ใช้ค่าตั้งต้นใน `UTIL_DEFAULTS` (เกณฑ์รวมทีละช่อง แก้แค่บางช่องได้)
+v3.3.0 (UTIL-16): หน้าตั้งค่า → 💧 เกณฑ์น้ำ-ไฟ เขียน `thresholds` · `baseWeeks` · `baseMinDays` · `billCheck` (merge · ช่องอื่นไม่แตะ) + บันทึกใน `settingsLog` (`util_save`)
 
 ## เกณฑ์ (เว็บคำนวณ)
 

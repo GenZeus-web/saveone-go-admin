@@ -78,6 +78,12 @@ service cloud.firestore {
       allow list: if false;
       allow write: if isAdmin();
     }
+    // UTIL-16 (v3.3.0): เกณฑ์น้ำ-ไฟ (×1.5 · +10 · บิล ×1.3 ฯลฯ) ไม่มีเงิน — ทุกคนที่มีโปรไฟล์อ่านได้ · admin เขียน (ไม่ต้องใส่รหัส)
+    match /settings/utility {
+      allow get: if hasProfile();
+      allow list: if false;
+      allow write: if isAdmin();
+    }
     // SEC-09 (v3.0.1): ประวัติการแก้ — admin เพิ่มได้อย่างเดียว · อ่านได้เฉพาะเจ้าของระบบที่มีโปรไฟล์
     match /settingsLog/{id} {
       allow create: if isAdmin() && request.resource.data.by == request.auth.token.email;

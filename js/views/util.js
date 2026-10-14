@@ -28,6 +28,8 @@ function utAgo(ms){
   const h=(Date.now()-ms)/3600e3;
   return h<1?'ไม่ถึงชั่วโมง':h<48?`${Math.round(h)} ชม.ที่แล้ว`:`${Math.round(h/24)} วันที่แล้ว`;
 }
+// เกณฑ์จาก settings/utility (หน้าตั้งค่า · firebase/settings.js ตั้ง window.UTIL_SETTINGS) · ยังไม่โหลด/ไม่มี = ค่าตั้งต้น
+function utSet(){ return window.UTIL_SETTINGS||{}; }
 function utCsv(csv){ return csv?Papa.parse(csv,{header:true,skipEmptyLines:true}).data:[]; }
 
 async function utLoad(br){
@@ -46,7 +48,7 @@ async function utLoad(br){
       if(r.billsErr) console.warn('UTIL-03 อ่านบิลไม่ได้:',r.billsErr);
       // UTIL-09 ตรวจบิล: ทำครั้งเดียวตอนโหลด · chk[meter@เดือน] ให้กราฟ/ตาราง/การ์ดเปิดดูเร็ว
       const check=utilBillCheck(bills.map(x=>({bill_month:x.bill_month,branch_code:br,type:x.type,meter_id:x.meter_id,
-        units:utNum(x.units),amount:utNum(x.amount_incl_vat)})));
+        units:utNum(x.units),amount:utNum(x.amount_incl_vat)})),utSet());
       const chk={}; check.forEach(x=>{ if(x.high||x.dup||x.round) chk[x.meter_id+'@'+x.bill_month]=x; });
       UT.cache[br]={at:Date.now(),money,ts:r.ts,readings,meters,bills,billsErr:r.billsErr,check,chk};
     }catch(e){
@@ -93,7 +95,7 @@ function utDraw(host,br){
   if(c.err) meters=`<div class="ut-empty ut-err">${utEsc(c.err)}</div>`;
   else if(!c.meters.length) meters='<div class="ut-empty">สาขานี้ยังไม่มีข้อมูลจดมิเตอร์</div>';
   else{
-    const now=Date.now(), S=utilSettings({},br);
+    const now=Date.now(), S=utilSettings(utSet(),br);
     c.meters.forEach(m=>utPrep(m,c,S,now));   // ต้องก่อน utSummary / utMeterHtml (ตั้ง m._res ฯลฯ)
     meters=`<div class="ut-head"><div class="ut-sub">ข้อมูล ณ ${c.ts?utWhen(c.ts):'—'} · แตะการ์ดหรือช่องเพื่อดูรายละเอียด</div></div>`
       +utHelpHtml(S,c.meters.some(m=>m.type==='elec'))
@@ -107,11 +109,13 @@ function utDraw(host,br){
 //   ตัวเลขทุกตัวดึงจาก S / UTIL_DEFAULTS (เกณฑ์จริง) และคำนวณตัวอย่างด้วยฟังก์ชันเดียวกับตัวตรวจ ไม่พิมพ์ตายตัว
 //   เปิดค้างไว้แล้วแท็บวาดใหม่ (รีเฟรช 5 นาที) ต้องไม่หุบเอง → จำใน UT.helpOpen
 function utHelpHtml(S,hasElec){
-  const w=S.thresholds.water, e=S.thresholds.elec, B=UTIL_DEFAULTS.billCheck, H=S.hours.default;
+  const w=S.thresholds.water, e=S.thresholds.elec, B=utilBillCfg(utSet()), H=S.hours.default;
   const yl=n=>Math.max(n*w.yellow,n+w.minDiff), rl=n=>Math.max(n*w.red,n+w.minDiff);
-  const ex=n=>yl(n)>=rl(n)?`ปกติ ${n} → ต้องเกิน ${utFmt(rl(n),1)} (แดงเลย)`:`ปกติ ${n} → เหลือง ${utFmt(yl(n),1)} · แดง ${utFmt(rl(n),1)}`;
+  const ex=n=>yl(n)>=rl(n)?`ค่ากลาง ${n} → เกิน ${utFmt(rl(n),1)} = แดงเลย`:`ค่ากลาง ${n} → เกิน ${utFmt(yl(n),1)} = เหลือง · เกิน ${utFmt(rl(n),1)} = แดง`;
   // ตัวอย่างจริง: บิลน้ำสำนักงานบางนา ก.ค. 69 = 153 · 4 บิลก่อน 68 · 82 · 131 · 116
   const bBase=utilMedian([68,82,131,116]), bNow=153;
+  // สูตรเขียนเป็นการเทียบตรงๆ "ค่ากลาง × 1.5 < ที่ใช้" (เจ้าของเข้าใจง่ายกว่า "ค่าที่มากกว่าระหว่าง…" · 14 ต.ค.)
+  const rule=(x,d,who)=>`ค่ากลาง × ${x} &lt; ${who} <b>และ</b> ค่ากลาง + ${d} ≤ ${who}`;
   const shut=((utilHm(H.open)-utilHm(H.close))/3600e3+24)%24;
   return `<details class="ut-help"${UT.helpOpen?' open':''} ontoggle="UT.helpOpen=this.open">
     <summary>❓ วิธีอ่าน · วิธีคำนวณเกณฑ์</summary>
@@ -122,19 +126,20 @@ function utHelpHtml(S,hasElec){
         <tr><td>✅ ปกติ</td><td>ไม่เกินเส้นเหลือง</td><td>—</td></tr>
         <tr><td>🟡 เหลือง</td><td>เกินเส้นเหลือง</td><td>จับตาดู</td></tr>
         <tr><td>🔴 แดง</td><td>เกินเส้นแดง</td><td>ไปดูหน้างาน</td></tr>
-        <tr><td>🟣 ม่วง</td><td>สูงกว่าปกติติดกัน ${w.streak} วัน</td><td>เช็คท่อ/ก๊อก น่าจะรั่ว</td></tr></table>
-      <p>แท่งจาง = วันที่ไม่ได้จด (ระบบเฉลี่ยให้) · แท่งเทา = ข้อมูลยังไม่ครบ${hasElec?' · ⚡ ไฟ แท่งละ 1 สัปดาห์ · เส้นจุดฟ้า = เฉลี่ยจากบิล':''}</p>
+        <tr><td>🟣 ม่วง</td><td>เกินเส้นเหลืองติดกัน ${w.streak} วัน</td><td>เช็คท่อ/ก๊อก น่าจะรั่ว</td></tr></table>
+      <p>สีจาง = วันที่ไม่ได้จด (ระบบเฉลี่ยให้) · สีเทา = จดยังไม่ครบ${hasElec?' · ⚡ ไฟ ช่องละ 1 สัปดาห์':''}</p>
 
       <div class="ut-help-h">วิธีคำนวณ</div>
       <ol>
         <li><b>ใช้ต่อวัน</b> = เลขครั้งนี้ − เลขครั้งก่อน · 1 วัน นับ ${H.open} ถึง ${H.open} วันถัดไป</li>
-        <li><b>ปกติ</b> = ค่ากลางของวันเดียวกันในสัปดาห์ ย้อน ${S.baseWeeks} สัปดาห์ ไม่นับวันที่แดง · เช่น 30 · 34 · 36 · 80 → ${utFmt(utilMedian([30,34,36,80]))}</li>
-        <li><b>เส้นเหลือง</b> = ค่าที่มากกว่าระหว่าง ปกติ × ${w.yellow} กับ ปกติ + ${w.minDiff}
-          · <b>เส้นแดง</b> = ค่าที่มากกว่าระหว่าง ปกติ × ${w.red} กับ ปกติ + ${w.minDiff}<br>เช่น ${ex(35)} · ${ex(5)}</li>
-        <li><b>ม่วง</b> = เหลือง และสูงกว่าปกติติดกันถึงวันที่ ${w.streak}</li>
-        ${hasElec?`<li><b>ไฟ</b> = สูตรเดียวกัน นับรายสัปดาห์ · ขั้นต่ำ ${utFmt(e.minDiff*7)} หน่วย/สัปดาห์</li>`:''}
-        <li><b>⚠ บิล</b> = หน่วยในบิล > ค่ากลาง ${B.lookback} บิลก่อน × ${B.ratio} และเกินอย่างน้อย น้ำ ${B.minDiff.water} / ไฟ ${utFmt(B.minDiff.elec)} หน่วย
-          · ไม่ตรวจ ${B.warmup} เดือนแรกของสาขา<br>เช่น บิลน้ำสำนักงานบางนา ก.ค. 69 = ${bNow} · ค่ากลาง ${utFmt(bBase)} × ${B.ratio} = ${utFmt(bBase*B.ratio,1)} → ⚠ +${utFmt((bNow/bBase-1)*100)}%</li>
+        <li><b>ค่ากลาง</b> = ตัวกลางของวันเดียวกันในสัปดาห์ ย้อน ${S.baseWeeks} สัปดาห์ (ต้องมีอย่างน้อย ${S.baseMinDays}) ไม่นับวันที่แดง · เช่น 30 · 34 · 36 · 80 → ${utFmt(utilMedian([30,34,36,80]))}</li>
+        <li><b>🟡 เหลือง</b> = ${rule(w.yellow,w.minDiff,'ที่ใช้')}<br><b>🔴 แดง</b> = ${rule(w.red,w.minDiff,'ที่ใช้')}<br>เช่น ${ex(20)} · ${ex(5)}</li>
+        <li><b>🟣 ม่วง</b> = วันนั้นเหลือง และเกินเส้นเหลืองติดกันถึงวันที่ ${w.streak} (วันแดงนับรวม)</li>
+        ${hasElec?`<li><b>⚡ ไฟ</b> = นับรายสัปดาห์ · เหลือง ${rule(e.yellow,utFmt(e.minDiff*7),'ที่ใช้')} · แดง ค่ากลาง × ${e.red} · ไม่มีม่วง</li>`:''}
+        <li><b>⚠ บิล</b> = ค่ากลาง ${B.lookback} บิลก่อน × ${B.ratio} &lt; บิลนี้ <b>และ</b> ค่ากลาง + ${B.minDiff.water} (ไฟ ${utFmt(B.minDiff.elec)}) ≤ บิลนี้
+          · ต้องมีบิลก่อนหน้าอย่างน้อย ${B.minPrev} ใบ · ไม่ตรวจ ${B.warmup} เดือนแรกของสาขา
+          <br>เช่น บิลน้ำสำนักงานบางนา ก.ค. 69 = ${bNow} · ${utFmt(bBase)} × ${B.ratio} = ${utFmt(bBase*B.ratio,1)} &lt; ${bNow} และ ${utFmt(bBase)} + ${B.minDiff.water} = ${utFmt(bBase+B.minDiff.water)} ≤ ${bNow} → ⚠ +${utFmt((bNow/bBase-1)*100)}%</li>
+        <li><b>ใช้ 0</b> = มิเตอร์ไม่ขยับ → ขึ้นเตือนให้เช็คมิเตอร์</li>
         <li><b>ช่วงตลาดปิด</b> = (เลขตอน ${H.open} − เลขตอน ${H.close}) ÷ ${utFmt(shut)} ชม. เกิน ${w.closedRate} ลบ.ม./ชม. = แดง · ต้องจดวันละ 2 รอบ</li>
       </ol>
     </div></details>`;
@@ -260,7 +265,7 @@ function utMeterName(b,id){ const m=(UT.cache[b]?.meters||[]).find(x=>x.meter_id
 function utFlagText(b,x){
   const who=`${utEsc(BM_NAMES[b]||b)} · ${UT_TYPE[x.type]?UT_TYPE[x.type].split(' ')[0]+' ':''}${utEsc(utMeterName(b,x.meter_id))}`;
   const out=[];
-  if(x.high) out.push({k:'high',t:`${who} บิล ${utMonthTh(x.bill_month)}: ${utFmt(x.units)} ${utU(x.type)} สูงกว่าปกติ +${x.high.pct.toFixed(0)}% (ปกติ ~${utFmt(x.high.base)})`});
+  if(x.high) out.push({k:'high',t:`${who} บิล ${utMonthTh(x.bill_month)}: ${utFmt(x.units)} ${utU(x.type)} สูงกว่าค่ากลาง +${x.high.pct.toFixed(0)}% (ค่ากลาง ${utFmt(x.high.base)})`});
   if(x.dup) out.push({k:'q',t:`${who} บิล ${utMonthTh(x.bill_month)}: หน่วยและเงินซ้ำกับบิล ${utMonthTh(x.dup)} ทุกหลัก — อาจคัดลอกผิด`});
   if(x.round) out.push({k:'q',t:`${who} บิล ${utMonthTh(x.bill_month)}: ${utFmt(x.units)} ${utU(x.type)} เป็นเลขกลมหลักพัน — อาจเป็นยอดประมาณ`});
   return out;
@@ -268,18 +273,18 @@ function utFlagText(b,x){
 // ธงสูงผิดปกติใน n บิลล่าสุดของแต่ละมิเตอร์ (ของที่เพิ่งเกิด = ต้องดูตอนนี้)
 function utRecentHigh(b){
   const c=UT.cache[b]; if(!c||!c.check) return [];
-  const n=UTIL_DEFAULTS.billCheck.recent, by={};
+  const n=utilBillCfg(utSet()).recent, by={};
   c.check.forEach(x=>{ (by[x.meter_id]=by[x.meter_id]||[]).push(x); });
   return Object.values(by).flatMap(rs=>rs.sort((a,z)=>a.bill_month<z.bill_month?-1:1).slice(-n).filter(x=>x.high));
 }
 function utCheckBox(){
   const brs=utCmpBranches().filter(b=>UT.cache[b]&&UT.cache[b].check);
   const hi=brs.flatMap(b=>utRecentHigh(b).map(x=>({b,x}))).sort((a,z)=>a.x.bill_month<z.x.bill_month?1:-1);
-  const n=UTIL_DEFAULTS.billCheck.recent;
+  const B=utilBillCfg(utSet()), n=B.recent;
   if(!hi.length) return `<div class="ut-check ok">✅ ตรวจบิล ${n} ใบล่าสุดของทุกมิเตอร์ (${brs.map(b=>BM_NAMES[b]||b).join(' · ')}) — ไม่พบหน่วยสูงผิดปกติ</div>`;
   return `<div class="ut-check bad"><b>⚠️ ต้องดู: บิล ${n} ใบล่าสุดสูงผิดปกติ ${new Set(hi.map(h=>h.x.meter_id)).size} มิเตอร์</b>
     <ul>${hi.map(({b,x})=>`<li>${utFlagText(b,x).filter(f=>f.k==='high').map(f=>f.t).join('')}</li>`).join('')}</ul>
-    <div class="ut-sub">เกณฑ์: สูงกว่าค่ากลาง ${UTIL_DEFAULTS.billCheck.lookback} บิลก่อนหน้า เกิน ${Math.round((UTIL_DEFAULTS.billCheck.ratio-1)*100)}% และเกินขั้นต่ำ น้ำ ${UTIL_DEFAULTS.billCheck.minDiff.water} · ไฟ ${utFmt(UTIL_DEFAULTS.billCheck.minDiff.elec)} หน่วย</div></div>`;
+    <div class="ut-sub">เกณฑ์: ค่ากลาง ${B.lookback} บิลก่อน × ${B.ratio} &lt; บิลนี้ และ ค่ากลาง + ${B.minDiff.water} (ไฟ ${utFmt(B.minDiff.elec)}) ≤ บิลนี้</div></div>`;
 }
 // ธงในส่วน (ไฟ/น้ำ) ตามช่วงที่เลือก — ใต้ KPI
 function utSecFlags(d){
@@ -372,8 +377,9 @@ CT_ALT.cUtilCmp={line(cfg){
 function utSummary(c){
   const act=c.meters.filter(m=>utilTrue(m.active)), read=act.filter(m=>m._res.last);
   const billHi=new Set(canSeeUtilMoney()?utRecentHigh(UT.br||activeBranch).map(x=>x.meter_id):[]);   // UTIL-09
-  const watch=c.meters.filter(m=>(utilTrue(m.active)&&(['red','leak'].includes(m._full?.level)||(m._res.stale&&m._res.last)))||billHi.has(m.meter_id));
-  const name=m=>(UT_TYPE[m.type]||'').split(' ')[0]+' '+utEsc(m.location||m.meter_id)+(billHi.has(m.meter_id)?' (บิลสูง)':'');
+  const zero=new Set(c.meters.filter(m=>umZero(m).length).map(m=>m.meter_id));   // ใช้ 0 = มิเตอร์ค้าง/ลอกเลข (views/util-meter.js)
+  const watch=c.meters.filter(m=>(utilTrue(m.active)&&(['red','leak'].includes(m._full?.level)||(m._res.stale&&m._res.last)))||billHi.has(m.meter_id)||zero.has(m.meter_id));
+  const name=m=>(UT_TYPE[m.type]||'').split(' ')[0]+' '+utEsc(m.location||m.meter_id)+(billHi.has(m.meter_id)?' (บิลสูง)':'')+(zero.has(m.meter_id)?' (ใช้ 0)':'');
   // ยังไม่มีอะไรให้ตัดสิน ≠ ปกติ — สาขาปิด / ยังไม่เริ่มจด บอกตรงๆ ไม่ขึ้น ✅
   const [cls,val,sub]=!act.length?['','ปิดใช้แล้ว','ทุกมิเตอร์ปิดใช้ · ดูข้อมูลย้อนหลังได้']
     :watch.length?['red',watch.length+' มิเตอร์',watch.map(name).join(' · ')]
@@ -388,7 +394,7 @@ function utSummary(c){
 const UT_MIN_WEEKS=8;
 function utPrep(m,c,S,now){
   const meter={meter_id:m.meter_id,type:m.type,branch_code:m.branch_code};
-  const res=utilAnalyze(c.readings,meter,{},now);
+  const res=utilAnalyze(c.readings,meter,utSet(),now);
   const days=applyPeriod(res.days.map(d=>({date:new Date(d.date+'T00:00:00'),d}))).map(x=>x.d);
   // ไฟจดทุกวันจันทร์ (UTIL-13) → รายสัปดาห์ · สัปดาห์ที่คาบช่วงเวลาในเมนูข้าง แต่อย่างน้อย UT_MIN_WEEKS สัปดาห์ล่าสุด
   //   (เลือก 7/30 วัน ได้แท่งเดียวสองแท่ง ดูแนวโน้มไม่ได้)

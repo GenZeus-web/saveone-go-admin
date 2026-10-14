@@ -13,7 +13,7 @@
 | `5_revenue-calculator.md` | สูตรคิดรายรับ · ราคาตามฤดูกาล/วันหยุด |
 | `6_project-setup.md` | วิธีติดตั้ง · สิ่งที่ต้อง deploy |
 | `walkin-diagram.png` | ผังระบบวอล์กอิน |
-| `firestore-rules/v3.2.0-current.txt` | กฎสิทธิ์ Firestore ฉบับเต็ม (วางทั้งไฟล์ใน Console · ประวัติดู `git log`) |
+| `firestore-rules/v3.3.0-current.txt` | กฎสิทธิ์ Firestore ฉบับเต็ม (วางทั้งไฟล์ใน Console · ประวัติดู `git log`) |
 | `firestore-rules-settings.md` | คำอธิบายกฎส่วนตั้งค่าราคา |
 | `adr/` | บันทึกการตัดสินใจ (ADR) |
 | `agents/` | ตั้งค่า issue tracker / label / domain docs ของ agent skills |
