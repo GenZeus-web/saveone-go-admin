@@ -199,7 +199,8 @@ $('outBtn').onclick = function(){ S.token = null; show('vPin'); };
 function apply(st){
   S.meters = st.meters; S.log = st.log;
   var done = S.meters.filter(function(m){ return m.status === 'done'; }).length;
-  $('roundInfo').textContent = st.round ? 'รอบ ' + st.round.label + ' · จดแล้ว ' + done + '/' + S.meters.length + ' มิเตอร์' : '';
+  $('roundInfo').textContent = st.round ? 'น้ำ: รอบ ' + st.round.label + (st.week ? ' · ไฟ: ทุก' + st.week.label : '') +
+    ' · จดแล้ว ' + done + '/' + S.meters.length + ' มิเตอร์' : '';
   renderList(); renderLog($('log'), S.log, true);
   if (S.cur) {
     var m = S.meters.filter(function(x){ return x.meter_id === S.cur.meter_id; })[0];
@@ -249,7 +250,9 @@ function renderList(){
     var b = document.createElement('button'); b.className = 'meter';
     var last = m.last ? 'ครั้งก่อน ' + m.last.reading.toLocaleString('th-TH') + ' · ' + m.last.at : 'ยังไม่เคยจด';
     b.innerHTML = '<span><b></b><span class="muted"></span><span class="st"></span></span><span class="tag"></span>';
-    var R = { done:'✅ จดรอบนี้แล้ว', due:'⏰ ถึงรอบ · ยังไม่จด', late:'⚠️ เลยรอบ · ยังไม่จด' };
+    var R = m.type === 'elec'
+      ? { done:'✅ จดสัปดาห์นี้แล้ว', due:'⏰ ถึงรอบ (จดทุกวันจันทร์) · ยังไม่จด', late:'⚠️ ยังไม่จดของสัปดาห์นี้ (รอบวันจันทร์)' }
+      : { done:'✅ จดรอบนี้แล้ว', due:'⏰ ถึงรอบ · ยังไม่จด', late:'⚠️ เลยรอบ · ยังไม่จด' };
     if (m.status) { b.querySelector('.st').textContent = R[m.status]; b.querySelector('.st').className = 'st ' + m.status; }
     b.querySelector('b').textContent = m.location || m.meter_id;
     b.querySelector('.muted').textContent = m.meter_id + ' · ' + last;

@@ -15,12 +15,13 @@ const UTIL_DAY=864e5;
 const UTIL_DEFAULTS={
   hours:{default:{open:'14:00',close:'01:00'}},  // ต่อสาขาได้: hours.BN = {...}
   edgeMin:15,        // จดคลาดจากเวลาเปิด/ปิดไม่เกินนี้ ยังนับเป็น "ช่วงปิดล้วน"
-  staleDays:2,       // ไม่มีการจดเกินนี้ = เตือนบนการ์ด
+  staleDays:2,       // ไม่มีการจดเกินนี้ = เตือนบนการ์ด (ชนิดไหนตั้ง thresholds.<ชนิด>.staleDays ไว้ ใช้ค่านั้นแทน)
   baseWeeks:4,       // ฐาน = วันเดียวกันในสัปดาห์ ย้อนกี่สัปดาห์
   baseMinDays:2,     // วันปกติเหลือน้อยกว่านี้ → ใช้ฐานตั้งต้น (baseline) แทน
   thresholds:{
-    water:{yellow:1.5,red:2,minDiff:10,streak:3,closedRate:0.5},
-    elec:{yellow:1.5,red:2,minDiff:100,streak:3,closedRate:null}  // ไฟ: ยังไม่มีข้อมูลจริง minDiff/closedRate เป็นค่าเดา
+    water:{yellow:1.5,red:2,minDiff:10,streak:3,closedRate:0.5},  // จดวันละรอบ 14:00 (เจ้าของเลือก 14 ต.ค. 69)
+    // ไฟ: ยังไม่มีข้อมูลจริง minDiff/closedRate เป็นค่าเดา · จดทุกวันจันทร์ → เลยรอบ 1 วันยังไม่เตือน
+    elec:{yellow:1.5,red:2,minDiff:100,streak:3,closedRate:null,staleDays:8}
   },
   baseline:{},       // ฐานตั้งต้นต่อมิเตอร์ {meter_id: หน่วย/วัน} — แก้ทับได้ (กระทบอดีต)
   rates:[],          // [{meter_id, field:'multiplier'|'rate', value, effective_from}] — ห้ามแก้ย้อน (ADR 0001)
@@ -150,9 +151,9 @@ function utilBands(day,th){
 function utilAnalyze(readings,meter,settings,now){
   const S=utilSettings(settings,meter.branch_code), rows=utilPrep(readings,meter.meter_id,S.openMs);
   const {segs,anomalies}=utilSegments(rows), last=rows.length?rows[rows.length-1]:null;
-  const ageDays=last?(now-last.t)/UTIL_DAY:null;
+  const ageDays=last?(now-last.t)/UTIL_DAY:null, staleDays=S.thresholds[meter.type]?.staleDays??S.staleDays;
   return {days:utilFlags(utilDaily(segs,meter.meter_id,S),meter,S),closed:utilClosed(segs,meter,S),anomalies,
-          last:last&&last.t,ageDays,stale:last==null||ageDays>S.staleDays};
+          last:last&&last.t,ageDays,staleDays,stale:last==null||ageDays>staleDays};
 }
 
 // เป็นเงิน = หน่วย × บาท/หน่วยที่มีผลวันนั้น · ไม่มีราคา = null (อย่าเดาเป็น 0)

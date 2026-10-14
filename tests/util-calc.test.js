@@ -253,3 +253,14 @@ test('ตรวจบิล: ข้อมูลต้องเช็ค — ซ�
   const diffAmt=[...bill('X','water','X',[['2026-01',100]]),{bill_month:'2026-02',branch_code:'X',type:'water',meter_id:'X',units:100,amount:1}];
   assert.equal(utilBillCheck(diffAmt)[1].dup,null);                       // หน่วยเท่าแต่เงินต่าง = ไม่ใช่คัดลอก
 });
+
+test('ไฟจดทุกวันจันทร์: เลยไป 5 วันยังไม่เตือน · 9 วันเตือน · น้ำ 3 วันเตือน',()=>{
+  const ELEC={meter_id:'BN-E-MAIN',type:'elec',branch_code:'BN'};
+  const r=[at('BN-E-MAIN',Date.parse('2026-10-12T14:00:00+07:00'),1000)];
+  const day=n=>Date.parse('2026-10-12T14:00:00+07:00')+n*864e5;
+  assert.equal(utilAnalyze(r,ELEC,{},day(5)).stale,false);
+  assert.equal(utilAnalyze(r,ELEC,{},day(9)).stale,true);
+  assert.equal(utilAnalyze(r,ELEC,{},day(9)).staleDays,8);
+  const w=[at('BN-W-TOILET',Date.parse('2026-10-12T14:00:00+07:00'),1000)];
+  assert.equal(utilAnalyze(w,TOILET,{},day(3)).stale,true);
+});

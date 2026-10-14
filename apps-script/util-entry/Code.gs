@@ -10,7 +10,8 @@
 const TZ = 'Asia/Bangkok';               // ไทย UTC+7 ไม่มีเวลาออมแสง
 const FS_PROJECT = 'saveone-go-5fe9d';
 const LOG_ROWS = 10;                     // log ในแอป: จดล่าสุดของสาขากี่รายการ
-const DEFAULT_ROUNDS = '14:00,01:00';    // เวลารอบจด ถ้าแท็บ branches ช่อง rounds ว่าง (แบบ ก · รอพี่ตุ๋งเลือก)
+const DEFAULT_ROUNDS = '14:00';          // เวลารอบจด ถ้าแท็บ branches ช่อง rounds ว่าง (เจ้าของเลือก 14 ต.ค.: น้ำวันละรอบ)
+const ELEC_WEEKDAY = 1;                  // ไฟจดสัปดาห์ละครั้ง วันนี้ (0 = อาทิตย์ · 1 = จันทร์) เวลา = รอบแรกของสาขา
 const ROUND_EARLY_MIN = 60, ROUND_LATE_MIN = 60;   // จดได้ก่อน/หลังเวลารอบกี่นาที (±1 ชม.)
 const BILL_ROWS = 12;                    // หน้าบัญชี: บิลล่าสุดกี่รายการ
 const PHOTO_FOLDER_NAME = 'UTIL รูปมิเตอร์'; // อยู่โฟลเดอร์เดียวกับชีต · ไม่มี = สร้างให้
@@ -234,6 +235,16 @@ function round_(rounds, nowMs) {
   return { label: best.r.label, start: nowMs - (nowMs % 60000) - best.d * 60000,
            open: best.d <= ROUND_EARLY_MIN + ROUND_LATE_MIN };
 }
+// ไฟ: รอบเดียวต่อสัปดาห์ (วัน ELEC_WEEKDAY เวลารอบแรก) · จดหลังจุดเริ่มรอบล่าสุด = จดแล้ว ทั้งสัปดาห์
+// ยังไม่จด: ภายในเวลารอบ + 1 ชม. ของวันนั้น = ถึงรอบ · หลังจากนั้นจนถึงสัปดาห์ถัดไป = เลยรอบ
+function weekRound_(rounds, nowMs) {
+  if (!rounds.length) return null;
+  const r = rounds[0], p = fmt_(new Date(nowMs), 'u HH:mm').split(/[ :]/);   // u = 1 จันทร์ … 7 อาทิตย์
+  const nowMin = ((+p[0]) % 7) * 1440 + (+p[1]) * 60 + (+p[2]);
+  const d = ((nowMin - (ELEC_WEEKDAY * 1440 + r.min - ROUND_EARLY_MIN)) % 10080 + 10080) % 10080;
+  return { label: 'จันทร์ ' + r.label, start: nowMs - (nowMs % 60000) - d * 60000,
+           open: d <= ROUND_EARLY_MIN + ROUND_LATE_MIN };
+}
 
 // บันทึก 1 การจด · f = {meter_id, reading, meter_reset, note, photo (data URL · ไม่บังคับ เว้นตั้ง PHOTO_REQUIRED)}
 // คนจด = คนที่เข้าแอป (ไม่รับชื่อจากหน้าเว็บ)
@@ -389,16 +400,17 @@ function state_(me) {
       canCancel: !isVoid && String(x.r.source) === 'app' && String(x.r.staff_id) === me.id && last[id] === x
     };
   });
-  const rd = round_(rounds_(me.branch), Date.now());
+  const rs = rounds_(me.branch), rd = round_(rs, Date.now()), wk = weekRound_(rs, Date.now());
   const meters = ms.map(m => {
-    const l = last[String(m.meter_id)];
+    const l = last[String(m.meter_id)], r = String(m.type) === 'elec' ? wk : rd;
     return {
       meter_id: String(m.meter_id), type: String(m.type), location: String(m.location || ''),
       last: l ? { reading: Number(l.r.reading), at: fmt_(new Date(l.t), 'd/M HH:mm') } : null,
-      status: !rd ? null : (l && l.t >= rd.start) ? 'done' : rd.open ? 'due' : 'late'
+      status: !r ? null : (l && l.t >= r.start) ? 'done' : r.open ? 'due' : 'late'
     };
   });
-  return { meters: meters, log: log, round: rd && { label: rd.label, open: rd.open } };
+  return { meters: meters, log: log, round: rd && { label: rd.label, open: rd.open },
+           week: wk && ms.some(m => String(m.type) === 'elec') ? { label: wk.label } : null };
 }
 
 // เวลาของแถว: ts (แอป) หรือ read_date 14:00 (ใบจดกระดาษ — ตรงกับ js/util-calc.js)
