@@ -295,9 +295,10 @@ function utCompareHtml(){
   const pills=ok.length>1?`<div class="ut-pills">เทียบสาขา: ${ok.map(b=>`<button class="mc-pill${sel.has(b)?' sel':''}" onclick="toggleUtCmp('${b}')">${utEsc(BM_NAMES[b]||b)} (${b})${b==='SS'?' · ปิดแล้ว':''}</button>`).join('')}</div>`:'';
   return pills+utRangeHtml()+utCheckBox()+UT_SECS.map(([type,icon,name,money,unit],k)=>{
     const d=utCmpData(type);
-    const t=`<div class="ut-sec-t">${k+1}. ${icon} ${name} — หน่วยใช้และ${money}</div>`;
-    if(!d) return `<div class="sc ut-sec">${t}<div class="ut-empty">ยังไม่มีบิล${name}ของสาขาที่เลือก</div></div>`;
-    if(!d.months.length) return `<div class="sc ut-sec">${t}<div class="ut-empty">ไม่มีบิล${name}ในช่วงที่เลือก · บิลล่าสุด ${utMonthTh(d.last)}<br>
+    // หัวส่วนติดบนจอตอนเลื่อน + สีประจำชนิด (ไฟ ส้ม · น้ำ ฟ้า) — เจ้าของ: เลื่อนเร็วๆ ไม่รู้ส่วนไหนไฟ ส่วนไหนน้ำ
+    const t=`<div class="ut-cmp-h">${icon} ${name}<span>หน่วยใช้และ${money}</span></div>`, sec=`sc ut-sec ut-sec-${type}`;
+    if(!d) return `<div class="${sec}">${t}<div class="ut-empty">ยังไม่มีบิล${name}ของสาขาที่เลือก</div></div>`;
+    if(!d.months.length) return `<div class="${sec}">${t}<div class="ut-empty">ไม่มีบิล${name}ในช่วงที่เลือก · บิลล่าสุด ${utMonthTh(d.last)}<br>
       <button class="mc-pill" style="margin-top:8px" onclick="setUtRange('12')">12 เดือนล่าสุด</button></div></div>`;
     const nm=b=>utEsc(BM_NAMES[b]||b), dot=b=>`<i class="ut-dot" style="background:${sc(BM_COLORS[b])}"></i>`;
     const ov=d.overlap.length;
@@ -313,13 +314,13 @@ function utCompareHtml(){
       <div class="kpi-sub">${vs(key)||'&nbsp;'}</div></div>`;
     const rows=d.stat.map(s=>`<tr><td>${dot(s.b)}${nm(s.b)}</td><td class="n">${utFmt(s.units)}</td><td class="n">${utFmt(s.amt)}</td><td class="n">${s.rate==null?'—':utFmt(s.rate,2)}</td></tr>`).join('');
     const sumT=ov?`${utMonthTh(d.overlap[0])} – ${utMonthTh(d.overlap[ov-1])}`:'ตามข้อมูลของแต่ละสาขา';
-    return `<div class="sc ut-sec">${t}<div class="ut-sub" style="margin-bottom:10px">${range}</div>
-      <div class="ut-ckpis">${kpi(`หน่วย${name==='ไฟฟ้า'?'ไฟ':'น้ำ'}เฉลี่ยต่อเดือน (${unit})`,'avgU',0)}${kpi(`${money}เฉลี่ยต่อเดือน (บาท)`,'avgA',0)}${kpi(`${money}ต่อหน่วย (บาท)`,'rate',2)}</div>
+    return `<div class="${sec}">${t}<div class="ut-sub" style="margin-bottom:10px">${range}</div>
+      <div class="ut-ckpis">${kpi(`${icon} หน่วย${name==='ไฟฟ้า'?'ไฟ':'น้ำ'}เฉลี่ยต่อเดือน (${unit})`,'avgU',0)}${kpi(`${icon} ${money}เฉลี่ยต่อเดือน (บาท)`,'avgA',0)}${kpi(`${icon} ${money}ต่อหน่วย (บาท)`,'rate',2)}</div>
       ${utSecFlags(d)}
-      <div class="sc ut-csub"><div class="sc-title">หน่วย${name==='ไฟฟ้า'?'ไฟ':'น้ำ'}ที่ใช้รายเดือน (${unit}) ${UT_MK_NOTE}</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}U"></canvas></div></div>
+      <div class="sc ut-csub"><div class="sc-title">${icon} หน่วย${name==='ไฟฟ้า'?'ไฟ':'น้ำ'}ที่ใช้รายเดือน (${unit}) ${UT_MK_NOTE}</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}U"></canvas></div></div>
       <div class="ut-c2">
-        <div class="sc ut-csub"><div class="sc-title">${money}รายเดือน (บาท) ${UT_MK_NOTE}</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}A"></canvas></div></div>
-        <div class="sc ut-csub"><div class="sc-title">สรุป${name} ${sumT}</div>
+        <div class="sc ut-csub"><div class="sc-title">${icon} ${money}รายเดือน (บาท) ${UT_MK_NOTE}</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}A"></canvas></div></div>
+        <div class="sc ut-csub"><div class="sc-title">${icon} สรุป${name} ${sumT}</div>
           <div class="ut-bills"><table><thead><tr><th>สาขา</th><th class="n">หน่วยรวม</th><th class="n">${money}รวม (บาท)</th><th class="n">บาท/หน่วย</th></tr></thead><tbody>${rows}</tbody></table></div>
           <div class="ut-sub" style="margin-top:8px">รวม VAT ทุกมิเตอร์ของสาขา</div></div>
       </div></div>`;

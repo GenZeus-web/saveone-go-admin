@@ -206,3 +206,6 @@
   /* ☰ กดยาก: 38px → 44px (ขนาดแตะขั้นต่ำของ Apple) */
   .mnav-btn{width:44px;height:44px;margin-right:8px;}
 }
+/* หัวส่วนเทียบสาขา (น้ำ-ไฟ) ติดชิดขอบบนกล่องเลื่อน: top = −ระยะขอบบนของ .content ในแต่ละขนาดจอ */
+@media(max-width:768px){ .ut-cmp-h{top:-12px;} }
+@media(max-width:420px){ .ut-cmp-h{top:-10px;} }

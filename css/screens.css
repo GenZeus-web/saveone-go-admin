@@ -235,6 +235,14 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 .ut-pills{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:var(--ink2);margin-bottom:12px;}
 .ut-sec{margin-bottom:14px;}
 .ut-sec-t{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;}
+.ut-sec-elec{border-left:4px solid var(--orange);} .ut-sec-water{border-left:4px solid var(--blue);}
+/* หัวส่วนเทียบสาขา: แถบสีประจำชนิด ติดบนจอตอนเลื่อน (อยู่ใน .content ที่เป็นตัวเลื่อน · ติดเฉพาะในกรอบส่วนของตัวเอง) */
+.ut-cmp-h{position:sticky;top:-16px;z-index:4;margin:-14px -14px 10px;padding:10px 14px;border-radius:8px 8px 0 0;
+  font-size:18px;font-weight:700;color:var(--ink);background:var(--surface);border-bottom:1px solid var(--border);}
+.ut-sec-elec .ut-cmp-h{box-shadow:inset 0 -3px 0 var(--orange);} .ut-sec-water .ut-cmp-h{box-shadow:inset 0 -3px 0 var(--blue);}
+.ut-cmp-h span{font-size:13px;font-weight:400;color:var(--ink2);margin-left:10px;}
+.ut-sec .ut-ckpi .kpi-lbl,.ut-sec .ut-csub>.sc-title{color:var(--ink);font-weight:700;}
+.ut-sec .ut-bills th{color:var(--ink2);background:var(--surface2);}
 .ut-ckpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px;}
 .ut-ckpi .kpi-lbl{margin-bottom:8px;}
 .ut-crow{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);line-height:1.9;}
