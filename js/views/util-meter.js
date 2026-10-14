@@ -54,12 +54,25 @@ function umBillRatios(c,id){
 }
 const umPct=x=>x.ratio==null?'':(x.ratio>=1?'+':'')+Math.round((x.ratio-1)*100)+'%';
 // สีช่องบิล: สีเดียว อ่อน→เข้ม ตามสูงกว่าค่ากลางกี่ % (ไม่สูงกว่า = พื้นเรียบ)
-const UM_SEQ=[[1,.0],[1.15,.18],[1.3,.38],[1.6,.6],[Infinity,.85]];
-function umSeqA(r){ if(r==null||r<=1) return 0; return UM_SEQ.find(([t])=>r<=t)[1]; }
+const UM_SEQ=[[1,.0],[1.15,.18],[1.3,.38],[1.6,.6],[Infinity,.75]];   // ขั้นบนสุด .75: .85 เป็นส้มกลางที่ตัวขาว/ดำได้ไม่ถึง 4.5
+// โหมดมืด: ส้มจางบนพื้นเกือบดำกลายเป็นน้ำตาลหม่น แยกจากช่อง "ไม่สูงกว่า" ไม่ออก → ขั้นต่ำเข้มขึ้น
+const UM_SEQ_DARK={.18:.32,.38:.5,.6:.68,.75:.85};
+const umAlpha=a=>document.body.classList.contains('light-mode')?a:(UM_SEQ_DARK[a]??a);
+function umSeqA(r){ if(r==null||r<=1) return 0; return umAlpha(UM_SEQ.find(([t])=>r<=t)[1]); }
+// สีตัวหนังสือบนช่องสี: ผสมสีช่องกับพื้นการ์ดจริง แล้วเลือกขาว/เข้มตัวที่ contrast สูงกว่า
+//   (เดิมใช้สีเดียวทุกช่อง — วัด 14 ต.ค. เลขค่ากลางบนช่องส้มเข้ม contrast 1.6 โหมดมืด / 2.4 โหมดสว่าง)
+function umOnColor(rgb,a){
+  const hex=getComputedStyle(document.body).getPropertyValue('--surface').trim().replace('#','');
+  const bg=hex.length===6?[0,2,4].map(j=>parseInt(hex.slice(j,j+2),16)):[255,255,255];
+  const fg=(rgb.match(/\d+/g)||[]).slice(0,3).map(Number), mix=fg.map((v,j)=>v*a+bg[j]*(1-a));
+  const L=c=>{ const [r,g,b]=c.map(v=>{ v/=255; return v<=.03928?v/12.92:((v+.055)/1.055)**2.4; }); return .2126*r+.7152*g+.0722*b; };
+  const l=L(mix), dark=[27,23,20];
+  return (1.05/(l+.05))>=((l+.05)/(L(dark)+.05))?'#fff':'#1b1714';
+}
 function umBillCell(c,m,i,k,x){
-  const f=c.chk&&c.chk[m.meter_id+'@'+k], a=umSeqA(x.ratio);
+  const f=c.chk&&c.chk[m.meter_id+'@'+k], a=umSeqA(x.ratio), col=sc('rgb(240,122,53)');
   return `<span class="c mo${f?.high?' flag':''}" onclick="umBillDetail(${i},'${k}')" title="${utMonthTh(k)} · ${utFmt(x.units)} ${utU(m)}${x.ratio!=null?' · '+umPct(x)+' จากค่ากลาง '+utFmt(x.med):''}"
-    style="background:${a?sc(`rgba(240,122,53,${a})`):'var(--surface2)'}">${umPct(x)||'—'}${x.med?`<small>${utFmt(x.med)}</small>`:''}</span>`;
+    style="background:${a?col.replace('rgb(','rgba(').replace(')',`,${a})`):'var(--surface2)'}${a?`;color:${umOnColor(col,a)}`:''}">${umPct(x)||'—'}${x.med?`<small>${utFmt(x.med)}</small>`:''}</span>`;
 }
 
 // ข้อความเตือนจากเลขจด (เดิมอยู่บนการ์ดเก่า): จดขาดเกิน N วัน · ช่วงตลาดปิดเกินเกณฑ์ · เลขถอยหลัง/เปลี่ยนมิเตอร์
@@ -113,7 +126,7 @@ function umHeatHtml(c){
         <div class="um-hg" style="grid-template-columns:max-content repeat(${all.length},minmax(52px,1fr))"><span></span>${all.map(mo=>`<span class="ch">${utMonthTh(mo)}</span>`).join('')}
         ${withB.map(({m,i})=>{ const R=umBillRatios(c,m.meter_id);
           return `<span class="rl" onclick="umMeterDetail(${i})">${umName(m)}</span>${all.map(mo=>R[mo]?umBillCell(c,m,i,mo,R[mo]):'<span class="c mo na"></span>').join('')}`; }).join('')}</div>
-        <div class="um-key">${UM_SEQ.slice(1).map(([,a],k)=>`<span><i style="background:${sc(`rgba(240,122,53,${a})`)}"></i>${['ไม่เกิน +15%','+15–30%','+30–60%','เกิน +60%'][k]}</span>`).join('')}
+        <div class="um-key">${UM_SEQ.slice(1).map(([,a],k)=>`<span><i style="background:${sc(`rgba(240,122,53,${umAlpha(a)})`)}"></i>${['ไม่เกิน +15%','+15–30%','+30–60%','เกิน +60%'][k]}</span>`).join('')}
           <span><i style="background:var(--surface2)"></i>ไม่สูงกว่าค่ากลาง</span><span>เลขบน = % จากค่ากลาง · เลขล่าง = ค่ากลาง</span>
           <span><i style="outline:2px solid var(--red);outline-offset:-2px"></i>⚠ บิลสูงผิดปกติ</span></div>`;
     }
@@ -235,12 +248,13 @@ function umFullCfg(m,i){
     footer:()=>'กดเพื่อดูวิธีคิด'}};
   o.scales.y.beginAtZero=true; o.scales.x.grid={display:false};
   o.scales.y.suggestedMax=Math.max(0,...pts.map((d,k)=>Math.max(d.units*1.15,(bands[k].yellow||0)*1.1)));
+  utAxis(o);
   o.onClick=(e,els)=>{ if(els.length) umPointDetail(i,pts[els[0].index].date); };
   o.onHover=(e,els)=>{ e.native.target.style.cursor=els.length?'pointer':''; };
   return {type:'bar',plugins:[umZonePlugin],data:{labels:pts.map(d=>utDM(d.date)),datasets:[
     {type:'bar',label:'ใช้',data:pts.map(d=>+d.units.toFixed(2)),borderRadius:2,order:2,
      backgroundColor:pts.map(d=>umHot(d.level)?`rgba(${umRgb(d.level)},.95)`:`rgba(${umRgb('nodata')},${d.est||d.level==='partial'?.35:.75})`)},
-    {type:'line',label:'ค่ากลาง',data:pts.map(d=>d.base??null),borderColor:chartClr().lbl,borderDash:[4,4],borderWidth:1.4,
+    {type:'line',label:'ค่ากลาง',data:pts.map(d=>d.base??null),borderColor:utInk().ink2,borderDash:[4,4],borderWidth:1.4,
      pointRadius:0,stepped:'middle',spanGaps:false,order:1}]},options:o};
 }
 function umMeterDetail(i){

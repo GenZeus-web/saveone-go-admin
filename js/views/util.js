@@ -168,6 +168,18 @@ function utToolbar(money,sub){
   const vals=sub==='cmp'?`<button class="mc-pill" onclick="toggleUtVals()" aria-pressed="${utVals()}">🔢 ${utVals()?'ซ่อนตัวเลข':'แสดงตัวเลข'}</button>`:'';
   return `<div class="ut-subtabs"><div class="ut-subtabs-l" role="tablist">${tabs}</div>${vals}</div>`;
 }
+// สีแกน/เส้นตาราง/ป้ายในกราฟน้ำ-ไฟ ตามธีมที่ใช้อยู่ (night.css) — chartClr() ยังเป็นสีธีมเดิม
+//   วัดจริง 14 ต.ค.: ตัวเลขแกนบนการ์ดโหมดมืด contrast 3.1 (ต้อง ≥ 4.5) · เส้นตาราง rgba ขาว 4% แทบไม่เห็น
+function utInk(){
+  const cs=getComputedStyle(document.body), light=document.body.classList.contains('light-mode');
+  return {ink2:cs.getPropertyValue('--ink2').trim()||chartClr().lbl, grid:light?'rgba(0,0,0,.09)':'rgba(255,255,255,.09)'};
+}
+function utAxis(o){
+  const k=utInk();
+  Object.values(o.scales||{}).forEach(ax=>{ if(ax.ticks) ax.ticks.color=k.ink2; if(ax.grid&&ax.grid.display!==false) ax.grid.color=k.grid; });
+  if(o.plugins?.legend?.labels) o.plugins.legend.labels={...o.plugins.legend.labels,color:k.ink2};
+  return o;
+}
 function utMake(id,cfg){ if(cfg&&makeChart(id,cfg)) UT.chartIds.push(id); }
 
 // ── ส่วน 1–2: เทียบสาขาจากบิลรายเดือน (ต้นแบบจาก ผอ.) ──
@@ -285,7 +297,7 @@ const utFlagPlugin={id:'utFlag',afterDatasetsDraw(ch){
   const ctx=ch.ctx; ctx.save(); ctx.textAlign='center'; ctx.textBaseline='bottom'; ctx.font='bold 12px "Noto Sans Thai",sans-serif';
   ch.data.datasets.forEach((ds,di)=>{ const meta=ch.getDatasetMeta(di); if(meta.hidden) return;
     meta.data.forEach((el,i)=>{ const m=marks[di]&&marks[di][i]; if(!m||el.y==null) return;
-      ctx.fillStyle=m==='high'?sc('rgba(224,92,92,1)'):chartClr().tick;
+      ctx.fillStyle=m==='high'?sc('rgba(224,92,92,1)'):utInk().ink2;
       ctx.fillText(m==='high'?'⚠':'?',el.x,el.y-(ch.options.plugins.bmVals?.on?16:3)); }); });   // เปิดตัวเลข = ยกขึ้นเหนือตัวเลข
   ctx.restore(); }};
 function utMonthFlags(b,type,mo){ return (UT.cache[b].check||[]).filter(x=>x.type===type&&x.bill_month===mo&&(x.high||x.dup||x.round)); }
@@ -341,7 +353,7 @@ function utCompareCharts(){
           .map(f=>(f.k==='high'?'⚠ ':'? ')+f.t.replace(/^.*?บิล [^:]+: /,'').replace(/<[^>]+>/g,''))}};
       o.scales.y.beginAtZero=true; o.scales.y.ticks.callback=v=>utFmt(v);
       o.layout={padding:{top:14}};   // เว้นที่ให้ป้ายบนแท่งสูงสุด
-      utValOpts(o);
+      utValOpts(o); utAxis(o);
       return {type:'bar',data:{labels:lbl,datasets:d.has.map(b=>({type:'bar',label:`${BM_NAMES[b]||b} (${b})`,
         data:d.months.map(mo=>d.by[b][mo]?+d.by[b][mo][key].toFixed(2):null),backgroundColor:BM_COLORS[b],borderRadius:3,maxBarThickness:28}))},
         options:o,plugins:[utFlagPlugin]};

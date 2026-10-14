@@ -123,6 +123,8 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 .ut-ln.red{border-top:2px solid var(--red);}
 .ut-ln.bill{border-top:2px dotted var(--blue);}
 /* UTIL-15 แท็บมิเตอร์ (views/util-meter.js): การ์ด + ตารางความร้อน + กล่องรายละเอียด */
+/* ตัวหนังสือเล็กในแท็บน้ำ-ไฟใช้ --ink2 (วัด 14 ต.ค.: --ink3 ขนาด 10–12px ได้ contrast 3.9 มืด / 4.0 สว่าง · ต้อง ≥ 4.5) */
+#view-util .ut-sub,#view-util .kpi-sub,#view-util .ut-mknote,#view-util .ut-fq,#view-util .um-hg .ch,#view-util .um-key,#view-util .ut-bills th{color:var(--ink2);}
 .um-gap{height:14px;}
 .um-link{cursor:pointer;border-radius:4px;} .um-link:hover{text-decoration:underline;text-decoration-color:var(--ink3);}
 .um-tag{display:inline-block;margin-left:6px;padding:0 6px;border-radius:4px;font-size:11px;font-weight:600;color:var(--red);border:1px solid var(--red);}
@@ -154,7 +156,7 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 .um-hg .ch{font-size:10px;color:var(--ink3);text-align:center;padding-bottom:2px;}
 .um-hg .c{height:26px;min-width:22px;border-radius:3px;font-size:10px;display:flex;align-items:center;justify-content:center;color:var(--ink);cursor:pointer;}
 .um-hg .c.mo{min-width:52px;height:36px;flex-direction:column;line-height:1.15;}
-.um-hg .c.mo small{font-size:9px;color:var(--ink2);}
+.um-hg .c.mo small{font-size:9px;color:inherit;}
 .um-hg .c.flag{outline:2px solid var(--red);outline-offset:-2px;font-weight:700;}
 .um-hg .c.na{background:transparent;border:1px dashed var(--border);cursor:default;}
 .um-dcard{max-width:620px;}
