@@ -21,14 +21,17 @@ saveone-go-admin/
 │   ├── data-*.js           โหลด · แคชข้อมูล
 │   ├── filters.js          ตัวกรอง
 │   ├── trend.js            ทิศทางยอด 7 วัน
+│   ├── util-calc.js        คำนวณน้ำ-ไฟจากเลขมิเตอร์
 │   ├── charts.js           กราฟ
+│   ├── chart-types.js      เลือกแบบกราฟ (ไอคอนมุมการ์ด)
 │   ├── export.js           ส่งออก CSV
 │   ├── ui.js               splash · เมนูมือถือ · ธีม
 │   ├── login-fx.js         ฉากหลังหน้า login
 │   ├── today.js            ป๊อปอัปยอดวันนี้
 │   └── views/              หนึ่งไฟล์ต่อหนึ่งแท็บรายงาน
 ├── tests/                  node --test tests/
-├── tools/                  สคริปต์ Apps Script (ไม่ใช่ส่วนของหน้าเว็บ)
+├── tools/                  ตัวเช็คเวอร์ชันก่อน commit · สคริปต์ดึงรายงานจอง (ไม่ใช่ส่วนของหน้าเว็บ)
+├── apps-script/            แอปกรอกมิเตอร์น้ำ-ไฟ (Apps Script · ส่งด้วย clasp)
 └── docs/                   เอกสารประกอบ
 ```
 
