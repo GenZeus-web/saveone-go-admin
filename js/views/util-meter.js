@@ -190,7 +190,7 @@ function umModal(title,sub,body,cls){
   box.innerHTML=`<div class="ut-mcard ${cls||'um-dcard'}" role="dialog" aria-modal="true" aria-label="${utEsc(title.replace(/<[^>]+>/g,''))}">
     <div class="ut-top"><div style="flex:1;min-width:0"><div class="ut-name">${title}</div><div class="ut-sub">${sub}</div></div>
       <button type="button" class="day-x" onclick="utClose()" aria-label="ปิด">✕</button></div>${body}</div>`;
-  box.style.display='flex'; document.body.style.overflow='hidden';
+  box.style.display='flex'; syncModalLock();   // MOB-01: ล็อกข้างหลังแบบป๊อปอัปอื่น (ui.js)
 }
 // ค่าที่ใช้หาค่ากลาง เรียงน้อย→มาก · ตัวกลางมีกรอบ (จำนวนคู่ = 2 ตัวกลาง)
 function umMedList(items,fmt){

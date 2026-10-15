@@ -28,6 +28,7 @@ Apps Script Web App ที่**ผูกกับชีตกลาง UTIL** ·
 6. **Deploy → New deployment → Web app**
    - Execute as: **Me** · Who has access: **Anyone**
    - ได้ลิงก์ `.../exec` → ส่งให้สาขา (เปิดบนมือถือ / เพิ่มลงหน้าจอหลัก)
+   - **ลิงก์ที่ส่งให้พนักงาน (มีไอคอน):** https://genzeus-web.github.io/saveone-go-admin/meter/ → เพิ่มลงหน้าจอโฮมจากหน้านี้ได้ไอคอน 💧⚡ · เปิดจากไอคอนแล้วไปลิงก์ `/exec` เอง (UTIL-20 · ลิงก์ `/exec` ฝังอยู่ใน `meter/index.html` — deploy ใหม่ด้วย ID เดิม ไม่ต้องแก้)
 7. แก้โค้ดครั้งหน้า: **Deploy → Manage deployments → ✏️ → Version: New version** (ลิงก์เดิมไม่เปลี่ยน)
 
 ## เพิ่มสาขาใหม่ (เช่น สาขาราม)

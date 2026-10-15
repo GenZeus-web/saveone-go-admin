@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- ไอคอนแอปกรอกมิเตอร์ น้ำ-ไฟ (UTIL-20) · พื้น = สี brand ของแอป (Index.html) · iOS/Android ตัดมุมเอง ไม่ต้องวาดมุมมน -->
+  <rect width="512" height="512" fill="#1F6F5C"/>
+  <path d="M190 112 C190 112 92 236 92 304 A98 98 0 0 0 288 304 C288 236 190 112 190 112 Z" fill="#7FD3F7"/>
+  <path d="M150 300 A44 44 0 0 0 186 352" fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" opacity=".85"/>
+  <path d="M352 104 L430 104 L388 222 L440 222 L318 418 L346 284 L296 284 Z" fill="#FFD23F" stroke="#1F6F5C" stroke-width="10" stroke-linejoin="round"/>
+</svg>

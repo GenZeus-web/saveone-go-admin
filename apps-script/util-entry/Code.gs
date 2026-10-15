@@ -29,6 +29,8 @@ const PHOTO_MAX_BYTES = 4 * 1024 * 1024; // หน้าเว็บย่อร
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('จดมิเตอร์ น้ำ-ไฟ')
+    // UTIL-20: ไอคอนแท็บ/Android · iPhone ไม่ใช้ตัวนี้ตอนเพิ่มลงหน้าจอโฮม → ใช้หน้า meter/ บนเว็บหลัก (README)
+    .setFaviconUrl('https://genzeus-web.github.io/saveone-go-admin/assets/util-app-192.png')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 

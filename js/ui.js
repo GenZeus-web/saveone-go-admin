@@ -224,11 +224,18 @@ function calcWhatIf(){
 //   เดิมมีแค่ todayModal ที่ใส่ class → อีก 5 ตัวโดนหัวเว็บบัง + ข้างหลังเลื่อนตามได้
 //   ไม่แก้ฟังก์ชันเปิด/ปิดทีละตัว (10+ จุด รวม Esc/คลิกพื้นหลัง) แต่เฝ้า style ของกล่องแทน
 //   → เปิดอยู่ ≥1 ตัว = ล็อก · ปิดครบ = ปลด (ป๊อปอัปซ้อนกัน เช่น ยืนยันรหัสบนหน้าตั้งค่า ก็ถูก)
+//   MOB-01: #utModal (น้ำ-ไฟ) สร้างทีหลัง เฝ้าไม่ได้ → umModal()/utClose() เรียก syncModalLock() เอง
+//   ใส่ class ที่ <html> ด้วย = ตรึงทั้งหน้าบน iPhone แบบเมนู (LAY-08 · responsive.css)
+let syncModalLock=()=>{};
 (function(){
-  const ids=['dayModal','todayModal','settingsModal','setConfirm','usersModal','addUserModal'];
+  const ids=['dayModal','todayModal','settingsModal','setConfirm','usersModal','addUserModal','utModal'];
   const els=ids.map(id=>document.getElementById(id)).filter(Boolean);
-  const sync=()=>document.body.classList.toggle('modal-open',els.some(el=>el.style.display&&el.style.display!=='none'));
-  const mo=new MutationObserver(sync);
+  syncModalLock=()=>{
+    const open=ids.some(id=>{ const el=document.getElementById(id); return el&&el.style.display&&el.style.display!=='none'; });
+    document.body.classList.toggle('modal-open',open);
+    document.documentElement.classList.toggle('modal-open',open);
+  };
+  const mo=new MutationObserver(syncModalLock);
   els.forEach(el=>mo.observe(el,{attributes:true,attributeFilter:['style']}));
-  sync();
+  syncModalLock();
 })();

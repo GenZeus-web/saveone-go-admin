@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>จดมิเตอร์ น้ำ-ไฟ</title>
+<!-- UTIL-20: หน้าเปิดแอปกรอกมิเตอร์ — มีไว้ให้ "เพิ่มลงหน้าจอโฮม" ได้ไอคอน
+     แอปจริงเป็น Apps Script (script.google.com) ใส่ apple-touch-icon เองไม่ได้ → iPhone ได้รูปจับจอ/ตัวอักษรแทน
+     ลิงก์ที่เพิ่มลงหน้าจอโฮม = หน้านี้ + ?go → เปิดจากไอคอนแล้วไปแอปจริงทันที
+     ไม่ตั้ง standalone โดยตั้งใจ: แอปจริงอยู่คนละโดเมน ถ้าเต็มจอ iPhone จะเปิดแอปจริงในกล่องซ้อน -->
+<meta name="apple-mobile-web-app-title" content="จดมิเตอร์">
+<meta name="theme-color" content="#1F6F5C">
+<link rel="apple-touch-icon" href="../assets/util-app-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="../assets/util-app-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<script>
+  // ลิงก์ deploy เดิมของแอปกรอก (clasp deploy -i ID เดิม = ลิงก์ไม่เปลี่ยน)
+  var APP = 'https://script.google.com/macros/s/AKfycbyJ7JTr_RXoTzO-zWZmL7Sz5UlwFv4YsFeLH16-kAlGBtHWXuyTgFVlklr_PnpYT5PR/exec';
+  if (/[?&]go\b/.test(location.search)) location.replace(APP);
+</script>
+<style>
+  :root { --brand:#1F6F5C; --brand-soft:#DDEFE9; --ink:#1d2321; --ink2:#5b6461; --line:#d8dedc; --bg:#f5f7f6; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Noto Sans Thai",sans-serif; }
+  .wrap { max-width:480px; margin:0 auto; padding:24px 16px; text-align:center; }
+  .ico { width:96px; height:96px; border-radius:22px; }
+  h1 { font-size:22px; margin:12px 0 20px; }
+  .go { display:block; background:var(--brand); color:#fff; font-weight:600; text-decoration:none; border-radius:10px; padding:14px; }
+  .how { text-align:left; background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px; margin-top:20px; }
+  .how b { display:block; margin-bottom:4px; }
+  .how p { margin:0 0 12px; color:var(--ink2); font-size:15px; }
+  .how p:last-child { margin:0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <img class="ico" src="../assets/util-app-192.png" alt="">
+  <h1>จดมิเตอร์ น้ำ-ไฟ</h1>
+  <a class="go" id="go" href="#">เปิดแอป</a>
+  <div class="how">
+    <b>เพิ่มไอคอนลงหน้าจอโฮม</b>
+    <p>iPhone: เปิดหน้านี้ใน Safari → กดปุ่มแชร์ (สี่เหลี่ยมมีลูกศรขึ้น) → เพิ่มไปยังหน้าจอโฮม</p>
+    <p>Android: เปิดใน Chrome → กด ⋮ มุมขวาบน → เพิ่มลงในหน้าจอหลัก</p>
+  </div>
+</div>
+<script>
+  document.getElementById('go').href = APP;
+  // ไอคอนที่เพิ่มลงหน้าจอโฮมจำลิงก์ ณ ตอนกด → ใส่ ?go ไว้ก่อน เปิดจากไอคอนแล้วไปแอปจริงเลย
+  history.replaceState(null, '', location.pathname + '?go');
+</script>
+</body>
+</html>

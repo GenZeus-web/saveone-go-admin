@@ -419,5 +419,5 @@ function utMonthTh(ym){ const [y,m]=ym.split('-').map(Number); return `${UT_TH_M
 function utClose(){
   const box=document.getElementById('utModal'); if(!box) return;
   dChart('cUmFull');
-  box.style.display='none'; box.innerHTML=''; document.body.style.overflow='';
+  box.style.display='none'; box.innerHTML=''; syncModalLock();
 }

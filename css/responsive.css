@@ -201,7 +201,22 @@
   #dayModal,#todayModal{
     padding-top:max(16px,calc(env(safe-area-inset-top) + 8px))!important;
     padding-bottom:max(16px,calc(env(safe-area-inset-bottom) + 8px))!important;}
+  /* MOB-01: หน้าตั้งค่า/จัดการผู้ใช้ (inline padding 40px) + กล่องน้ำ-ไฟ — ปุ่ม ✕ มุมขวาบนอยู่ใต้ไอคอนแบต */
+  #settingsModal,#usersModal{
+    padding-top:max(40px,calc(env(safe-area-inset-top) + 8px))!important;
+    padding-bottom:max(40px,calc(env(safe-area-inset-bottom) + 8px))!important;}
+  .ut-modal{padding-top:max(24px,calc(env(safe-area-inset-top) + 8px));padding-bottom:max(24px,calc(env(safe-area-inset-bottom) + 8px));}
 }
+@media(max-width:640px){
+  /* กล่องน้ำ-ไฟเต็มจอบนมือถือ (screens.css padding:0) — เว้นเฉพาะแถบสถานะ/แถบโฮม */
+  .ut-modal{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+}
+/* MOB-01: ป๊อปอัปเปิด = ตรึงทั้งหน้าแบบเมนูมือถือ (LAY-08) · ปัดในกล่องแล้วข้างหลังไม่เลื่อน/เด้งแทน */
+@media(max-width:768px){
+  html.modal-open,html.modal-open body{overflow:hidden;overscroll-behavior:none;height:100%;}
+  body.modal-open{position:fixed;inset:0;width:100%;}
+}
+.ut-modal,#settingsModal,#usersModal{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
 @media(max-width:768px){
   /* ☰ กดยาก: 38px → 44px (ขนาดแตะขั้นต่ำของ Apple) */
   .mnav-btn{width:44px;height:44px;margin-right:8px;}
