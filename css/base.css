@@ -22,8 +22,6 @@ body.light-mode .splash{
   --border:#3a4260; --ink:#e8ecf5; --ink2:#9aa3bc; --ink3:#5c6480;
   background:#0a0a0a!important;
 }
-/* หน้า login ตามโหมดปกติ */
-body.light-mode .login-logo-text{color:#1a1f2e!important;}
 body.no-rev .col-rev{display:none!important;}
 body.no-elec .col-elec{display:none!important;}
 
@@ -38,5 +36,4 @@ body.fs-2 #mainContent>:not([id$="Modal"]):not(#setConfirm),body.fs-2 .day-card{
 .fs-seg button+button{border-left:1px solid var(--border);}
 .fs-seg button.active{background:var(--surface2);color:var(--gold);font-weight:700;}
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-serif;font-size:13px;line-height:1.5;display:flex;flex-direction:column;height:100vh;overflow:hidden;}#appWrapper_removed{display:flex;flex-direction:column;height:100%;}
-
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',sans-serif;font-size:13px;line-height:1.5;display:flex;flex-direction:column;height:100vh;overflow:hidden;}

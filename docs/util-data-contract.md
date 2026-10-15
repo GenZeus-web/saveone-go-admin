@@ -70,9 +70,9 @@
     elec:  { yellow:1.5, red:2, minDiff:100, streak:3, closedRate:null, staleDays:8 } // ไฟ: ค่าเดา รอข้อมูลจริง · minDiff ต่อวัน (หน้าตั้งค่าแสดง ×7)
   },
   billCheck: { ratio:1.3, lookback:6, minPrev:3, warmup:6, minDiff:{water:50, elec:3000} },   // ตรวจบิล (UTIL-09)
-  baseline: { 'BN-W-TOILET': 29 },                                  // ฐานตั้งต้น — แก้ทับได้
   rates: [ { meter_id, field:'multiplier'|'rate', value, effective_from:'YYYY-MM-DD' } ], // ห้ามแก้ย้อน (ADR 0001)
-  edgeMin:15, staleDays:2, baseWeeks:4, baseMinDays:2, billMonthOffset:-1
+  edgeMin:15, staleDays:2, baseWeeks:4, baseMinDays:2, billMonthOffset:-1,
+  billBase: { n:3, maxAge:4 }   // ช่วงแรกค่ากลางยังไม่พอ → ค่าเฉลี่ยต่อวัน n บิลล่าสุด (UTIL-21 · ไม่มีในหน้าตั้งค่า)
 }
 ```
 
@@ -83,7 +83,7 @@ v3.3.0 (UTIL-16): หน้าตั้งค่า → 💧 เกณฑ์น�
 
 | ชั้น | ตัดสินจาก | ป้าย |
 |---|---|---|
-| เทียบฐาน | ใช้ต่อวัน vs **ค่ากลาง**ของวันเดียวกันในสัปดาห์ 4 สัปดาห์ก่อน (ข้ามวันแดง · วันปกติ < 2 → ฐานตั้งต้น) | เกิน `red` เท่า **และ** +`minDiff` = 🔴 · เกิน `yellow` เท่า **และ** +`minDiff` = 🟡 |
+| เทียบฐาน | ใช้ต่อวัน vs **ค่ากลาง**ของวันเดียวกันในสัปดาห์ 4 สัปดาห์ก่อน (ข้ามวันแดง · วันปกติ < 2 → ค่าเฉลี่ยต่อวันจาก 3 บิลล่าสุด · ไฟรายสัปดาห์ ×7) | เกิน `red` เท่า **และ** +`minDiff` = 🔴 · เกิน `yellow` เท่า **และ** +`minDiff` = 🟡 |
 | ต่อเนื่อง | 🟡 ขึ้นไป ติดกัน `streak` วัน | 🔴 น่าจะรั่ว (`leak`) |
 | ตอนปิด | ช่วงจดที่อยู่ใน "ตลาดปิด" **ล้วน** (คลาดได้ `edgeMin` นาที) → หน่วย/ชม. | เกิน `closedRate` = 🔴 · ไฟยังไม่ให้ป้าย |
 | ขาดจด | ไม่มีการจดเกิน `staleDays` วัน | เตือน |

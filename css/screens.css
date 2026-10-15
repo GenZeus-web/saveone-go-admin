@@ -51,10 +51,6 @@
 .login-logo{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:10px;}
 /* LOGO-TXT: โลโก้ตัวอักษรของบริษัท (logo-wordmark.svg = ลากเส้นจาก LoGosaveonego.png เป็นเวกเตอร์ คมทุกจอ) */
 .login-wordmark{width:230px;height:auto;display:block;filter:drop-shadow(0 0 18px rgba(255,255,255,.10));}
-body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700;color:#fff!important;font-family:'Noto Sans Thai',sans-serif;letter-spacing:-.01em;
-  text-shadow:0 0 28px rgba(255,255,255,.18);}
-.login-logo-go{background:#3dd68c;color:#04130b;padding:1px 11px;border-radius:9px;font-size:30px;font-weight:800;letter-spacing:.02em;
-  box-shadow:0 0 0 1px rgba(255,255,255,.25) inset,0 8px 30px rgba(61,214,140,.45);}
 .login-company{text-align:center;font-size:11px;color:var(--ink2);letter-spacing:.14em;margin-bottom:34px;opacity:.8;}
 .login-label{font-size:11px;color:var(--ink2);margin-bottom:7px;display:block;letter-spacing:.06em;}
 .login-input{width:100%;padding:12px 15px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:var(--ink);font-size:14px;font-family:'Noto Sans Thai',sans-serif;outline:none;box-sizing:border-box;margin-bottom:18px;
@@ -87,10 +83,6 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 
 /* SPLASH SCREEN */
 .splash{position:fixed;inset:0;background:#0a0a0a;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0;}
-.splash-sg{font-size:80px;font-weight:900;color:#3dd68c;letter-spacing:-2px;font-family:'JetBrains Mono',monospace;opacity:1;transition:all .7s cubic-bezier(.4,0,.2,1);}
-.splash-sg.shrink{font-size:52px;color:#fff;letter-spacing:-1px;}
-.splash-full{display:flex;align-items:center;gap:0;overflow:hidden;max-width:0;opacity:0;transition:max-width .9s cubic-bezier(.4,0,.2,1),opacity .5s ease;}
-.splash-full.show{max-width:600px;opacity:1;}
 .splash-img{width:min(380px,64vw);height:auto;opacity:0;transform:scale(.82);transition:opacity 1s ease,transform 1s cubic-bezier(.34,1.4,.6,1);}
 .splash-img.show{opacity:1;transform:scale(1);}
 .splash-wordmark{display:flex;align-items:center;justify-content:center;gap:2px;margin-top:6px;opacity:0;transform:translateY(12px);transition:opacity .7s ease,transform .7s cubic-bezier(.34,1.2,.6,1);}
@@ -106,22 +98,14 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 @keyframes splashOut{to{opacity:0;pointer-events:none;}}
 .splash.hide{animation:splashOut .6s ease forwards;}
 
-
 /* SIDEBAR TOGGLE */
 .sidebar{transition:width .3s ease,opacity .3s ease;}
 .sidebar.collapsed{width:0!important;overflow:hidden;opacity:0;padding:0;}
 .layout{transition:all .3s ease;}
 
-
-
 /* ── UTIL-03: แท็บน้ำ-ไฟ (js/views/util.js) · ใช้ token สีเดิมทั้งหมด ── */
 .ut-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;margin-bottom:14px;font-size:13px;}
 .ut-sub{font-size:11px;color:var(--ink3);font-weight:400;}
-.ut-legend{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:11px;color:var(--ink2);}
-.ut-ln{display:inline-block;width:18px;height:0;border-top:2px dashed var(--ink2);vertical-align:middle;margin-right:5px;}
-.ut-ln.yel{border-top-color:var(--gold);}
-.ut-ln.red{border-top:2px solid var(--red);}
-.ut-ln.bill{border-top:2px dotted var(--blue);}
 /* UTIL-15 แท็บมิเตอร์ (views/util-meter.js): การ์ด + ตารางความร้อน + กล่องรายละเอียด */
 /* ตัวหนังสือเล็กในแท็บน้ำ-ไฟใช้ --ink2 (วัด 14 ต.ค.: --ink3 ขนาด 10–12px ได้ contrast 3.9 มืด / 4.0 สว่าง · ต้อง ≥ 4.5) */
 #view-util .ut-sub,#view-util .kpi-sub,#view-util .ut-mknote,#view-util .ut-fq,#view-util .um-hg .ch,#view-util .um-key,#view-util .ut-bills th{color:var(--ink2);}
@@ -192,21 +176,10 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 .ut-help-b table{border-collapse:collapse;margin:2px 0 8px;}
 .ut-help-b th,.ut-help-b td{padding:2px 12px 2px 0;text-align:left;vertical-align:top;}
 .ut-help-b th{color:var(--ink3);font-weight:600;}
-.ut-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:12px;}
-.ut-card{border-left:3px solid var(--border);position:relative;}   /* relative = เมนูแบบกราฟ (ct-menu) ยึดการ์ด */
-.ut-card.lv-green{border-left-color:var(--green);}
-.ut-card.lv-yellow{border-left-color:var(--gold);}
-.ut-card.lv-red{border-left-color:var(--red);}
-.ut-card.lv-leak{border-left-color:var(--purple);}
 .ut-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;}
 .ut-name{font-size:13px;font-weight:700;color:var(--ink);}
-.ut-badge{font-size:11px;font-weight:600;white-space:nowrap;padding:3px 8px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);}
-.ut-meta{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--ink2);margin-bottom:8px;}
-.ut-warn{color:var(--red);font-weight:600;}
-.ut-flags{font-size:11px;color:var(--ink2);margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
 .ut-chip{padding:2px 8px;border-radius:999px;font-weight:600;border:1px solid currentColor;}
 .ut-chip.yellow{color:var(--gold);} .ut-chip.red{color:var(--red);} .ut-chip.leak{color:var(--purple);}
-.ut-chart{height:200px;position:relative;}
 .ut-anom{margin-top:8px;font-size:11px;color:var(--orange);line-height:1.6;}
 .ut-empty{padding:24px 12px;text-align:center;font-size:12px;color:var(--ink3);}
 .ut-err{color:var(--red);}
@@ -218,25 +191,16 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 /* v3.2.1: แถบสรุป · แตะกราฟขยาย · หน้าขยาย */
 .ut-kpis{margin-bottom:14px;}
 .ut-kpis .kpi-sub{line-height:1.6;}
-.ut-up{color:var(--red);font-weight:600;}      /* ค่าใช้จ่ายขึ้น = ไม่ดี */
-.ut-down{color:var(--green);font-weight:600;}
 .ut-top .ct-btn--inline{margin-left:6px;}
-.ut-zoom{cursor:zoom-in;}
-.ut-zbtn{flex:none;width:32px;height:32px;margin-left:6px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);
-  color:var(--ink2);font-size:16px;line-height:1;cursor:pointer;}
-.ut-zbtn:hover{color:var(--ink);border-color:var(--ink3);}
 .ut-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8600;align-items:flex-start;justify-content:center;
   padding:24px 16px;overflow-y:auto;}
 .ut-mcard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;width:min(1200px,100%);
   display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow);}
-.ut-msec{position:relative;}
-.ut-chart-big{height:min(55vh,460px);position:relative;}
 .ut-chart-mid{height:260px;position:relative;}
 .ut-bills-all{max-height:260px;overflow-y:auto;}
 @media (max-width:640px){
   .ut-modal{padding:0;}
   .ut-mcard{border-radius:0;min-height:100%;padding:12px;}
-  .ut-chart-big{height:60vh;}
 }
 /* v3.2.2: แท็บย่อย + เทียบสาขาจากบิล (ต้นแบบจาก ผอ.) */
 .ut-subtabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;justify-content:space-between;align-items:center;}
@@ -278,4 +242,3 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 .ut-mk.hi{color:var(--red);} .ut-mk.q{color:var(--ink3);}
 .ut-mknote{display:block;font-size:10px;font-weight:400;color:var(--ink3);margin-top:2px;}
 .ut-mknote b{color:var(--ink2);} .ut-mknote b.hi{color:var(--red);}
-.ut-sep{width:1px;align-self:stretch;background:var(--border);margin:0 4px;}

@@ -313,7 +313,7 @@ function cancel(token, meterId, key) {
 
 // ── ส่งขึ้น Firestore (ทริกเกอร์ทุก 10 นาที · กด ▶ pushToFirestore ทดสอบได้) ──
 // data/{สาขา}_UTIL  = เลขไมล์ดิบ + รายการมิเตอร์ (ไม่มีเงิน) · Rules เดิมของ data/ ครอบแล้ว
-// utilbill/{สาขา}   = บิล + ยอดเงิน · ยังไม่มี Rules = ผู้ใช้เว็บอ่านไม่ได้ (deny-all) จนกว่าจะเปิด
+// utilbill/{สาขา}   = บิล + ยอดเงิน · Rules เปิดให้เฉพาะผู้มีสิทธิ์ยอดเงิน (showUtilMoney · docs/firestore-rules/)
 // เขียนด้วย OAuth ของเจ้าของสคริปต์ = ข้าม Rules (แบบเดียวกับ pushToFirestore ของยอดจอง)
 function pushToFirestore() {
   const R_COLS = ['ts', 'read_date', 'meter_id', 'reading', 'meter_reset', 'recorder', 'staff_id', 'source', 'status', 'note', 'photo_id'];

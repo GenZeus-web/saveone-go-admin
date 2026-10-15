@@ -28,6 +28,12 @@
        js/data-fetch.js ทั้งไฟล์ (103 บรรทัด · ท่อดึง Apps Script ตรง: token · timeout/retry · fetchPool) ไม่มีใครเรียกตั้งแต่ ARCH-01
          ย้ายที่ยังใช้ 2 ตัว (loadErrors · dataLoaded) ไป data-cache.js (โหลดก่อน data-load.js เหมือนเดิม) · index.html 32 → 31 ไฟล์
          ทดสอบ localhost: 3 สาขา × ภาพรวม/เปรียบเทียบ/Benchmark/น้ำ-ไฟ ไม่มี console error · dataLoaded ครบ · loadErrors 0
+    CLEAN-02 (?v=3.3.3.3) ตรวจทั้ง repo ตามเจ้าของสั่ง "เช็คทุกไฟล์ จะ clean"
+       CSS: ลบ selector ที่ไม่มีใน html/js 38 ตัว (−67 บรรทัด) เช่น การ์ดน้ำ-ไฟแบบเก่า .ut-card/.ut-grid/.ut-ln (ก่อน v3.3.0)
+         · โลโก้ตัวอักษรเก่า .login-logo-text/.splash-sg · .pn-grid .charts-row .admin-only ฯลฯ
+         เช็คชื่อที่ประกอบสดก่อนลบ (lv-${lv} · ut-sec-${type} ยังใช้ — ไม่ลบ) · ตัดคอมเมนต์หัวข้อที่เหลือว่าง
+       assets: util-app-180/512.png (ไว้ให้หน้า meter/ ที่เอาออกแล้ว) · โฟลเดอร์ meter/ ว่างที่ค้างในเครื่อง
+       เอกสาร: หัว index.html · README (ผังไฟล์) · docs/util-data-contract.md (baseline → billBase) · คอมเมนต์ Code.gs กฎ utilbill
     CACHE-04) ตัวเช็คเวอร์ชันรับ ?v=เลขป้าย.N (แก้ซ้ำวันเดียวกัน) · ทุกไฟล์ต้องเลขเดียวกัน · ข้อ 4 เทียบ ?v= กับเว็บจริงแทนป้าย
     UTIL-22) แอปกรอก: สาขาที่เลขจดเหลือ 0 แถว (แต่สาขาอื่นยังมี) → ส่งว่างขึ้นเว็บ
        เดิมกัน "0 แถว = ไม่เขียน" ทั้งหมด → ลบข้อมูลตัวอย่าง BG หมดแล้ว เว็บยังโชว์ 79 แถวเก่า · ทั้งแท็บว่าง (ชีตพัง) ยังไม่เขียนเหมือนเดิม
