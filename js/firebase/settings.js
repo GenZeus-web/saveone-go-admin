@@ -563,7 +563,7 @@ async function fetchUtil(){
 }
 function setUtil(d){
   const next = {};
-  if(d) Object.keys(d).forEach(k => { if(k !== 'updatedAt' && k !== 'updatedBy') next[k] = d[k]; });   // เก็บช่องอื่นด้วย (hours · baseline · rates — docs/util-data-contract.md)
+  if(d) Object.keys(d).forEach(k => { if(k !== 'updatedAt' && k !== 'updatedBy') next[k] = d[k]; });   // เก็บช่องอื่นด้วย (hours · rates — docs/util-data-contract.md)
   if(JSON.stringify(next) === JSON.stringify(window.UTIL_SETTINGS || {})) return;
   window.UTIL_SETTINGS = next;
   // ผลตรวจบิลคิดตอนโหลด (UT.cache) → ล้างให้คิดใหม่ · วาดใหม่เฉพาะตอนเปิดแท็บน้ำ-ไฟอยู่
@@ -691,7 +691,7 @@ window.saveUtilTab = async function(){
   const email = auth.currentUser?.email || '', next = clone(S.util);
   try{
     await runTransaction(db, async tx => {
-      // merge: แตะเฉพาะช่องในหน้านี้ — ช่องอื่นในเอกสาร (hours · baseline · rates) ไม่หาย
+      // merge: แตะเฉพาะช่องในหน้านี้ — ช่องอื่นในเอกสาร (hours · rates) ไม่หาย
       tx.set(doc(db,'settings','utility'), {...next, updatedAt:serverTimestamp(), updatedBy:email}, {merge:true});
       tx.set(doc(collection(db,'settingsLog')), {at:serverTimestamp(), by:email, device:deviceLabel(),
         action:'util_save', effective:null, changes});

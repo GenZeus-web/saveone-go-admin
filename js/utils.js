@@ -197,7 +197,6 @@ function calcDiscount(r,g='all',br=activeBranch){
   }
   return stDisc+nonDisc;
 }
-const discST=r=>calcDiscount(r);
 
 function getLock(r,g){
   const stOnline=r.onlineLock||0;

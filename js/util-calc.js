@@ -17,13 +17,12 @@ const UTIL_DEFAULTS={
   edgeMin:15,        // จดคลาดจากเวลาเปิด/ปิดไม่เกินนี้ ยังนับเป็น "ช่วงปิดล้วน"
   staleDays:2,       // ไม่มีการจดเกินนี้ = เตือนบนการ์ด (ชนิดไหนตั้ง thresholds.<ชนิด>.staleDays ไว้ ใช้ค่านั้นแทน)
   baseWeeks:4,       // ฐาน = วันเดียวกันในสัปดาห์ ย้อนกี่สัปดาห์
-  baseMinDays:2,     // วันปกติเหลือน้อยกว่านี้ → ใช้ฐานตั้งต้น (baseline) หรือค่าเฉลี่ยบิล (billBase) แทน
+  baseMinDays:2,     // วันปกติเหลือน้อยกว่านี้ → ใช้ค่าเฉลี่ยบิล (billBase) แทน
   thresholds:{
     water:{yellow:1.5,red:2,minDiff:10,streak:3,closedRate:0.5},  // จดวันละรอบ 14:00 (เจ้าของเลือก 14 ต.ค. 69)
     // ไฟ: ยังไม่มีข้อมูลจริง minDiff/closedRate เป็นค่าเดา · จดทุกวันจันทร์ → เลยรอบ 1 วันยังไม่เตือน
     elec:{yellow:1.5,red:2,minDiff:100,streak:3,closedRate:null,staleDays:8}
   },
-  baseline:{},       // ฐานตั้งต้นต่อมิเตอร์ {meter_id: หน่วย/วัน} — แก้ทับได้ (กระทบอดีต)
   rates:[],          // [{meter_id, field:'multiplier'|'rate', value, effective_from}] — ห้ามแก้ย้อน (ADR 0001)
   billMonthOffset:-1, // บิลเดือน M = ใช้จริงเดือน M-1 (เทียบใบจดบางนา ก.ย.–ต.ค. 69) — รอบัญชียืนยัน
   // ตรวจบิลรายเดือน (UTIL-09) — เพิ่มหลังน้ำ BN บิล ก.ค.–ก.ย. 69 พุ่งแต่ตัวตรวจรายวันไม่เห็น (เริ่มจดรายวัน 4 ก.ย.)
@@ -46,7 +45,7 @@ function utilSettings(s,branch){
   s=s||{}; const D=UTIL_DEFAULTS;
   const th={}; for(const k of Object.keys(D.thresholds)) th[k]={...D.thresholds[k],...((s.thresholds||{})[k]||{})};
   const hrs={...D.hours,...(s.hours||{})}, h=hrs[branch]||hrs.default;
-  return {...D,...s,thresholds:th,baseline:{...(s.baseline||{})},rates:s.rates||[],billBase:{...D.billBase,...(s.billBase||{})},
+  return {...D,...s,thresholds:th,rates:s.rates||[],billBase:{...D.billBase,...(s.billBase||{})},
           openMs:utilHm(h.open),closeMs:utilHm(h.close)};
 }
 
@@ -135,19 +134,19 @@ function utilBillDaily(bills,meterId,iso,S){
   return {perDay:ks.reduce((s,k)=>s+per[k]/dim(k),0)/ks.length,months:ks};
 }
 
-// เลือกฐาน: ค่ากลาง (หลัก) → ฐานตั้งต้นที่ตั้งไว้ → ค่าเฉลี่ยจากบิล (ช่วงแรก) → ไม่มี
-//   mult = 1 รายวัน · 7 รายสัปดาห์ · ตั้ง o.base / o.baseFrom ('median'|'setting'|'bill'|null) / o.billMonths
+// เลือกฐาน: ค่ากลาง (หลัก) → ค่าเฉลี่ยจากบิล (ช่วงแรก) → ไม่มี
+//   ฐานตั้งต้นแบบกรอกเอง (baseline) เอาออก 15 ต.ค. 69 — ไม่มีหน้าให้กรอก ค่าเฉลี่ยบิลทำหน้าที่แทน
+//   mult = 1 รายวัน · 7 รายสัปดาห์ · ตั้ง o.base / o.baseFrom ('median'|'bill'|null) / o.billMonths
 function utilPickBase(o,hist,meter,S,bills,iso,mult){
-  const set=S.baseline[meter.meter_id]; let fb;
+  let fb;
   if(hist.length>=S.baseMinDays){ o.base=utilMedian(hist); o.baseFrom='median'; }
-  else if(set!=null){ o.base=set*mult; o.baseFrom='setting'; }
   else if((fb=utilBillDaily(bills,meter.meter_id,iso,S))){ o.base=fb.perDay*mult; o.baseFrom='bill'; o.billMonths=fb.months; }
   else{ o.base=null; o.baseFrom=null; }
 }
 
 // ฐาน + ป้ายรายวัน (เรียงตามเวลา — วันที่แดงไปแล้วถูกตัดออกจากฐานของวันหลัง)
 //   ฐาน = ค่ากลางของวันเดียวกันในสัปดาห์ ย้อน baseWeeks สัปดาห์ · ข้ามวันแดง/รั่ว · ข้ามวันข้อมูลไม่ครบ
-//   ค่ากลางยังไม่พอ (ช่วงแรก) → utilPickBase ใช้ฐานตั้งต้น หรือค่าเฉลี่ยจากบิล
+//   ค่ากลางยังไม่พอ (ช่วงแรก) → utilPickBase ใช้ค่าเฉลี่ยจากบิล
 //   ป้าย: ต้องเกินทั้ง "กี่เท่า" และ "เพิ่มขั้นต่ำ" = เส้นแดงคือค่าที่สูงกว่าระหว่าง ฐาน×red กับ ฐาน+minDiff
 function utilFlags(days,meter,S,bills){
   const th=S.thresholds[meter.type], byIdx=new Map(days.map(d=>[d.idx,d])), bad=new Set();
@@ -192,7 +191,7 @@ function utilAnalyze(readings,meter,settings,now,bills){
 // ── รายสัปดาห์ (UTIL-13 · ไฟจดทุกวันจันทร์ 14:00) ──
 // รวมวันตลาดเป็นสัปดาห์ จันทร์–อาทิตย์ · วันตลาดเริ่ม 14:00 → จดจันทร์ 14:00 = ขอบสัปดาห์พอดี (1 ช่วงจด = 1 สัปดาห์เต็ม)
 //   ธงรายวันใช้กับไฟไม่ได้: ช่วงจด 7 วันถูกเฉลี่ยเท่ากันทุกวัน แท่งรายวันแบนเหมือนจดทุกวันทั้งที่ไม่ได้จด
-//   ฐาน = ค่ากลางสัปดาห์เต็มย้อน baseWeeks สัปดาห์ (ข้ามสัปดาห์แดง · น้อยกว่า baseMinDays = ฐานตั้งต้น/ค่าเฉลี่ยบิล × 7)
+//   ฐาน = ค่ากลางสัปดาห์เต็มย้อน baseWeeks สัปดาห์ (ข้ามสัปดาห์แดง · น้อยกว่า baseMinDays = ค่าเฉลี่ยบิล × 7)
 //   เกณฑ์ "กี่เท่า" เท่ารายวัน · "เพิ่มขั้นต่ำ" = minDiff ต่อวัน × 7 · ไม่มีธงรั่ว (3 รอบติด = 3 สัปดาห์ ช้าเกินมีความหมาย)
 // days = ผลจาก utilAnalyze().days · คืน [{idx, date (จันทร์), end (อาทิตย์), units, cover (วัน), est, base, ratio, diff, level}]
 function utilWeekIdx(dayIdx){ return dayIdx-((dayIdx+3)%7); }   // idx 0 = 1970-01-01 วันพฤหัส → (idx+3)%7 = 0 คือวันจันทร์
@@ -222,29 +221,6 @@ function utilWeekBands(w,th){
   if(!w||w.base==null) return {base:null,yellow:null,red:null};
   const b=w.base, line=x=>Math.max(b*x,b+th.minDiff*7);
   return {base:b,yellow:line(th.yellow),red:line(th.red)};
-}
-// ค่าเฉลี่ยต่อสัปดาห์จากบิล = เส้นอ้างอิง (อ่านมิเตอร์ถูก + ตัวคูณถูก → แท่งสัปดาห์ใกล้เส้นนี้)
-//   เดือนของสัปดาห์ = เดือนของวันพฤหัส (กลางสัปดาห์) · บิลเดือน M = ใช้จริง M + billMonthOffset
-//   หน่วย/วันของเดือนที่ใช้จริง × 7 · บิลเดือนนั้นยังไม่ออก = บิลล่าสุดก่อนหน้า (est) · ไม่มีบิลก่อนหน้าเลย = null
-// bills = [{bill_month, meter_id, units}] (ตัวเลข · ไม่มีแถว void)
-function utilBillWeekly(bills,meterId,weekIso,offset){
-  const per={};
-  for(const b of bills||[]){
-    if(b.meter_id!==meterId||!(Number(b.units)>0)) continue;
-    const u=utilBillUsageMonth(b.bill_month,offset);
-    per[u]=(per[u]||0)+Number(b.units);
-  }
-  const mid=utilIso(utilIdx(weekIso)+3).slice(0,7);
-  const k=Object.keys(per).sort().filter(x=>x<=mid).pop();
-  if(!k) return null;
-  const [y,m]=k.split('-').map(Number), n=new Date(Date.UTC(y,m,0)).getUTCDate();
-  return {perWeek:per[k]/n*7,usageMonth:k,est:k!==mid};
-}
-
-// เป็นเงิน = หน่วย × บาท/หน่วยที่มีผลวันนั้น · ไม่มีราคา = null (อย่าเดาเป็น 0)
-function utilCost(units,meterId,iso,settings){
-  const r=utilValueAt((settings||{}).rates,meterId,'rate',iso,null);
-  return r==null?null:units*r;
 }
 
 // ── ตรวจบิลรายเดือน (UTIL-09) ──

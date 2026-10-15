@@ -20,23 +20,30 @@ function checkVersion(html,changelog){
   const m=html.match(VER_RE);
   if(!m) return {version:null,problems:['ไม่เจอป้ายเวอร์ชัน <span class="brand-ver">vX.Y.Z</span> ใน index.html']};
   const version=m[1];
+  // ?v= = เลขป้าย หรือ เลขป้าย.N (แก้ซ้ำวันเดียวกัน — เจ้าของสั่ง 15 ต.ค. 69: ป้ายไม่ขึ้นเลขใหม่ แต่ ?v= ต้องเปลี่ยนกันแคช)
+  //   ทุกไฟล์ต้องเลขเดียวกัน (token) · ข้อ 4 เทียบ token กับเว็บจริง ไม่ใช่ป้าย
+  const okV=new RegExp('^'+version.replace(/\./g,'\\.')+'(?:\\.\\d+)?$');
   // ไฟล์ของเราเอง = path ที่ขึ้นต้นด้วย js/ css/ assets/ (ไอคอนแอป) · ข้าม CDN และ manifest
   const tagRe=/<(?:script[^>]*\ssrc|link[^>]*\shref)="((?:js|css|assets)\/[^"]+)"/g;
-  let t,count=0;
+  let t,count=0,token=null;
   while((t=tagRe.exec(html))){
     count++;
     const [file,query='']=t[1].split('?');
     const v=(query.match(/(?:^|&)v=([^&]+)/)||[])[1];
-    if(!v) problems.push(`${file} ไม่มี ?v= (ต้องเป็น ?v=${version})`);
-    else if(v!==version) problems.push(`${file} ?v=${v} ไม่ตรงป้ายหัวเว็บ v${version}`);
+    if(!v) problems.push(`${file} ไม่มี ?v= (ต้องเป็น ?v=${token||version})`);
+    else if(!okV.test(v)) problems.push(`${file} ?v=${v} ไม่ตรงป้ายหัวเว็บ v${version}`);
+    else if(token&&v!==token) problems.push(`${file} ?v=${v} ไม่ตรงกับไฟล์อื่น (?v=${token})`);
+    else token=token||v;
   }
   if(!count) problems.push('ไม่เจอ <script src="js/…"> หรือ <link href="css/…"> เลย — รูปแบบ index.html เปลี่ยนไป ตัวเช็คต้องแก้ตาม');
   const top=(changelog.match(/^## v(\d+\.\d+\.\d+)/m)||[])[1];
   if(!top) problems.push('ไม่เจอหัวข้อ "## vX.Y.Z" ใน CHANGELOG.md');
   else if(top!==version) problems.push(`CHANGELOG.md หัวข้อบนสุด v${top} ไม่ตรงป้ายหัวเว็บ v${version}`);
-  return {version,problems,count};
+  return {version,problems,count,token};
 }
-module.exports={checkVersion,VER_RE};
+// ?v= ตัวแรกของหน้า (เว็บจริง) — ใช้เทียบในข้อ 4
+function firstToken(html){ return (html.match(/<(?:script[^>]*\ssrc|link[^>]*\shref)="(?:js|css|assets)\/[^"?]+\?(?:[^"]*&)?v=([^&"]+)/)||[])[1]||null; }
+module.exports={checkVersion,firstToken,VER_RE};
 
 if(require.main===module){
   const {execSync}=require('child_process');
@@ -47,17 +54,17 @@ if(require.main===module){
   try{ git('rev-parse --git-dir'); }catch(e){ inGit=false; }
   // ใน git: อ่านฉบับที่ stage ไว้ · ไม่มี git: อ่านไฟล์ในโฟลเดอร์
   const read=f=>{ if(inGit){ try{ return git('show :'+f); }catch(e){} } return fs.readFileSync(path.join(root,f),'utf8'); };
-  const {version,problems,count}=checkVersion(read('index.html'),read('CHANGELOG.md'));
+  const {version,problems,count,token}=checkVersion(read('index.html'),read('CHANGELOG.md'));
 
-  if(inGit&&version){
+  if(inGit&&version&&token){
     let live=null;
-    try{ live=(git('show origin/main:index.html').match(VER_RE)||[])[1]||null; }catch(e){}
+    try{ live=firstToken(git('show origin/main:index.html')); }catch(e){}
     if(!live) console.log('ℹ️  ข้ามข้อ 4: ไม่เจอ origin/main (ยังไม่เคย fetch?)');
     else{
       const changed=git('diff --cached --name-only origin/main -- js css assets').split('\n').filter(Boolean);
-      if(changed.length&&version===live)
+      if(changed.length&&token===live)
         problems.push(`แก้ ${changed.length} ไฟล์ใน js/ css/ assets/ (${changed.slice(0,3).join(', ')}${changed.length>3?' …':''}) `+
-          `แต่เวอร์ชันยัง v${version} เท่าเว็บจริง — ต้อง bump ป้ายหัวเว็บ + ?v= + CHANGELOG`);
+          `แต่ ?v=${token} ยังเท่าเว็บจริง — วันใหม่: bump ป้ายหัวเว็บ + ?v= + CHANGELOG · แก้ซ้ำวันเดียวกัน: ?v=${version}.2 (.3 …) ป้ายคงเดิม`);
     }
   }
   if(problems.length){
@@ -65,5 +72,5 @@ if(require.main===module){
       `\n   แก้ ?v= ทั้งหมด: sed -i 's/?v=เลขเก่า"/?v=เลขใหม่"/g' index.html`);
     process.exit(1);
   }
-  console.log(`✅ เวอร์ชัน v${version} ตรงกันครบ (${count} ไฟล์ js/css/ไอคอน · CHANGELOG)`);
+  console.log(`✅ เวอร์ชัน v${version}${token!==version?` (?v=${token})`:''} ตรงกันครบ (${count} ไฟล์ js/css/ไอคอน · CHANGELOG)`);
 }

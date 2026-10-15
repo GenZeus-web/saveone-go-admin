@@ -249,8 +249,8 @@ function umPointDetail(i,iso){
   else{
     // UTIL-21 ช่วงแรกค่ากลางยังไม่พอ → ค่าเฉลี่ยบิล: เดือนละแถว = หน่วยในบิล ÷ วันในเดือน (× 7 รายสัปดาห์)
     const bm=p.baseFrom==='bill'?umBillAvgRows(c,m,p.billMonths,wk?7:1):null;
-    calc=`<div class="um-dh">ค่ากลาง = <b>${fb(p.base)}</b> ${unit} ${p.baseFrom==='setting'?'(ค่าที่ตั้งไว้)':bm?`· ค่าเฉลี่ยบิล ${bm.length} เดือน`:`จาก ${used.length} ${wk?'สัปดาห์':'วัน'}ก่อน`}</div>
-      ${p.baseFrom==='setting'?'':bm?`<ol class="um-med">${bm.map(x=>`<li><span>ใช้เดือน ${x.t}</span><b>${fmt(x.v)}</b></li>`).join('')}</ol>
+    calc=`<div class="um-dh">ค่ากลาง = <b>${fb(p.base)}</b> ${unit} ${bm?`· ค่าเฉลี่ยบิล ${bm.length} เดือน`:`จาก ${used.length} ${wk?'สัปดาห์':'วัน'}ก่อน`}</div>
+      ${bm?`<ol class="um-med">${bm.map(x=>`<li><span>ใช้เดือน ${x.t}</span><b>${fmt(x.v)}</b></li>`).join('')}</ol>
         <p class="um-sub2">ช่วงแรก ${wk?'จดยังไม่ถึง':'จดวันเดียวกันยังไม่ถึง'} ${S.baseMinDays} ${wk?'สัปดาห์':'ครั้ง'} · ครบแล้วใช้ค่ากลางจากเลขที่จด</p>`
       :umMedList(used.map(h=>({t:h.t,v:h.d.units})),fmt)}
       ${skip.length?`<p class="um-sub2">ไม่นับ: ${skip.map(h=>`${h.t} (${!h.d?'ไม่มีข้อมูล':h.d.cover<full?'จดไม่ครบ':'แดงไปแล้ว'})`).join(' · ')}</p>`:''}

@@ -326,13 +326,14 @@ function pushToFirestore() {
       const rs = readings.filter(r => String(r.branch_code) === br);
       const bs = bills.filter(b => String(b.branch_code) === br);
       const bsLive = bs.filter(b => !isVoid_(b));   // บิลที่ยกเลิกไม่ส่ง (csv ไม่มีคอลัมน์ status) · ยกเลิกหมดก็ยังเขียนทับ ไม่ค้างของเก่า
-      // ไม่มีแถว = ไม่เขียน (กันชีตพังแล้วเขียนทับของดีด้วยของว่าง · สาขาใหม่ยังไม่มีข้อมูลก็ไม่ต้องมีเอกสาร)
-      if (rs.length) {
+      // ทั้งแท็บว่าง = ชีตน่าจะพัง → ไม่เขียน (กันเอาของว่างทับของดี)
+      // สาขาอื่นมีแถว แต่สาขานี้ 0 = ลบจริง → เขียนว่างทับ (15 ต.ค. 69: ลบข้อมูลตัวอย่าง BG หมด แต่เว็บยังโชว์ของเก่า)
+      if (rs.length || readings.length) {
         writeDoc_('data', br + '_UTIL', { csv: csv_(R_COLS, rs),
           metersCsv: csv_(M_COLS, meters.filter(m => String(m.branch_code) === br)), rows: rs.length, branch: br });
         ok++;
       }
-      if (bs.length) { writeDoc_('utilbill', br, { csv: csv_(B_COLS, bsLive), rows: bsLive.length, branch: br }); ok++; }
+      if (bs.length || bills.length) { writeDoc_('utilbill', br, { csv: csv_(B_COLS, bsLive), rows: bsLive.length, branch: br }); ok++; }
       Logger.log(br + ': เลขไมล์ ' + rs.length + ' แถว · บิล ' + bsLive.length + ' แถว (ยกเลิก ' + (bs.length - bsLive.length) + ')');
     } catch (err) {
       Logger.log('FAIL ' + br + ': ' + err);

@@ -91,35 +91,6 @@ async function loadAll(){
   }
 }
 
-// v2.6.2 PERF-01: สรุปเวลาโหลดใน console — จะได้เห็นว่าเวลาหมดไปตรงไหน ไม่ต้องเดา
-function logLoadTimes(msToken, msTotal, workers){
-  if(!fetchTimes.length && !loadErrors.length) return;
-  const sorted=[...fetchTimes].sort((a,b)=>b.ms-a.ms);
-  const slow=sorted[0];
-  console.log('%c⏱ สรุปเวลาโหลด','font-weight:bold;font-size:13px');
-  console.log(`   อุ่น token      : ${(msToken/1000).toFixed(1)} วิ`);
-  sorted.forEach(f=>{
-    console.log(`   ${(f.ms/1000).toFixed(1).padStart(5)} วิ  ${f.url}  (${f.rows} แถว${f.tries>1?` · ลอง ${f.tries} ครั้ง`:''})`);
-  });
-  if(loadErrors.length) console.log(`   ❌ พลาด ${loadErrors.length} ท่อ: ${loadErrors.map(e=>e.url).join(', ')}`);
-  // PERF-05: เกณฑ์เตือนเดิม (เทียบกับ "ท่อช้าสุด x1.8") ใช้ได้เฉพาะตอนยิงขนานทั้งหมด
-  //   พอมาใช้ pool คุมที่ FETCH_CONCURRENCY เวลารวม "ควรจะ" เป็น ผลรวมทุกท่อ ÷ จำนวน worker อยู่แล้ว
-  //   เกณฑ์เก่าเลยเตือนผิดทุกครั้ง (เตือนหมาป่า) — เปลี่ยนมาเทียบกับค่าที่ควรเป็นจริงๆ
-  //   v2.7.1: จำนวน worker จริงส่งเข้ามา (สาขาเดียวบังคับ 1) ไม่ใช่ FETCH_CONCURRENCY เสมอไป
-  const W=Math.max(1, workers||FETCH_CONCURRENCY);
-  const sum=fetchTimes.reduce((a,f)=>a+f.ms,0);
-  const expect=sum/W;
-  console.log(`   ── รวมทั้งหมด   : ${(msTotal/1000).toFixed(1)} วิ   (ควรได้ ~${(expect/1000).toFixed(1)} วิ = งานรวม ${(sum/1000).toFixed(1)} ÷ ${W} ท่อพร้อมกัน)`);
-  if(slow) console.log(`   ท่อที่ช้าสุด    : ${slow.url} (${(slow.ms/1000).toFixed(1)} วิ)`);
-
-  const hadRetry=fetchTimes.some(f=>f.tries>1)||loadErrors.length>0;
-  if(hadRetry){
-    console.warn('   ⚠️ มีท่อที่ต้องลองซ้ำ — เวลารวมจึงสูงกว่าที่ควร ดูรายการข้างบนว่าท่อไหน');
-  }else if(msTotal > expect*1.3+1000){
-    console.warn(`   ⚠️ เวลารวมสูงกว่าที่ควรเกิน 30% — ท่ออาจไม่ได้ขนานกันจริง (ตรวจ fetchPool / FETCH_CONCURRENCY)`);
-  }
-}
-
 // v2.6.2 NET-04: แยกเป็นฟังก์ชันเพื่อเรียกได้ทั้งตอนสำเร็จและตอน error
 function hideSplash(){
   const splash=document.getElementById('splash');

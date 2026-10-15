@@ -4,7 +4,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('fs'),path=require('path');
-const {checkVersion}=require('../tools/check-version.js');
+const {checkVersion,firstToken}=require('../tools/check-version.js');
 
 const root=path.join(__dirname,'..');
 const read=f=>fs.readFileSync(path.join(root,f),'utf8');
@@ -30,6 +30,20 @@ test('ไฟล์หนึ่งลืมเปลี่ยนเลข = ไ�
   const p=checkVersion(html,log('3.1.0')).problems;
   assert.equal(p.length,1);
   assert.match(p[0],/js\/charts\.js \?v=3\.0\.4/);
+});
+
+test('แก้ซ้ำวันเดียวกัน: ?v=เลขป้าย.2 ผ่าน · ปนกับเลขป้ายเฉยๆ = ไม่ผ่าน',()=>{
+  const ok=page('3.3.3',['<script src="js/utils.js?v=3.3.3.2"></script>','<link rel="stylesheet" href="css/base.css?v=3.3.3.2">']);
+  const r=checkVersion(ok,log('3.3.3'));
+  assert.deepEqual(r.problems,[]); assert.equal(r.token,'3.3.3.2');
+  const mix=page('3.3.3',['<script src="js/utils.js?v=3.3.3.2"></script>','<script src="js/charts.js?v=3.3.3"></script>']);
+  assert.match(checkVersion(mix,log('3.3.3')).problems.join(),/js\/charts\.js \?v=3\.3\.3 ไม่ตรงกับไฟล์อื่น/);
+  assert.match(checkVersion(page('3.3.3',['<script src="js/a.js?v=3.3.30"></script>']),log('3.3.3')).problems.join(),/ไม่ตรงป้ายหัวเว็บ/);
+});
+
+test('?v= ตัวแรกของหน้า (เทียบเว็บจริง)',()=>{
+  assert.equal(firstToken(page('3.3.3',['<script src="https://cdn/x.js"></script>','<link rel="stylesheet" href="css/base.css?v=3.3.3.2">'])),'3.3.3.2');
+  assert.equal(firstToken('<p>ไม่มี</p>'),null);
 });
 
 test('ไฟล์ใหม่ไม่มี ?v= = ไม่ผ่าน',()=>{

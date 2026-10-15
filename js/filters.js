@@ -136,8 +136,6 @@ function updateDateRange(d){
   const elGroup=document.getElementById('drGroup');if(elGroup)elGroup.textContent=groupNames[group]||group;
 }
 
-function updateRange(d){}
-
 function applyAll(){
   targetLock=Math.max(1,currentTarget()||1); // ENH-05: เป้าตามสาขา+โซนปัจจุบัน
   const d=getFiltered();

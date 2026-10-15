@@ -6,7 +6,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('fs'),path=require('path'),vm=require('vm');
 vm.runInThisContext(fs.readFileSync(path.join(__dirname,'..','js','util-calc.js'),'utf8')+
-  '\n;Object.assign(globalThis,{utilAnalyze,utilValueAt,utilCost,utilBillUsageMonth,utilMedian,utilBands,utilBillCheck,utilBillCfg,utilWeekly,utilWeekBands,utilBillWeekly,utilSettings,UTIL_DEFAULTS});');
+  '\n;Object.assign(globalThis,{utilAnalyze,utilValueAt,utilBillUsageMonth,utilMedian,utilBands,utilBillCheck,utilBillCfg,utilWeekly,utilWeekBands,utilSettings,UTIL_DEFAULTS});');
 
 const OFFICE={meter_id:'BN-W-OFFICE',type:'water',branch_code:'BN'};
 const TOILET={meter_id:'BN-W-TOILET',type:'water',branch_code:'BN'};
@@ -53,14 +53,12 @@ test('ตัวคูณเปลี่ยนกลางช่วง: วัน
   assert.equal(day(r,'2026-09-04').units,11);
 });
 
-test('ใช้ค่าที่มีผลตามวัน (utilValueAt / utilCost)',()=>{
+test('ใช้ค่าที่มีผลตามวัน (utilValueAt)',()=>{
   const rates=[{meter_id:'X',field:'rate',value:7.45,effective_from:'2026-01-01'},
                {meter_id:'X',field:'rate',value:4.9,effective_from:'2027-02-01'}];
   assert.equal(utilValueAt(rates,'X','rate','2026-12-31',null),7.45);
   assert.equal(utilValueAt(rates,'X','rate','2027-02-01',null),4.9);
   assert.equal(utilValueAt(rates,'X','rate','2025-12-31',null),null);
-  near(utilCost(100,'X','2027-03-01',{rates}),490);
-  assert.equal(utilCost(100,'Y','2027-03-01',{rates}),null);          // ไม่มีราคา ≠ 0 บาท
 });
 
 test('แถว void ไม่ถูกนับ',()=>{
@@ -130,6 +128,8 @@ function daily(useOf,n,start='2026-08-03'){
 }
 const W={meter_id:'W',type:'water',branch_code:'BN'};
 const lv=(r,i)=>r.days[i].level;
+// ฐานช่วงแรกจากบิล: บิล ส.ค. 69 = ใช้จริง ก.ค. (31 วัน) → ค่าเฉลี่ยต่อวัน = perDay พอดี (แทน baseline เดิม)
+const bb=perDay=>[{bill_month:'2026-08',meter_id:'W',units:String(perDay*31)}];
 
 test('ค่ากลาง ไม่ใช่ค่าเฉลี่ย (วันฝนตก 20 ไม่ดึงฐานลง)',()=>{
   assert.equal(utilMedian([36,37,38,20]),36.5);
@@ -144,14 +144,14 @@ test('ฐาน = วันเดียวกันในสัปดาห์ 4
   assert.equal(sat.base,70); assert.equal(sat.baseFrom,'median'); assert.equal(sat.level,'green');
 });
 
-test('ข้อมูลไม่พอ → ใช้ฐานตั้งต้น · ไม่มีฐานตั้งต้น → nodata',()=>{
+test('ข้อมูลไม่พอ → ใช้ค่าเฉลี่ยบิล · ไม่มีบิล → nodata',()=>{
   assert.equal(lv(utilAnalyze(daily(()=>37,5),W,{},NOW),2),'nodata');
-  const r=utilAnalyze(daily(()=>37,5),W,{baseline:{W:29}},NOW);
-  assert.equal(r.days[2].base,29); assert.equal(r.days[2].baseFrom,'setting');
+  const r=utilAnalyze(daily(()=>37,5),W,{},NOW,bb(29));
+  assert.equal(r.days[2].base,29); assert.equal(r.days[2].baseFrom,'bill');
 });
 
 test('เส้นแดง = ค่าที่สูงกว่าระหว่าง ฐาน×2 กับ ฐาน+10',()=>{
-  const one=(base,use)=>lv(utilAnalyze(daily(()=>use,1),W,{baseline:{W:base}},NOW),0);
+  const one=(base,use)=>lv(utilAnalyze(daily(()=>use,1),W,{},NOW,bb(base)),0);
   assert.equal(one(5,10),'green');     // 2 เท่าพอดี ไม่เกิน · +5
   assert.equal(one(5,14),'green');     // 2.8 เท่า แต่ +9 (มิเตอร์เล็ก)
   assert.equal(one(5,15),'red');       // 3 เท่า · +10
@@ -161,20 +161,20 @@ test('เส้นแดง = ค่าที่สูงกว่าระห�
 });
 
 test('เหลือง 3 วันติด = น่าจะรั่ว · ขาดตอนนับใหม่',()=>{
-  const r=utilAnalyze(daily(i=>[0,1,3,4,5].includes(i)?60:37,6),W,{baseline:{W:37}},NOW);
+  const r=utilAnalyze(daily(i=>[0,1,3,4,5].includes(i)?60:37,6),W,{},NOW,bb(37));
   assert.deepEqual(r.days.map(d=>d.level),['yellow','yellow','green','yellow','yellow','leak']);
 });
 
 test('ตัดวันแดงออกจากฐาน: รั่วต่อเนื่อง 5 สัปดาห์ ธงไม่หายเอง',()=>{
   // 4 สัปดาห์ปกติ (37) แล้วรั่วเป็น 80 ทุกวันอีก 5 สัปดาห์
-  const r=utilAnalyze(daily(i=>i<28?37:80,63),W,{baseline:{W:37}},NOW);
+  const r=utilAnalyze(daily(i=>i<28?37:80,63),W,{},NOW,bb(37));
   assert.ok(r.days.slice(28).every(d=>d.level==='red'),r.days.slice(28).map(d=>d.level).join());
   assert.equal(r.days[62].base,37);    // ฐานไม่ถูกดึงขึ้นเป็น 80
 });
 
 test('วันที่ข้อมูลยังไม่ครบวัน = partial ไม่ให้ป้าย',()=>{
   const rows=[at('W','2026-10-01T14:00:00+07:00',100),at('W','2026-10-02T01:30:00+07:00',150)];
-  assert.equal(utilAnalyze(rows,W,{baseline:{W:5}},NOW).days[0].level,'partial');
+  assert.equal(utilAnalyze(rows,W,{},NOW,bb(5)).days[0].level,'partial');
 });
 
 test('ขาดจดเกิน 2 วัน = เตือน',()=>{
@@ -184,7 +184,7 @@ test('ขาดจดเกิน 2 วัน = เตือน',()=>{
 });
 
 test('ตั้งเกณฑ์บางช่องจาก Firestore ได้ ช่องอื่นใช้ค่าตั้งต้น',()=>{
-  const r=utilAnalyze(daily(()=>15,1),W,{baseline:{W:5},thresholds:{water:{minDiff:20}}},NOW);
+  const r=utilAnalyze(daily(()=>15,1),W,{thresholds:{water:{minDiff:20}}},NOW,bb(5));
   assert.equal(r.days[0].level,'green');                             // +10 ไม่ถึง 20
   assert.equal(UTIL_DEFAULTS.thresholds.water.minDiff,10);           // ค่าตั้งต้นไม่ถูกแก้ทับ
 });
@@ -203,7 +203,7 @@ test('เส้นเกณฑ์บนกราฟตรงกับธงท�
   near(utilBands({base:40},th).yellow,60); near(utilBands({base:40},th).red,80);
   assert.equal(utilBands({base:null},th).red,null);
   const units=[30,35,40,45,61,79,81,200,40,38,59,60,90,42];
-  const r=utilAnalyze(daily(i=>units[i%units.length],60),W,{baseline:{W:40}},NOW);
+  const r=utilAnalyze(daily(i=>units[i%units.length],60),W,{},NOW,bb(40));
   let n=0;
   for(const d of r.days){
     if(d.base==null||d.level==='partial') continue;
@@ -298,21 +298,13 @@ test('จดไม่ตรงจันทร์ = สัปดาห์ไม�
   assert.ok(Math.abs(w[0].units+w[1].units-6600)<1e-6);
 });
 
-test('เส้นบิล: บิล BG-E-1 ต.ค. 69 ไม่มี → ใช้บิล ก.ย. 69 (ใช้จริง ส.ค.) · 26,837/31×7',()=>{
-  const bills=[{bill_month:'2026-08',meter_id:'BG-E-1',units:28790},{bill_month:'2026-09',meter_id:'BG-E-1',units:26837}];
-  const a=utilBillWeekly(bills,'BG-E-1','2026-08-10');   // พฤหัส 13 ส.ค. → ใช้จริง ส.ค. = บิล ก.ย.
-  assert.equal(a.usageMonth,'2026-08'); assert.equal(a.est,false);
-  assert.ok(Math.abs(a.perWeek-26837/31*7)<1e-6);
-  const b=utilBillWeekly(bills,'BG-E-1','2026-10-19');   // ต.ค. ยังไม่มีบิล → ประมาณจากล่าสุด
-  assert.equal(b.usageMonth,'2026-08'); assert.equal(b.est,true);
-  assert.equal(utilBillWeekly(bills,'BG-E-1','2026-01-05'),null);   // ก่อนบิลใบแรก
-  assert.equal(utilBillWeekly(bills,'BG-E-2','2026-08-10'),null);
-});
-
-test('สัปดาห์คร่อมเดือน: ใช้เดือนของวันพฤหัส',()=>{
-  const bills=[{bill_month:'2026-10',meter_id:'X',units:3000},{bill_month:'2026-11',meter_id:'X',units:6200}];
-  assert.equal(utilBillWeekly(bills,'X','2026-09-28').usageMonth,'2026-10');   // จ. 28 ก.ย. → พฤ. 1 ต.ค.
-  assert.equal(utilBillWeekly(bills,'X','2026-09-21').usageMonth,'2026-09');
+test('สัปดาห์คร่อมเดือน: ค่าเฉลี่ยบิลใช้เดือนของวันพฤหัส',()=>{
+  // ใช้จริง ส.ค. 3,100/31 = 100 ต่อวัน · ก.ย. 6,000/30 = 200 ต่อวัน
+  const bills=[{bill_month:'2026-09',meter_id:'BG-E-1',units:'3100'},{bill_month:'2026-10',meter_id:'BG-E-1',units:'6000'}];
+  const r=[mon('2026-09-21',0),mon('2026-09-28',700),mon('2026-10-05',1400)];
+  const w=utilWeekly(utilAnalyze(r,ELEC1,{},NOW,bills).days,ELEC1,utilSettings({},'BG'),bills);
+  near(w[0].base,700);    // จ. 21 ก.ย. → พฤ. 24 ก.ย. → ก่อน ก.ย. = ส.ค. เท่านั้น
+  near(w[1].base,1050);   // จ. 28 ก.ย. → พฤ. 1 ต.ค. → ส.ค. + ก.ย. เฉลี่ย 150 × 7
 });
 
 // ── UTIL-21 ช่วงแรกค่ากลางยังไม่พอ → ค่าเฉลี่ยต่อวันจาก 3 บิลล่าสุด ──
@@ -329,14 +321,13 @@ test('ไฟ 2 สัปดาห์แรก: ค่ากลางยังไ
   assert.equal(w[1].baseFrom,'bill'); assert.equal(w[1].level,'yellow');   // 11,000 > ~6,395 × 1.5 แต่ไม่ถึง × 2
   assert.equal(w[2].baseFrom,'median'); assert.equal(w[2].base,8800);      // ค่ากลางของ 6,600 กับ 11,000
 });
-test('ค่าเฉลี่ยบิล: ไม่ใช้บิลเดือนเดียวกับวันนั้น · เดือนที่เก่าเกิน 4 เดือน = ไม่ใช้ · ฐานตั้งต้นมาก่อนบิล',()=>{
+test('ค่าเฉลี่ยบิล: ไม่ใช้บิลเดือนเดียวกับวันนั้น · เดือนที่เก่าเกิน 4 เดือน = ไม่ใช้',()=>{
   const bills=[{bill_month:'2026-02',meter_id:'W',units:'310'},{bill_month:'2026-10',meter_id:'W',units:'600'}];   // ใช้จริง ม.ค. · ก.ย.
   const one=(iso,s={})=>utilAnalyze(daily(()=>20,1,iso),W,s,NOW,bills).days[0];
   const sep=one('2026-09-10');   // ก.ย. ใช้บิลก่อน ก.ย. ได้แค่ ม.ค. (เก่า 8 เดือน) → ไม่มีฐาน
   assert.equal(sep.base,null); assert.equal(sep.level,'nodata');
   const oct=one('2026-10-10');   // ต.ค. → ใช้จริง ก.ย. 600/30 = 20 ต่อวัน
   assert.equal(oct.baseFrom,'bill'); near(oct.base,20); assert.deepEqual(oct.billMonths,['2026-09']);
-  assert.equal(one('2026-10-10',{baseline:{W:15}}).baseFrom,'setting');
   assert.equal(utilAnalyze(daily(()=>20,1,'2026-10-10'),W,{},NOW).days[0].level,'nodata');   // ไม่ส่งบิล (ไม่มีสิทธิ์ยอดเงิน)
 });
 
