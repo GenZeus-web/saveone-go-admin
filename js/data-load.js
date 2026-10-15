@@ -31,7 +31,7 @@ async function loadAll(){
   }
   try{
     document.getElementById('spinTxt').textContent='กำลังโหลดข้อมูล...';
-    loadErrors=[]; fetchTimes=[];
+    loadErrors=[];
     const _tAll=Date.now();
 
     // ══ v2.8.0 ARCH-01: อ่านจาก Firestore แทนการยิงถาม Apps Script ══

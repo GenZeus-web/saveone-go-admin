@@ -8,6 +8,9 @@
 // เก็บเป็น "CSV ดิบ" ไม่ใช่ object ที่ parse แล้ว — เล็กกว่ามาก (~260 KB) และไม่มีปัญหา Date
 const CACHE_KEY='saveone_data_v1';
 const CACHE_MAX_AGE=7*24*60*60*1000;  // เก่าเกิน 7 วันไม่ใช้ (กันเอาข้อมูลค้างนานมาโชว์)
+// ย้ายมาจาก data-fetch.js (ลบแล้ว 15 ต.ค. 69 — ท่อดึง Apps Script ตรง ไม่ได้ใช้ตั้งแต่ ARCH-01)
+let loadErrors=[];  // เอกสารที่อ่านไม่ได้รอบล่าสุด — ใช้ทำแบนเนอร์เตือน (NET-03)
+let dataLoaded={SS:false,BG:false,BN:false};   // สาขาที่มีข้อมูลแล้ว (แบนเนอร์ "ยังไม่มีข้อมูลสาขา…")
 let rawCSV={};      // {ss_st:'csv...', ss_non:'...', bg_st:..., bg_car:..., bn_st:..., bn_car:...}
 let cacheShownAt=0; // เวลาของข้อมูลที่โชว์อยู่ตอนนี้ (0 = ยังไม่มี)
 
