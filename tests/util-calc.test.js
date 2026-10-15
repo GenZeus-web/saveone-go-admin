@@ -315,6 +315,31 @@ test('สัปดาห์คร่อมเดือน: ใช้เดือ
   assert.equal(utilBillWeekly(bills,'X','2026-09-21').usageMonth,'2026-09');
 });
 
+// ── UTIL-21 ช่วงแรกค่ากลางยังไม่พอ → ค่าเฉลี่ยต่อวันจาก 3 บิลล่าสุด ──
+// บิล BG-E-1 ก.ค.–ก.ย. 69 = ใช้จริง มิ.ย.–ส.ค. (billMonthOffset −1)
+const BG_E1_BILLS=[['2026-06','28148'],['2026-07','28,394'],['2026-08','28790'],['2026-09','26837']]
+  .map(([bill_month,units])=>({bill_month,meter_id:'BG-E-1',units}));   // หน่วยเป็นข้อความมีคอมม่าได้ (CSV จากชีต)
+test('ไฟ 2 สัปดาห์แรก: ค่ากลางยังไม่พอ → ค่าเฉลี่ย 3 บิลล่าสุด × 7 · ครบ 2 สัปดาห์กลับไปใช้ค่ากลาง',()=>{
+  const r=[mon('2026-10-19',0)]; let v=0;
+  for(const [d,u] of [['2026-10-26',6600],['2026-11-02',11000],['2026-11-09',6700]]){ v+=u; r.push(mon(d,v)); }
+  const S=utilSettings({},'BG'), w=utilWeekly(utilAnalyze(r,ELEC1,{},NOW,BG_E1_BILLS).days,ELEC1,S,BG_E1_BILLS);
+  const avg=(28394/30+28790/31+26837/31)/3*7;   // สัปดาห์ ต.ค. → ใช้จริงก่อน ต.ค. 3 เดือน = มิ.ย. ก.ค. ส.ค. (บิล ก.ค.–ก.ย.)
+  assert.equal(w[0].baseFrom,'bill'); near(w[0].base,avg); assert.deepEqual(w[0].billMonths,['2026-06','2026-07','2026-08']);
+  assert.equal(w[0].level,'green');
+  assert.equal(w[1].baseFrom,'bill'); assert.equal(w[1].level,'yellow');   // 11,000 > ~6,395 × 1.5 แต่ไม่ถึง × 2
+  assert.equal(w[2].baseFrom,'median'); assert.equal(w[2].base,8800);      // ค่ากลางของ 6,600 กับ 11,000
+});
+test('ค่าเฉลี่ยบิล: ไม่ใช้บิลเดือนเดียวกับวันนั้น · เดือนที่เก่าเกิน 4 เดือน = ไม่ใช้ · ฐานตั้งต้นมาก่อนบิล',()=>{
+  const bills=[{bill_month:'2026-02',meter_id:'W',units:'310'},{bill_month:'2026-10',meter_id:'W',units:'600'}];   // ใช้จริง ม.ค. · ก.ย.
+  const one=(iso,s={})=>utilAnalyze(daily(()=>20,1,iso),W,s,NOW,bills).days[0];
+  const sep=one('2026-09-10');   // ก.ย. ใช้บิลก่อน ก.ย. ได้แค่ ม.ค. (เก่า 8 เดือน) → ไม่มีฐาน
+  assert.equal(sep.base,null); assert.equal(sep.level,'nodata');
+  const oct=one('2026-10-10');   // ต.ค. → ใช้จริง ก.ย. 600/30 = 20 ต่อวัน
+  assert.equal(oct.baseFrom,'bill'); near(oct.base,20); assert.deepEqual(oct.billMonths,['2026-09']);
+  assert.equal(one('2026-10-10',{baseline:{W:15}}).baseFrom,'setting');
+  assert.equal(utilAnalyze(daily(()=>20,1,'2026-10-10'),W,{},NOW).days[0].level,'nodata');   // ไม่ส่งบิล (ไม่มีสิทธิ์ยอดเงิน)
+});
+
 test('รายสัปดาห์: จดครบทุกจันทร์ = ไม่ใช่ค่าประมาณ · ขาด 1 จันทร์ = ประมาณ (est)',()=>{
   const ok=weekly([mon('2026-10-19',0),mon('2026-10-26',6600),mon('2026-11-02',13200)]);
   assert.deepEqual(ok.map(w=>w.est),[false,false]);

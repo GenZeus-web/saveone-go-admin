@@ -17,7 +17,7 @@ const UTIL_DEFAULTS={
   edgeMin:15,        // จดคลาดจากเวลาเปิด/ปิดไม่เกินนี้ ยังนับเป็น "ช่วงปิดล้วน"
   staleDays:2,       // ไม่มีการจดเกินนี้ = เตือนบนการ์ด (ชนิดไหนตั้ง thresholds.<ชนิด>.staleDays ไว้ ใช้ค่านั้นแทน)
   baseWeeks:4,       // ฐาน = วันเดียวกันในสัปดาห์ ย้อนกี่สัปดาห์
-  baseMinDays:2,     // วันปกติเหลือน้อยกว่านี้ → ใช้ฐานตั้งต้น (baseline) แทน
+  baseMinDays:2,     // วันปกติเหลือน้อยกว่านี้ → ใช้ฐานตั้งต้น (baseline) หรือค่าเฉลี่ยบิล (billBase) แทน
   thresholds:{
     water:{yellow:1.5,red:2,minDiff:10,streak:3,closedRate:0.5},  // จดวันละรอบ 14:00 (เจ้าของเลือก 14 ต.ค. 69)
     // ไฟ: ยังไม่มีข้อมูลจริง minDiff/closedRate เป็นค่าเดา · จดทุกวันจันทร์ → เลยรอบ 1 วันยังไม่เตือน
@@ -27,7 +27,10 @@ const UTIL_DEFAULTS={
   rates:[],          // [{meter_id, field:'multiplier'|'rate', value, effective_from}] — ห้ามแก้ย้อน (ADR 0001)
   billMonthOffset:-1, // บิลเดือน M = ใช้จริงเดือน M-1 (เทียบใบจดบางนา ก.ย.–ต.ค. 69) — รอบัญชียืนยัน
   // ตรวจบิลรายเดือน (UTIL-09) — เพิ่มหลังน้ำ BN บิล ก.ค.–ก.ย. 69 พุ่งแต่ตัวตรวจรายวันไม่เห็น (เริ่มจดรายวัน 4 ก.ย.)
-  billCheck:{ratio:1.3,lookback:6,minPrev:3,warmup:6,minDiff:{water:50,elec:3000},recent:3}
+  billCheck:{ratio:1.3,lookback:6,minPrev:3,warmup:6,minDiff:{water:50,elec:3000},recent:3},
+  // ช่วงแรกที่ค่ากลางยังไม่พอ → ค่าเฉลี่ยต่อวันจาก n บิลล่าสุด (UTIL-21) · บิลล่าสุดเก่าเกิน maxAge เดือน = ไม่ใช้
+  //   maxAge 4: บิลเดือน M ออกช้า (ต.ค. ยังไม่มีบิลไฟ BG ใช้จริง ก.ย.) → ต.ค. ยังได้ มิ.ย.–ส.ค. ครบ 3
+  billBase:{n:3,maxAge:4}
 };
 
 function utilHm(s){ const [h,m]=String(s).split(':').map(Number); return ((h||0)*60+(m||0))*60e3; }
@@ -43,7 +46,7 @@ function utilSettings(s,branch){
   s=s||{}; const D=UTIL_DEFAULTS;
   const th={}; for(const k of Object.keys(D.thresholds)) th[k]={...D.thresholds[k],...((s.thresholds||{})[k]||{})};
   const hrs={...D.hours,...(s.hours||{})}, h=hrs[branch]||hrs.default;
-  return {...D,...s,thresholds:th,baseline:{...(s.baseline||{})},rates:s.rates||[],
+  return {...D,...s,thresholds:th,baseline:{...(s.baseline||{})},rates:s.rates||[],billBase:{...D.billBase,...(s.billBase||{})},
           openMs:utilHm(h.open),closeMs:utilHm(h.close)};
 }
 
@@ -112,19 +115,48 @@ function utilClosed(segs,meter,S){
   return out;
 }
 
+// ค่าเฉลี่ยต่อวันจากบิล (UTIL-21) = ฐานชั่วคราวช่วงแรกที่ยังจดไม่พอหาค่ากลาง
+//   ใช้บิลของเดือนที่ใช้จริง "ก่อน" เดือนของวันนั้น (เดือนที่พุ่งไม่ดึงฐานของตัวเองขึ้น) · n เดือนล่าสุด
+//   เดือนที่เก่ากว่า maxAge เดือนไม่นับ · ไม่เหลือเลย = null (BN-E-TEMP บิลล่าสุด ก.พ. 69 ไม่ใช่ภาพปัจจุบัน)
+// bills = [{bill_month, meter_id, units}] (units เป็นข้อความมีคอมม่าได้ · ไม่มีแถว void)
+// คืน {perDay, months:[เดือนที่ใช้จริง]} | null
+function utilBillDaily(bills,meterId,iso,S){
+  const per={}, B=S.billBase||UTIL_DEFAULTS.billBase;
+  for(const b of bills||[]){
+    const u=Number(String(b.units??'').replace(/[,\s]/g,''));
+    if(b.meter_id!==meterId||!(u>0)) continue;
+    const k=utilBillUsageMonth(b.bill_month,S.billMonthOffset);
+    per[k]=(per[k]||0)+u;
+  }
+  const ix=k=>{ const [y,m]=k.split('-').map(Number); return y*12+m; };
+  const mo=iso.slice(0,7), ks=Object.keys(per).sort().filter(k=>k<mo&&ix(mo)-ix(k)<=B.maxAge).slice(-B.n);
+  if(!ks.length) return null;
+  const dim=k=>{ const [y,m]=k.split('-').map(Number); return new Date(Date.UTC(y,m,0)).getUTCDate(); };
+  return {perDay:ks.reduce((s,k)=>s+per[k]/dim(k),0)/ks.length,months:ks};
+}
+
+// เลือกฐาน: ค่ากลาง (หลัก) → ฐานตั้งต้นที่ตั้งไว้ → ค่าเฉลี่ยจากบิล (ช่วงแรก) → ไม่มี
+//   mult = 1 รายวัน · 7 รายสัปดาห์ · ตั้ง o.base / o.baseFrom ('median'|'setting'|'bill'|null) / o.billMonths
+function utilPickBase(o,hist,meter,S,bills,iso,mult){
+  const set=S.baseline[meter.meter_id]; let fb;
+  if(hist.length>=S.baseMinDays){ o.base=utilMedian(hist); o.baseFrom='median'; }
+  else if(set!=null){ o.base=set*mult; o.baseFrom='setting'; }
+  else if((fb=utilBillDaily(bills,meter.meter_id,iso,S))){ o.base=fb.perDay*mult; o.baseFrom='bill'; o.billMonths=fb.months; }
+  else{ o.base=null; o.baseFrom=null; }
+}
+
 // ฐาน + ป้ายรายวัน (เรียงตามเวลา — วันที่แดงไปแล้วถูกตัดออกจากฐานของวันหลัง)
 //   ฐาน = ค่ากลางของวันเดียวกันในสัปดาห์ ย้อน baseWeeks สัปดาห์ · ข้ามวันแดง/รั่ว · ข้ามวันข้อมูลไม่ครบ
+//   ค่ากลางยังไม่พอ (ช่วงแรก) → utilPickBase ใช้ฐานตั้งต้น หรือค่าเฉลี่ยจากบิล
 //   ป้าย: ต้องเกินทั้ง "กี่เท่า" และ "เพิ่มขั้นต่ำ" = เส้นแดงคือค่าที่สูงกว่าระหว่าง ฐาน×red กับ ฐาน+minDiff
-function utilFlags(days,meter,S){
+function utilFlags(days,meter,S,bills){
   const th=S.thresholds[meter.type], byIdx=new Map(days.map(d=>[d.idx,d])), bad=new Set();
   let streak=0,lastIdx=null,lastHot=false;
   for(const d of days){
     if(d.cover<0.999){ d.level='partial'; continue; }
     const hist=[];
     for(let w=1;w<=S.baseWeeks;w++){ const h=byIdx.get(d.idx-7*w); if(h&&h.cover>=0.999&&!bad.has(h.idx)) hist.push(h.units); }
-    const fromMedian=hist.length>=S.baseMinDays;
-    d.base=fromMedian?utilMedian(hist):(S.baseline[meter.meter_id]??null);
-    d.baseFrom=fromMedian?'median':d.base==null?null:'setting';
+    utilPickBase(d,hist,meter,S,bills,d.date,1);
     if(d.base==null){ d.level='nodata'; lastHot=false; lastIdx=d.idx; continue; }
     d.ratio=d.base>0?d.units/d.base:Infinity; d.diff=d.units-d.base;
     const over=x=>d.ratio>x&&d.diff>=th.minDiff;
@@ -148,22 +180,23 @@ function utilBands(day,th){
 }
 
 // วิเคราะห์ 1 มิเตอร์ · meter = {meter_id, type:'water'|'elec', branch_code} · now = ms (ส่งเข้ามาเพื่อให้เทสต์ได้)
-function utilAnalyze(readings,meter,settings,now){
+//   bills = บิลของสาขา (ไม่ส่ง = ไม่มีฐานจากบิล · ผู้ไม่มีสิทธิ์ยอดเงินอ่านบิลไม่ได้)
+function utilAnalyze(readings,meter,settings,now,bills){
   const S=utilSettings(settings,meter.branch_code), rows=utilPrep(readings,meter.meter_id,S.openMs);
   const {segs,anomalies}=utilSegments(rows), last=rows.length?rows[rows.length-1]:null;
   const ageDays=last?(now-last.t)/UTIL_DAY:null, staleDays=S.thresholds[meter.type]?.staleDays??S.staleDays;
-  return {days:utilFlags(utilDaily(segs,meter.meter_id,S),meter,S),closed:utilClosed(segs,meter,S),anomalies,
+  return {days:utilFlags(utilDaily(segs,meter.meter_id,S),meter,S,bills),closed:utilClosed(segs,meter,S),anomalies,
           last:last&&last.t,ageDays,staleDays,stale:last==null||ageDays>staleDays};
 }
 
 // ── รายสัปดาห์ (UTIL-13 · ไฟจดทุกวันจันทร์ 14:00) ──
 // รวมวันตลาดเป็นสัปดาห์ จันทร์–อาทิตย์ · วันตลาดเริ่ม 14:00 → จดจันทร์ 14:00 = ขอบสัปดาห์พอดี (1 ช่วงจด = 1 สัปดาห์เต็ม)
 //   ธงรายวันใช้กับไฟไม่ได้: ช่วงจด 7 วันถูกเฉลี่ยเท่ากันทุกวัน แท่งรายวันแบนเหมือนจดทุกวันทั้งที่ไม่ได้จด
-//   ฐาน = ค่ากลางสัปดาห์เต็มย้อน baseWeeks สัปดาห์ (ข้ามสัปดาห์แดง · น้อยกว่า baseMinDays = ฐานตั้งต้น × 7)
+//   ฐาน = ค่ากลางสัปดาห์เต็มย้อน baseWeeks สัปดาห์ (ข้ามสัปดาห์แดง · น้อยกว่า baseMinDays = ฐานตั้งต้น/ค่าเฉลี่ยบิล × 7)
 //   เกณฑ์ "กี่เท่า" เท่ารายวัน · "เพิ่มขั้นต่ำ" = minDiff ต่อวัน × 7 · ไม่มีธงรั่ว (3 รอบติด = 3 สัปดาห์ ช้าเกินมีความหมาย)
 // days = ผลจาก utilAnalyze().days · คืน [{idx, date (จันทร์), end (อาทิตย์), units, cover (วัน), est, base, ratio, diff, level}]
 function utilWeekIdx(dayIdx){ return dayIdx-((dayIdx+3)%7); }   // idx 0 = 1970-01-01 วันพฤหัส → (idx+3)%7 = 0 คือวันจันทร์
-function utilWeekly(days,meter,S){
+function utilWeekly(days,meter,S,bills){
   const th=S.thresholds[meter.type]||S.thresholds.water, by=new Map();
   for(const d of days||[]){
     const w=utilWeekIdx(d.idx), o=by.get(w)||{idx:w,date:utilIso(w),end:utilIso(w+6),units:0,cover:0,est:false};
@@ -175,9 +208,7 @@ function utilWeekly(days,meter,S){
     if(w.cover<6.999){ w.level='partial'; continue; }
     const hist=[];
     for(let k=1;k<=S.baseWeeks;k++){ const h=by.get(w.idx-7*k); if(h&&h.cover>=6.999&&!bad.has(h.idx)) hist.push(h.units); }
-    const fromMedian=hist.length>=S.baseMinDays, setting=S.baseline[meter.meter_id];
-    w.base=fromMedian?utilMedian(hist):setting==null?null:setting*7;
-    w.baseFrom=fromMedian?'median':w.base==null?null:'setting';
+    utilPickBase(w,hist,meter,S,bills,utilIso(w.idx+3),7);   // เดือนของสัปดาห์ = เดือนของวันพฤหัส
     if(w.base==null){ w.level='nodata'; continue; }
     w.ratio=w.base>0?w.units/w.base:Infinity; w.diff=w.units-w.base;
     const over=x=>w.ratio>x&&w.diff>=minDiff;

@@ -132,7 +132,7 @@ function utHelpHtml(S,hasElec){
       <div class="ut-help-h">วิธีคำนวณ</div>
       <ol>
         <li><b>ใช้ต่อวัน</b> = เลขครั้งนี้ − เลขครั้งก่อน · 1 วัน นับ ${H.open} ถึง ${H.open} วันถัดไป</li>
-        <li><b>ค่ากลาง</b> = ตัวกลางของวันเดียวกันในสัปดาห์ ย้อน ${S.baseWeeks} สัปดาห์ (ต้องมีอย่างน้อย ${S.baseMinDays}) ไม่นับวันที่แดง · เช่น 30 · 34 · 36 · 80 → ${utFmt(utilMedian([30,34,36,80]))}</li>
+        <li><b>ค่ากลาง</b> = ตัวกลางของวันเดียวกันในสัปดาห์ ย้อน ${S.baseWeeks} สัปดาห์ (ต้องมีอย่างน้อย ${S.baseMinDays}) ไม่นับวันที่แดง · เช่น 30 · 34 · 36 · 80 → ${utFmt(utilMedian([30,34,36,80]))}<br>ช่วงแรกที่ยังมีไม่ถึง ${S.baseMinDays} = ใช้ค่าเฉลี่ยต่อวันจาก ${S.billBase.n} บิลล่าสุดแทน</li>
         <li><b>🟡 เหลือง</b> = ${rule(w.yellow,w.minDiff,'ที่ใช้')}<br><b>🔴 แดง</b> = ${rule(w.red,w.minDiff,'ที่ใช้')}<br>เช่น ${ex(20)} · ${ex(5)}</li>
         <li><b>🟣 ม่วง</b> = วันนั้นเหลือง และเกินเส้นเหลืองติดกันถึงวันที่ ${w.streak} (วันแดงนับรวม)</li>
         ${hasElec?`<li><b>⚡ ไฟ</b> = นับรายสัปดาห์ · เหลือง ${rule(e.yellow,utFmt(e.minDiff*7),'ที่ใช้')} · แดง ค่ากลาง × ${e.red} · ไม่มีม่วง</li>`:''}
@@ -394,13 +394,13 @@ function utSummary(c){
 const UT_MIN_WEEKS=8;
 function utPrep(m,c,S,now){
   const meter={meter_id:m.meter_id,type:m.type,branch_code:m.branch_code};
-  const res=utilAnalyze(c.readings,meter,utSet(),now);
+  const res=utilAnalyze(c.readings,meter,utSet(),now,c.bills);   // บิล = ฐานช่วงแรก (UTIL-21)
   const days=applyPeriod(res.days.map(d=>({date:new Date(d.date+'T00:00:00'),d}))).map(x=>x.d);
   // ไฟจดทุกวันจันทร์ (UTIL-13) → รายสัปดาห์ · สัปดาห์ที่คาบช่วงเวลาในเมนูข้าง แต่อย่างน้อย UT_MIN_WEEKS สัปดาห์ล่าสุด
   //   (เลือก 7/30 วัน ได้แท่งเดียวสองแท่ง ดูแนวโน้มไม่ได้)
   let weeks=null;
   if(m.type==='elec'){
-    const all=utilWeekly(res.days,meter,S), inP=new Set(days.map(d=>utilWeekIdx(d.idx)));
+    const all=utilWeekly(res.days,meter,S,c.bills), inP=new Set(days.map(d=>utilWeekIdx(d.idx)));
     weeks=all.filter(w=>inP.has(w.idx));
     if(weeks.length<UT_MIN_WEEKS) weeks=all.slice(-UT_MIN_WEEKS);
   }

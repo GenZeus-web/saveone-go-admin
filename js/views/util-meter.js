@@ -226,11 +226,18 @@ function umBillDetail(i,mo){
      <button class="mc-pill" onclick="umMeterDetail(${i})">ดูมิเตอร์นี้ทั้งหมด</button>`);
 }
 
+// ค่าต่อวัน (× mult) ของแต่ละเดือนที่ใช้หาค่าเฉลี่ยบิล — ตรงกับ utilBillDaily
+function umBillAvgRows(c,m,months,mult){
+  const S=utilSettings(utSet(),m.branch_code||UT.br), per={};
+  c.bills.filter(b=>b.meter_id===m.meter_id).forEach(b=>{ const u=utNum(b.units); if(u>0){ const k=utilBillUsageMonth(b.bill_month,S.billMonthOffset); per[k]=(per[k]||0)+u; } });
+  return (months||[]).map(k=>{ const [y,mo]=k.split('-').map(Number); return {t:utMonthTh(k),v:per[k]/new Date(Date.UTC(y,mo,0)).getUTCDate()*mult}; });
+}
+
 // วัน/สัปดาห์เดียว: ใช้เท่าไหร่ · ค่ากลางจากวันเดียวกัน 4 สัปดาห์ก่อน · สูตรเส้นเหลือง/แดง (ตรงกับ utilFlags/utilWeekly)
 function umPointDetail(i,iso){
   const c=UT.cache[UT.br], m=c&&c.meters[i]; if(!m||!m._res) return;
   const S=utilSettings(utSet(),m.branch_code||UT.br), wk=!!m._weeks, unit=utU(m), th=m._th;
-  const all=wk?utilWeekly(m._res.days,{meter_id:m.meter_id,type:m.type,branch_code:m.branch_code},S):m._res.days;
+  const all=wk?utilWeekly(m._res.days,{meter_id:m.meter_id,type:m.type,branch_code:m.branch_code},S,c.bills):m._res.days;
   const by=new Map(all.map(d=>[d.date,d])), p=by.get(iso); if(!p) return;
   const dp=wk?0:1, fmt=v=>utFmt(v,dp), fb=v=>umFb(v,dp), full=wk?6.999:0.999, minD=wk?th.minDiff*7:th.minDiff;
   const hist=[]; for(let k=1;k<=S.baseWeeks;k++){ const iso2=utilIso(utilIdx(iso)-7*k); hist.push({t:wk?`สัปดาห์ ${utDM(iso2)}`:utDM(iso2),d:by.get(iso2)}); }
@@ -240,8 +247,12 @@ function umPointDetail(i,iso){
   if(p.level==='partial') calc=`<p>${wk?`สัปดาห์นี้จดยังไม่ครบ (${utFmt(p.cover,1)}/7 วัน)`:`วันนี้จดยังไม่ครบ (มีข้อมูล ${utFmt(p.cover*100)}% ของวัน)`} ยังไม่ตัดสิน</p>`;
   else if(p.base==null) calc=`<p>ข้อมูลยังไม่พอเทียบ: ต้องมี${wk?'สัปดาห์':'วันเดียวกัน'}ก่อนหน้าที่จดครบอย่างน้อย ${S.baseMinDays} ${wk?'สัปดาห์':'วัน'} (มี ${used.length})</p>`;
   else{
-    calc=`<div class="um-dh">ค่ากลาง = <b>${fb(p.base)}</b> ${unit} ${p.baseFrom==='setting'?'(ค่าที่ตั้งไว้)':`จาก ${used.length} ${wk?'สัปดาห์':'วัน'}ก่อน`}</div>
-      ${p.baseFrom==='setting'?'':umMedList(used.map(h=>({t:h.t,v:h.d.units})),fmt)}
+    // UTIL-21 ช่วงแรกค่ากลางยังไม่พอ → ค่าเฉลี่ยบิล: เดือนละแถว = หน่วยในบิล ÷ วันในเดือน (× 7 รายสัปดาห์)
+    const bm=p.baseFrom==='bill'?umBillAvgRows(c,m,p.billMonths,wk?7:1):null;
+    calc=`<div class="um-dh">ค่ากลาง = <b>${fb(p.base)}</b> ${unit} ${p.baseFrom==='setting'?'(ค่าที่ตั้งไว้)':bm?`· ค่าเฉลี่ยบิล ${bm.length} เดือน`:`จาก ${used.length} ${wk?'สัปดาห์':'วัน'}ก่อน`}</div>
+      ${p.baseFrom==='setting'?'':bm?`<ol class="um-med">${bm.map(x=>`<li><span>ใช้เดือน ${x.t}</span><b>${fmt(x.v)}</b></li>`).join('')}</ol>
+        <p class="um-sub2">ช่วงแรก ${wk?'จดยังไม่ถึง':'จดวันเดียวกันยังไม่ถึง'} ${S.baseMinDays} ${wk?'สัปดาห์':'ครั้ง'} · ครบแล้วใช้ค่ากลางจากเลขที่จด</p>`
+      :umMedList(used.map(h=>({t:h.t,v:h.d.units})),fmt)}
       ${skip.length?`<p class="um-sub2">ไม่นับ: ${skip.map(h=>`${h.t} (${!h.d?'ไม่มีข้อมูล':h.d.cover<full?'จดไม่ครบ':'แดงไปแล้ว'})`).join(' · ')}</p>`:''}
       <div class="um-dh">เทียบกับเกณฑ์ (ต้องผ่านทั้ง 2 ข้อ)</div>
       <table class="um-dt">${[['🟡 เหลือง',th.yellow],['🔴 แดง',th.red]].map(([t,x])=>{ const a=p.base*x<p.units, b=p.base+minD<=p.units;
