@@ -152,6 +152,9 @@ body.light-mode .login-logo-text,.login-logo-text{font-size:32px;font-weight:700
 .um-heat h4{font-size:12px;margin:0 0 6px;color:var(--ink2);font-weight:700;}
 .um-heat h4~h4{margin-top:16px;}
 .um-hg{display:grid;gap:2px;align-items:stretch;min-width:max-content;}
+/* MOB-02: แถวบิลในหน้ามิเตอร์เต็มเลื่อนในกรอบตัวเอง (ปัดซ้ายขวาเลื่อนแถว ไม่ใช่ทั้งกล่อง) */
+.um-hscroll{overflow-x:auto;max-width:100%;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;}
+.um-heat{overscroll-behavior-x:contain;}
 .um-hg .rl{font-size:12px;padding-right:10px;white-space:nowrap;display:flex;align-items:center;cursor:pointer;}
 .um-hg .ch{font-size:10px;color:var(--ink3);text-align:center;padding-bottom:2px;}
 .um-tip{position:fixed;z-index:9000;display:none;pointer-events:none;max-width:340px;white-space:nowrap;padding:9px 12px;border-radius:8px;

@@ -313,8 +313,9 @@ function umMeterDetail(i){
     if(ks.length){
       const amt={}; c.bills.filter(b=>b.meter_id===m.meter_id).forEach(b=>{ amt[b.bill_month]=(amt[b.bill_month]||0)+(utNum(b.amount_incl_vat)||0); });
       const last12=ks.slice(-12);
-      const row=`<div class="um-hg" style="grid-template-columns:repeat(${last12.length},minmax(52px,1fr))">${last12.map(k=>`<span class="ch">${utMonthTh(k)}</span>`).join('')}
-        ${last12.map(k=>umBillCell(c,m,i,k,R[k])).join('')}</div>`;
+      // MOB-02: 12 เดือน × 52px กว้างกว่าจอมือถือ → เลื่อนในกรอบตัวเอง (เดิมทั้งกล่องเลื่อนซ้ายขวา) · เปิดมาเห็นเดือนล่าสุด (ท้ายฟังก์ชัน)
+      const row=`<div class="um-hscroll"><div class="um-hg" style="grid-template-columns:repeat(${last12.length},minmax(52px,1fr))">${last12.map(k=>`<span class="ch">${utMonthTh(k)}</span>`).join('')}
+        ${last12.map(k=>umBillCell(c,m,i,k,R[k])).join('')}</div></div>`;
       const tr=[...ks].reverse().map(k=>{ const x=R[k], f=c.chk&&c.chk[m.meter_id+'@'+k], use=utilBillUsageMonth(k);
         const md=r.days.filter(d=>d.date.startsWith(use)), got=md.reduce((s,d)=>s+d.units,0);
         const mk=!f?'':f.high?' <span class="ut-mk hi">⚠</span>':' <span class="ut-mk q">?</span>';
@@ -328,6 +329,7 @@ function umMeterDetail(i){
   umModal(`${umName(m)}${hi.has(m.meter_id)?UM_HI_TAG:''}${m.location?` <span class="ut-sub">${utEsc(m.meter_id)}</span>`:''}`,
     `${L.icon} ${L.txt}${r.last?` · จดล่าสุด ${utWhen(r.last)} (${utAgo(r.last)})`:''}${utilTrue(m.active)?'':' · ปิดใช้แล้ว'}`,
     sum+(info.length?`<div class="um-warn">${info.join('<br>')}</div>`:'')+chart+bills, 'um-full');
+  document.querySelectorAll('#utModal .um-hscroll').forEach(e=>{ e.scrollLeft=e.scrollWidth; });   // MOB-02: เดือนล่าสุดอยู่ขวาสุด
   if(pts.length) makeChart('cUmFull',umFullCfg(m,i));   // ไม่เข้า UT.chartIds — แท็บวาดใหม่ (รีเฟรช 5 นาที) ต้องไม่ลบกราฟในกล่อง
 }
 
