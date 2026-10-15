@@ -178,7 +178,7 @@ CSS: `night.css` ต้องหลัง `screens.css` · `responsive.css` ต�
   v3.1.1 = Benchmark ตามปุ่มโซน + ช่วงเวลา (BM-05/06) · ตัวเลือก "แท่งคู่" + การ์ดเทียบช่วงก่อนหน้าล่างสุด (BM-07)
   เจ้าของสั่ง: **กราฟเส้นเดิมเป็นหลัก** แท่ง/แบบอื่นเป็นแค่ตัวเลือกในปุ่มมุมการ์ด · ป้ายเตือนไหลลงดูทั้งประวัติโดยตั้งใจ
   v3.1.0 = CHT-04 เลือกแบบกราฟเอง (ไอคอนมุมการ์ด · js/chart-types.js · จำใน localStorage) · CACHE-03 ตัวเช็ค ?v= ก่อน commit
-  ต้นแบบ 3 แบบอยู่ branch `prototype/chart-picker` (ในเครื่อง ไม่ได้ push) · ไม่มา/ลา = รายได้ ห้ามโชว์เป็นการหัก
+  branch ต้นแบบ prototype/chart-picker (0abb92c) · prototype/util-redesign (6100277) ลบแล้ว 15 ต.ค. (เลือกแบบไปแล้ว) · ไม่มา/ลา = รายได้ ห้ามโชว์เป็นการหัก
 - **API key Firebase จำกัดแล้ว (25 ก.ย. 16:30)** — Google Cloud → Credentials → "Browser key (auto created by Firebase)"
   Websites: `https://genzeus-web.github.io/*` · `http://localhost:8781/*` (GCP ไม่รับ `*` ที่พอร์ต)
   เปิดเว็บจากที่อยู่อื่น (Live Server `127.0.0.1:5500` · โดเมนใหม่) = ล็อกอินไม่ได้ จนกว่าจะเพิ่มในรายการ

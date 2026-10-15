@@ -7,11 +7,8 @@
 | ไฟล์ | เนื้อหา |
 |---|---|
 | `1_business-rules.md` | กฎธุรกิจ · เงื่อนไขการจอง · การหักคะแนน/แบนร้าน |
-| `2_web-logic.md` | ตรรกะเว็บหลัก · ท่อข้อมูล · สิทธิ์ |
-| `3_apps-script-code.md` | โค้ด Apps Script ทั้ง 3 สาขา (ฝั่งเซิร์ฟเวอร์) |
 | `4_walkin-system.md` | ระบบวอล์กอิน |
 | `5_revenue-calculator.md` | สูตรคิดรายรับ · ราคาตามฤดูกาล/วันหยุด |
-| `6_project-setup.md` | วิธีติดตั้ง · สิ่งที่ต้อง deploy |
 | `walkin-diagram.png` | ผังระบบวอล์กอิน |
 | `firestore-rules/v3.3.0-current.txt` | กฎสิทธิ์ Firestore ฉบับเต็ม (วางทั้งไฟล์ใน Console · ประวัติดู `git log`) |
 | `firestore-rules-settings.md` | คำอธิบายกฎส่วนตั้งค่าราคา |
@@ -19,6 +16,7 @@
 | `agents/` | ตั้งค่า issue tracker / label / domain docs ของ agent skills |
 | `archive/` | ของเก่าเก็บไว้อ้างอิงประวัติ — **ห้ามใช้เป็นตัวจริง** |
 | `archive/firestore-rules-v2.10.0.txt` · `-v2.9.0.txt` | กฎ Firestore รุ่นเก่า · อย่าวางทับ Console (สิทธิ์ที่เพิ่มตั้งแต่ v3.0.1 จะหาย) |
+| `archive/2_web-logic.md` · `3_apps-script-code.md` · `6_project-setup.md` | เขียนก่อน ARCH-01 (v2.8.0 · เว็บดึง Apps Script ตรง) — ท่อข้อมูล/วิธีติดตั้งในนี้ไม่ตรงแล้ว · ย้ายมา 15 ต.ค. 69 · ของปัจจุบันดู `CLAUDE.md` + `firestore-rules/` + `util-data-contract.md` |
 | `archive/WORKFLOW-2026-08-21.md` | คู่มือทำงานตัวเก่าเต็มๆ (805 บรรทัด) — แทนแล้วด้วย `CLAUDE.md` |
 | `archive/_legacy-claude-project-instructions.txt` | instructions ของ Claude Project เดิม |
 

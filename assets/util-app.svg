@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 100 100">
-  <!-- ไอคอนแอปกรอกมิเตอร์ น้ำ-ไฟ (UTIL-20) · ต้นแบบ = logo-A-icon.svg ที่เจ้าของเลือก
+  <!-- ไอคอนแอปกรอกมิเตอร์ น้ำ-ไฟ (UTIL-20) · ต้นแบบ = โลโก้แบบ A ที่เจ้าของเลือก (15 ต.ค. 69)
        ตัดมุมมน (rx) ออก: iPhone/Android ตัดมุมเอง ถ้ามุมโปร่งใส iPhone เติมดำ -->
   <rect width="100" height="100" fill="#1E6FD9"/>
   <g transform="translate(10 8) scale(0.8)">

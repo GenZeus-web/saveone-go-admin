@@ -103,7 +103,7 @@ window.loadUserList = async function(){
     console.error('loadUserList:', e);
     tb.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--ink3)">โหลดไม่สำเร็จ</td></tr>';
     usrErr(e.code === 'permission-denied'
-      ? 'Firestore ปฏิเสธการอ่าน — ยังไม่ได้อัปเดต Security Rules ให้ admin อ่าน collection users ได้ (ดูวิธีใน 6_project-setup.md)'
+      ? 'Firestore ปฏิเสธการอ่าน — ยังไม่ได้อัปเดต Security Rules ให้ admin อ่าน collection users ได้ (กฎฉบับเต็ม docs/firestore-rules/)'
       : ('โหลดไม่สำเร็จ: ' + (e.message || e)));
   }
 };
@@ -232,7 +232,7 @@ window.saveUser = async function(uid){
   }catch(e){
     console.error('saveUser:', e);
     usrErr(e.code === 'permission-denied'
-      ? 'Firestore ปฏิเสธการเขียน — ยังไม่ได้อัปเดต Security Rules (ดูวิธีใน 6_project-setup.md)'
+      ? 'Firestore ปฏิเสธการเขียน — ยังไม่ได้อัปเดต Security Rules (กฎฉบับเต็ม docs/firestore-rules/)'
       : ('บันทึกไม่สำเร็จ: ' + (e.message || e)));
   }
 };
