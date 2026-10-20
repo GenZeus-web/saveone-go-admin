@@ -313,12 +313,12 @@ function utCompareHtml(){
   const pills=ok.length>1?`<div class="ut-pills">เทียบสาขา: ${ok.map(b=>`<button class="mc-pill${sel.has(b)?' sel':''}" onclick="toggleUtCmp('${b}')">${utEsc(BM_NAMES[b]||b)} (${b})${b==='SS'?' · ปิดแล้ว':''}</button>`).join('')}</div>`:'';
   return pills+utRangeHtml()+utCheckBox()+UT_SECS.map(([type,icon,name,money,unit],k)=>{
     const d=utCmpData(type);
-    // หัวส่วนติดบนจอตอนเลื่อน + สีประจำชนิด (ไฟ เขียวน้ำทะเล · น้ำ ฟ้า · UTIL-28) — เจ้าของ: เลื่อนเร็วๆ ไม่รู้ส่วนไหนไฟ ส่วนไหนน้ำ
+    // หัวส่วนติดบนจอตอนเลื่อน + สีประจำชนิด (ไฟ เหลือง · น้ำ ฟ้า · UTIL-28 พื้นการ์ด) — เจ้าของ: เลื่อนเร็วๆ ไม่รู้ส่วนไหนไฟ ส่วนไหนน้ำ
     const t=`<div class="ut-cmp-h">${icon} ${name}<span>หน่วยใช้และ${money}</span></div>`, sec=`sc ut-sec ut-sec-${type}`;
     if(!d) return `<div class="${sec}">${t}<div class="ut-empty">ยังไม่มีบิล${name}ของสาขาที่เลือก</div></div>`;
     if(!d.months.length) return `<div class="${sec}">${t}<div class="ut-empty">ไม่มีบิล${name}ในช่วงที่เลือก · บิลล่าสุด ${utMonthTh(d.last)}<br>
       <button class="mc-pill" style="margin-top:8px" onclick="setUtRange('12')">12 เดือนล่าสุด</button></div></div>`;
-    const nm=b=>utEsc(BM_NAMES[b]||b), dot=b=>`<i class="ut-dot" style="background:${utCmpCol(type,b)}"></i>`;   // UTIL-28 ตรงกับแท่ง
+    const nm=b=>utEsc(BM_NAMES[b]||b), dot=b=>`<i class="ut-dot" style="background:${sc(BM_COLORS[b])}"></i>`;
     const ov=d.overlap.length;
     const mm=d.months, range=d.has.length>1&&ov?`ตัวเลขเทียบ ${utMonthTh(d.overlap[0])} – ${utMonthTh(d.overlap[ov-1])} (${ov} เดือนที่ทุกสาขามีบิล)`
       :`บิล ${utMonthTh(mm[0])} – ${utMonthTh(mm[mm.length-1])}`+(d.has.length>1?' · ไม่มีเดือนที่ทุกสาขามีบิล':'');
@@ -344,10 +344,6 @@ function utCompareHtml(){
       </div></div>`;
   }).join('');
 }
-// UTIL-28: แท่งแท็บเทียบสาขา = สีตามชนิด (น้ำฟ้า · ไฟเขียวน้ำทะเล — ตัวเดียวกับแท่งหน้ามิเตอร์ UM_USE)
-//   แยกสาขาด้วยเข้ม→อ่อน (เจ้าของ 20 ต.ค.: เดิมใช้สีสาขาทั้ง 2 การ์ด น้ำกับไฟหน้าตาเหมือนกัน ดูไม่ออกว่าอันไหน)
-const UT_CMP_SHADE={water:{BG:'29,78,216',BN:'59,130,246',SS:'147,197,253'},elec:{BG:'15,118,110',BN:'20,184,166',SS:'153,236,220'}};
-const utCmpCol=(type,b)=>`rgba(${(UT_CMP_SHADE[type]||{})[b]||'140,148,170'},.9)`;
 function utCompareCharts(){
   UT_SECS.forEach(([type])=>{
     const d=utCmpData(type); if(!d||!d.months.length) return;
@@ -365,7 +361,7 @@ function utCompareCharts(){
       o.layout={padding:{top:14}};   // เว้นที่ให้ป้ายบนแท่งสูงสุด
       utValOpts(o); utAxis(o);
       return {type:'bar',data:{labels:lbl,datasets:d.has.map(b=>({type:'bar',label:`${BM_NAMES[b]||b} (${b})`,
-        data:d.months.map(mo=>d.by[b][mo]?+d.by[b][mo][key].toFixed(2):null),backgroundColor:utCmpCol(type,b),borderRadius:3,maxBarThickness:28}))},
+        data:d.months.map(mo=>d.by[b][mo]?+d.by[b][mo][key].toFixed(2):null),backgroundColor:BM_COLORS[b],borderRadius:3,maxBarThickness:28}))},
         options:o,plugins:[utFlagPlugin]};
     };
     utMake(`cUtilCmp_${type}U`,cfg('units',false));

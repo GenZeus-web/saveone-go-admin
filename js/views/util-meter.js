@@ -12,10 +12,6 @@
 const UM_RANK={red:0,leak:0,yellow:1,green:2,partial:3,nodata:3};
 const umRgb=lv=>sc(`rgb(${(UT_LEVEL[lv]||UT_LEVEL.nodata).rgb})`).replace(/^rgb\(|\)$/g,'');
 const umHot=lv=>['yellow','red','leak'].includes(lv);
-// UTIL-27: แท่ง "ใช้" สีตามชนิด (เจ้าของ 20 ต.ค.: น้ำ/ไฟ แยกสีให้ชัด) · เดิมเทาทั้งคู่
-//   ห้ามชนสีระดับ (เขียว/เหลืองอำพัน/แดง/ม่วง ใน UT_LEVEL) → น้ำ = ฟ้า · ไฟ = เขียวน้ำทะเลเข้ม (อำพันชนเหลือง)
-const UM_USE={water:'37,138,230',elec:'13,148,136'};
-const umUse=m=>sc(`rgb(${UM_USE[m.type]||UT_LEVEL.nodata.rgb})`).replace(/^rgb\(|\)$/g,'');
 function umPts(m){ return m._weeks||m._days||[]; }
 function umBands(m,p){ return m._weeks?utilWeekBands(p,m._th):utilBands(p,m._th); }
 function umWhen(m,p){ return m._weeks?`สัปดาห์ ${utDM(p.date)}–${utDM(p.end)}`:`วันที่ ${utDM(p.date)}`; }
@@ -319,7 +315,7 @@ function umFullCfg(m,i){
   o.onHover=(e,els)=>{ e.native.target.style.cursor=els.length?'pointer':''; };
   return {type:'bar',plugins:[umZonePlugin],data:{labels:pts.map(d=>utDM(d.date)),datasets:[
     {type:'bar',label:'ใช้',data:pts.map(d=>+d.units.toFixed(2)),borderRadius:2,order:2,
-     backgroundColor:pts.map(d=>umHot(d.level)?`rgba(${umRgb(d.level)},.95)`:`rgba(${umUse(m)},${d.est||d.level==='partial'?.35:.8})`)},
+     backgroundColor:pts.map(d=>umHot(d.level)?`rgba(${umRgb(d.level)},.95)`:`rgba(${umRgb('nodata')},${d.est||d.level==='partial'?.35:.75})`)},
     {type:'line',label:'ค่ากลาง',data:pts.map(d=>d.base??null),borderColor:utInk().ink2,borderDash:[4,4],borderWidth:1.4,
      pointRadius:0,stepped:'middle',spanGaps:false,order:1}]},options:o};
 }
@@ -342,7 +338,7 @@ function umMeterDetail(i){
   const chart=pts.length?`<div class="um-dh">${m._weeks?'ใช้ต่อสัปดาห์':'ใช้ต่อวัน'} · ${pts.length} ${m._weeks?'สัปดาห์':'วัน'}${flags?` · ${flags}`:''}</div>
     <div class="um-fchart"><canvas id="cUmFull"></canvas></div>
     <div class="um-key"><span><i style="background:rgba(${umRgb('yellow')},.35)"></i>โซนเหลือง</span><span><i style="background:rgba(${umRgb('red')},.3)"></i>โซนแดง</span>
-      <span><i style="background:rgba(${umUse(m)},.8)"></i>ใช้</span><span><i style="background:rgba(${umUse(m)},.35)"></i>ไม่ได้จด (เฉลี่ย)</span>
+      <span><i style="background:rgba(${umRgb('nodata')},.75)"></i>ใช้</span><span><i style="background:rgba(${umRgb('nodata')},.35)"></i>ไม่ได้จด (เฉลี่ย)</span>
       <span>เส้นประ = ค่ากลาง</span><span>แท่งสี = เกินเส้น · กดแท่งดูวิธีคิด</span></div>`
     :r.last?`<p class="um-sub2">ไม่มีการจดในช่วงเวลาที่เลือก <button class="mc-pill" onclick="utClose();setPeriod(0,document.getElementById('p0'))">ดูทั้งหมด</button></p>`:'';
   let bills='';
