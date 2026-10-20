@@ -290,6 +290,27 @@ function umPointDetail(i,iso){
 
 // ── หน้ามิเตอร์เต็ม: สรุป + แถบโซน · กราฟพื้นโซน · แถวบิล 12 เดือน · ตารางบิล (มีค่ากลาง) ──
 // กราฟ: พื้นโซนเหลือง (เส้นเหลือง→เส้นแดง) / แดง (เส้นแดง→บน) ต่อจุด · แท่งเทา ติดสีเมื่อเกิน · เส้นประ = ค่ากลาง · กดแท่ง = วิธีคิดของจุดนั้น
+// UTIL-29: ไฟก่อนเริ่มจด → แท่งจางจากค่าเฉลี่ยบิล (เจ้าของ 20 ต.ค.: "โชว์ไปเลย เฉลี่ยจากยอดบิล เท่ากันทุกแท่ง" · ยอดบิลจากบัญชี ใช้ตามนั้น)
+//   ไฟเท่านั้น (รายสัปดาห์) · เดือนของสัปดาห์ = เดือนของวันพฤหัส (เหมือน utilWeekly) · บิลแปลงเป็นเดือนที่ใช้จริงด้วย billMonthOffset
+//   ย้อนไม่เกิน 6 เดือนที่ใช้จริง · หยุดก่อนสัปดาห์แรกที่มีเลขจด (ยังไม่จด = ถึงสัปดาห์ที่แล้ว)
+//   ไม่ใช่เลขจด → ไม่ระบายสีเตือน ไม่มีเส้นเกณฑ์ ไม่เข้าการ์ด/ตารางความร้อน ไม่มีกล่องวิธีคิด · มีแค่ในกราฟหน้ามิเตอร์เต็ม
+function umBillPts(m){
+  const c=UT.cache[UT.br];
+  if(m.type!=='elec'||!utilTrue(m.active)||!c||!c.bills.length) return [];
+  const S=utilSettings(utSet(),m.branch_code||UT.br), per={};
+  c.bills.filter(b=>b.meter_id===m.meter_id).forEach(b=>{ const u=utNum(b.units); if(u>0){ const k=utilBillUsageMonth(b.bill_month,S.billMonthOffset); per[k]=(per[k]||0)+u; } });
+  const dim=k=>{ const [y,mo]=k.split('-').map(Number); return new Date(Date.UTC(y,mo,0)).getUTCDate(); };
+  const t=new Date(), ym=t.getFullYear()*12+t.getMonth(), ix=k=>{ const [y,mo]=k.split('-').map(Number); return y*12+mo-1; };
+  const ks=Object.keys(per).sort().filter(k=>ym-ix(k)<=6).slice(-6); if(!ks.length) return [];   // บิลเก่ากว่า 6 เดือน (BN-E-TEMP ม.ค. 69) ไม่ใช่ภาพปัจจุบัน
+  const today=utilIdx(`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`);
+  const real=umPts(m), stop=real.length?real[0].idx:utilWeekIdx(today);
+  const out=[];
+  for(let w=utilWeekIdx(utilIdx(ks[0]+'-01'));w<stop;w+=7){
+    const k=utilIso(w+3).slice(0,7); if(!per[k]) continue;
+    out.push({idx:w,date:utilIso(w),end:utilIso(w+6),units:per[k]/dim(k)*7,cover:7,bill:true,billMonth:k,level:'bill',base:null});
+  }
+  return out;
+}
 const umZonePlugin={id:'umZone',beforeDatasetsDraw(ch){
   const z=ch.options.plugins.umZone; if(!z) return;
   const {ctx,chartArea:a,scales:{y}}=ch, n=z.bands.length, w=n?(a.right-a.left)/n:0;
@@ -303,19 +324,20 @@ const umZonePlugin={id:'umZone',beforeDatasetsDraw(ch){
   ctx.restore();
 }};
 function umFullCfg(m,i){
-  const pts=umPts(m), bands=pts.map(d=>umBands(m,d)), dp=m._weeks?0:1;
+  const pts=[...umBillPts(m),...umPts(m)], bands=pts.map(d=>d.bill?{base:null,yellow:null,red:null}:umBands(m,d)), dp=m._weeks?0:1;   // UTIL-29
   const o=cOpts(); o.plugins.legend={display:false}; o.plugins.umZone={bands};
   o.plugins.tooltip={callbacks:{title:it=>umWhen(m,pts[it[0].dataIndex]),
-    label:it=>{ const d=pts[it.dataIndex]; return it.datasetIndex?`ค่ากลาง ${utFmt(d.base,dp)}`:`ใช้ ${utFmt(d.units,dp)} ${utU(m)} · ${(UT_LEVEL[d.level]||UT_LEVEL.nodata).txt}${d.est?' · ไม่ได้จด (ยอดเฉลี่ย)':''}`; },
-    footer:()=>'กดเพื่อดูวิธีคิด'}};
+    label:it=>{ const d=pts[it.dataIndex]; if(d.bill) return `${utFmt(d.units,dp)} ${utU(m)} · เฉลี่ยจากบิล ${utMonthTh(d.billMonth)} (ไม่ใช่เลขจด)`; return it.datasetIndex?`ค่ากลาง ${utFmt(d.base,dp)}`:`ใช้ ${utFmt(d.units,dp)} ${utU(m)} · ${(UT_LEVEL[d.level]||UT_LEVEL.nodata).txt}${d.est?' · ไม่ได้จด (ยอดเฉลี่ย)':''}`; },
+    footer:it=>pts[it[0].dataIndex]?.bill?'':'กดเพื่อดูวิธีคิด'}};
   o.scales.y.beginAtZero=true; o.scales.x.grid={display:false};
   o.scales.y.suggestedMax=Math.max(0,...pts.map((d,k)=>Math.max(d.units*1.15,(bands[k].yellow||0)*1.1)));
   utAxis(o);
-  o.onClick=(e,els)=>{ if(els.length) umPointDetail(i,pts[els[0].index].date); };
-  o.onHover=(e,els)=>{ e.native.target.style.cursor=els.length?'pointer':''; };
+  o.onClick=(e,els)=>{ if(els.length&&!pts[els[0].index].bill) umPointDetail(i,pts[els[0].index].date); };
+  o.onHover=(e,els)=>{ e.native.target.style.cursor=els.length&&!pts[els[0].index].bill?'pointer':''; };
   return {type:'bar',plugins:[umZonePlugin],data:{labels:pts.map(d=>utDM(d.date)),datasets:[
     {type:'bar',label:'ใช้',data:pts.map(d=>+d.units.toFixed(2)),borderRadius:2,order:2,
-     backgroundColor:pts.map(d=>umHot(d.level)?`rgba(${umRgb(d.level)},.95)`:`rgba(${umRgb('nodata')},${d.est||d.level==='partial'?.35:.75})`)},
+     backgroundColor:pts.map(d=>d.bill?`rgba(${umRgb('nodata')},.18)`:umHot(d.level)?`rgba(${umRgb(d.level)},.95)`:`rgba(${umRgb('nodata')},${d.est||d.level==='partial'?.35:.75})`),
+     borderWidth:pts.map(d=>d.bill?1:0), borderColor:`rgba(${umRgb('nodata')},.85)`},   // UTIL-29 แท่งจากบิล = จาง + ขอบ
     {type:'line',label:'ค่ากลาง',data:pts.map(d=>d.base??null),borderColor:utInk().ink2,borderDash:[4,4],borderWidth:1.4,
      pointRadius:0,stepped:'middle',spanGaps:false,order:1}]},options:o};
 }
@@ -335,10 +357,12 @@ function umMeterDetail(i){
     .concat((m._anoms||[]).map(a=>'⚠️ '+utEsc(a))).filter(Boolean);
   const cnt=k=>pts.filter(x=>x.level===k).length, flags=[['leak','สงสัยรั่ว'],['red','แดง'],['yellow','เหลือง']].filter(([k])=>cnt(k))
     .map(([k,t])=>`<span class="ut-chip ${k}">${t} ${cnt(k)} ${m._weeks?'สัปดาห์':'วัน'}</span>`).join('');
-  const chart=pts.length?`<div class="um-dh">${m._weeks?'ใช้ต่อสัปดาห์':'ใช้ต่อวัน'} · ${pts.length} ${m._weeks?'สัปดาห์':'วัน'}${flags?` · ${flags}`:''}</div>
+  const bp=umBillPts(m);   // UTIL-29
+  const chart=pts.length||bp.length?`<div class="um-dh">${m._weeks||bp.length?'ใช้ต่อสัปดาห์':'ใช้ต่อวัน'} · ${pts.length?`${pts.length} ${m._weeks||bp.length?'สัปดาห์':'วัน'}`:'ยังไม่เริ่มจด'}${bp.length?` · ก่อนหน้า ${bp.length} สัปดาห์เฉลี่ยจากบิล`:''}${flags?` · ${flags}`:''}</div>
     <div class="um-fchart"><canvas id="cUmFull"></canvas></div>
     <div class="um-key"><span><i style="background:rgba(${umRgb('yellow')},.35)"></i>โซนเหลือง</span><span><i style="background:rgba(${umRgb('red')},.3)"></i>โซนแดง</span>
       <span><i style="background:rgba(${umRgb('nodata')},.75)"></i>ใช้</span><span><i style="background:rgba(${umRgb('nodata')},.35)"></i>ไม่ได้จด (เฉลี่ย)</span>
+      ${bp.length?`<span><i style="background:rgba(${umRgb('nodata')},.18);outline:1px solid rgba(${umRgb('nodata')},.85);outline-offset:-1px"></i>เฉลี่ยจากบิล (ไม่ใช่เลขจด)</span>`:''}
       <span>เส้นประ = ค่ากลาง</span><span>แท่งสี = เกินเส้น · กดแท่งดูวิธีคิด</span></div>`
     :r.last?`<p class="um-sub2">ไม่มีการจดในช่วงเวลาที่เลือก <button class="mc-pill" onclick="utClose();setPeriod(0,document.getElementById('p0'))">ดูทั้งหมด</button></p>`:'';
   let bills='';
@@ -364,7 +388,7 @@ function umMeterDetail(i){
     `${L.icon} ${L.txt}${r.last?` · จดล่าสุด ${utWhen(r.last)} (${utAgo(r.last)})`:''}${utilTrue(m.active)?'':' · ปิดใช้แล้ว'}`,
     sum+(info.length?`<div class="um-warn">${info.join('<br>')}</div>`:'')+chart+bills, 'um-full');
   document.querySelectorAll('#utModal .um-hscroll').forEach(e=>{ e.scrollLeft=e.scrollWidth; });   // MOB-02: เดือนล่าสุดอยู่ขวาสุด
-  if(pts.length) makeChart('cUmFull',umFullCfg(m,i));   // ไม่เข้า UT.chartIds — แท็บวาดใหม่ (รีเฟรช 5 นาที) ต้องไม่ลบกราฟในกล่อง
+  if(pts.length||bp.length) makeChart('cUmFull',umFullCfg(m,i));   // ไม่เข้า UT.chartIds — แท็บวาดใหม่ (รีเฟรช 5 นาที) ต้องไม่ลบกราฟในกล่อง
 }
 
 // ── จุดเชื่อมกับ utDraw(): การ์ด (บน) + ตารางความร้อน (ล่าง) ──
