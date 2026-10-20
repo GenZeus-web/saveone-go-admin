@@ -294,17 +294,34 @@ function umPointDetail(i,iso){
 //   ไฟเท่านั้น (รายสัปดาห์) · เดือนของสัปดาห์ = เดือนของวันพฤหัส (เหมือน utilWeekly) · บิลแปลงเป็นเดือนที่ใช้จริงด้วย billMonthOffset
 //   ย้อนไม่เกิน 6 เดือนที่ใช้จริง · หยุดก่อนสัปดาห์แรกที่มีเลขจด (ยังไม่จด = ถึงสัปดาห์ที่แล้ว)
 //   ไม่ใช่เลขจด → ไม่ระบายสีเตือน ไม่มีเส้นเกณฑ์ ไม่เข้าการ์ด/ตารางความร้อน ไม่มีกล่องวิธีคิด · มีแค่ในกราฟหน้ามิเตอร์เต็ม
+// UTIL-34: น้ำด้วย (รายวัน · วันละแท่ง = หน่วยบิลเดือนที่ใช้จริง ÷ วันในเดือนนั้น) · ย้อนไม่เกิน UM_BILL_DAYS วันก่อนวันแรกที่มีเลขจด
+//   (ยังไม่จด = ถึงเมื่อวาน) · วันแรก = m._res.days[0] (ทั้งหมด ไม่ใช่ m._days ที่ตัดตามช่วงเวลา) · ช่วงเวลาตัดวันแรกทิ้ง = ไม่มีแท่งบิล
+//   (ไม่งั้นแท่งบิลไปต่อกับแท่งจริงที่ห่างกันหลายวัน)
+const UM_BILL_DAYS=28;
 function umBillPts(m){
   const c=UT.cache[UT.br];
-  if(m.type!=='elec'||!utilTrue(m.active)||!c||!c.bills.length) return [];
+  if(!['elec','water'].includes(m.type)||!utilTrue(m.active)||!c||!c.bills.length) return [];
   const S=utilSettings(utSet(),m.branch_code||UT.br), per={};
   c.bills.filter(b=>b.meter_id===m.meter_id).forEach(b=>{ const u=utNum(b.units); if(u>0){ const k=utilBillUsageMonth(b.bill_month,S.billMonthOffset); per[k]=(per[k]||0)+u; } });
   const dim=k=>{ const [y,mo]=k.split('-').map(Number); return new Date(Date.UTC(y,mo,0)).getUTCDate(); };
   const t=new Date(), ym=t.getFullYear()*12+t.getMonth(), ix=k=>{ const [y,mo]=k.split('-').map(Number); return y*12+mo-1; };
   const ks=Object.keys(per).sort().filter(k=>ym-ix(k)<=6).slice(-6); if(!ks.length) return [];   // บิลเก่ากว่า 6 เดือน (BN-E-TEMP ม.ค. 69) ไม่ใช่ภาพปัจจุบัน
   const today=utilIdx(`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`);
-  const real=umPts(m), stop=real.length?real[0].idx:utilWeekIdx(today);
-  const out=[];
+  const real=umPts(m), out=[];
+  if(m.type==='water'){
+    const first=m._res&&m._res.days.length?m._res.days[0].idx:null;
+    if(first!=null&&real.length&&real[0].idx>first) return [];
+    // บิลน้ำออกช้า ~2 เดือน → เดือนที่ยังไม่มีบิล ใช้บิลล่าสุดก่อนหน้า ไม่เก่าเกิน billBase.maxAge (เหมือนค่าปกติบนการ์ด UTIL-21)
+    //   เจ้าของ 20 ต.ค.: BG-W-MAIN เดิมได้ 0 แท่ง (บิลล่าสุด = ใช้ ส.ค. แต่ 28 วันคือ ก.ย.–ต.ค.) · หาร = วันของเดือนบิลนั้น
+    const stop=first??today, B=S.billBase||UTIL_DEFAULTS.billBase;
+    for(let d=stop-UM_BILL_DAYS;d<stop;d++){
+      const mo=utilIso(d).slice(0,7);
+      const k=per[mo]?mo:Object.keys(per).sort().filter(x=>x<mo&&ix(mo)-ix(x)<=B.maxAge).pop(); if(!k) continue;
+      out.push({idx:d,date:utilIso(d),units:per[k]/dim(k),cover:1,bill:true,billMonth:k,level:'bill',base:null});
+    }
+    return out;
+  }
+  const stop=real.length?real[0].idx:utilWeekIdx(today);
   for(let w=utilWeekIdx(utilIdx(ks[0]+'-01'));w<stop;w+=7){
     const k=utilIso(w+3).slice(0,7); if(!per[k]) continue;
     out.push({idx:w,date:utilIso(w),end:utilIso(w+6),units:per[k]/dim(k)*7,cover:7,bill:true,billMonth:k,level:'bill',base:null});
@@ -357,8 +374,8 @@ function umMeterDetail(i){
     .concat((m._anoms||[]).map(a=>'⚠️ '+utEsc(a))).filter(Boolean);
   const cnt=k=>pts.filter(x=>x.level===k).length, flags=[['leak','สงสัยรั่ว'],['red','แดง'],['yellow','เหลือง']].filter(([k])=>cnt(k))
     .map(([k,t])=>`<span class="ut-chip ${k}">${t} ${cnt(k)} ${m._weeks?'สัปดาห์':'วัน'}</span>`).join('');
-  const bp=umBillPts(m);   // UTIL-29
-  const chart=pts.length||bp.length?`<div class="um-dh">${m._weeks||bp.length?'ใช้ต่อสัปดาห์':'ใช้ต่อวัน'} · ${pts.length?`${pts.length} ${m._weeks||bp.length?'สัปดาห์':'วัน'}`:'ยังไม่เริ่มจด'}${bp.length?` · ก่อนหน้า ${bp.length} สัปดาห์เฉลี่ยจากบิล`:''}${flags?` · ${flags}`:''}</div>
+  const bp=umBillPts(m), per=m._weeks?'สัปดาห์':'วัน';   // UTIL-29 ไฟรายสัปดาห์ · UTIL-34 น้ำรายวัน
+  const chart=pts.length||bp.length?`<div class="um-dh">ใช้ต่อ${per} · ${pts.length?`${pts.length} ${per}`:'ยังไม่เริ่มจด'}${bp.length?` · ก่อนหน้า ${bp.length} ${per}เฉลี่ยจากบิล`:''}${flags?` · ${flags}`:''}</div>
     <div class="um-fchart"><canvas id="cUmFull"></canvas></div>
     <div class="um-key"><span><i style="background:rgba(${umRgb('yellow')},.35)"></i>โซนเหลือง</span><span><i style="background:rgba(${umRgb('red')},.3)"></i>โซนแดง</span>
       <span><i style="background:rgba(${umRgb('nodata')},.75)"></i>ใช้</span><span><i style="background:rgba(${umRgb('nodata')},.35)"></i>ไม่ได้จด (เฉลี่ย)</span>
