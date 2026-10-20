@@ -273,20 +273,33 @@ function utFlagText(b,x){
   return out;
 }
 // ธงสูงผิดปกติใน n บิลล่าสุดของแต่ละมิเตอร์ (ของที่เพิ่งเกิด = ต้องดูตอนนี้)
-function utRecentHigh(b){
+function utRecent(b){   // n บิลล่าสุดของแต่ละมิเตอร์ (ทุกใบที่ตรวจ ไม่ใช่แค่ที่สูง)
   const c=UT.cache[b]; if(!c||!c.check) return [];
   const n=utilBillCfg(utSet()).recent, by={};
   c.check.forEach(x=>{ (by[x.meter_id]=by[x.meter_id]||[]).push(x); });
-  return Object.values(by).flatMap(rs=>rs.sort((a,z)=>a.bill_month<z.bill_month?-1:1).slice(-n).filter(x=>x.high));
+  return Object.values(by).flatMap(rs=>rs.sort((a,z)=>a.bill_month<z.bill_month?-1:1).slice(-n));
 }
+function utRecentHigh(b){ return utRecent(b).filter(x=>x.high); }
 function utCheckBox(){
   const brs=utCmpBranches().filter(b=>UT.cache[b]&&UT.cache[b].check);
   const hi=brs.flatMap(b=>utRecentHigh(b).map(x=>({b,x}))).sort((a,z)=>a.x.bill_month<z.x.bill_month?1:-1);
-  const B=utilBillCfg(utSet()), n=B.recent;
-  if(!hi.length) return `<div class="ut-check ok">✅ ตรวจบิล ${n} เดือนล่าสุดของทุกมิเตอร์ (${brs.map(b=>BM_NAMES[b]||b).join(' · ')}) — ไม่พบหน่วยสูงผิดปกติ</div>`;
-  // UTIL-35: เดิม "บิล 3 ใบล่าสุดสูงผิดปกติ 2 มิเตอร์" แต่ลิสต์ 4 รายการ — เจ้าของงง (3 = ย้อนดูกี่เดือนต่อมิเตอร์ ไม่ใช่จำนวนที่เจอ)
-  //   → พูดเป็น "เดือน" + นับบิลให้ตรงกับรายการ (BN: 2 มิเตอร์ × ส.ค./ก.ย. = 4 ใบ · ต.ค. ปกติ)
-  return `<div class="ut-check bad"><b>⚠️ ต้องดู: ${n} เดือนล่าสุด มีบิลสูงผิดปกติ ${hi.length} ใบ (${new Set(hi.map(h=>h.x.meter_id)).size} มิเตอร์)</b>
+  const B=utilBillCfg(utSet());
+  // UTIL-35: เดิม "บิล 3 ใบล่าสุดสูงผิดปกติ 2 มิเตอร์" แต่ลิสต์ 4 รายการ — เจ้าของงง · ลอง "3 เดือนล่าสุด" ก็ยังงง (ลิสต์มีแค่ ส.ค./ก.ย.)
+  //   → หัวนับบิลให้ตรงกับรายการ · บรรทัดใต้หัวบอกช่วงเดือนที่ตรวจจริง แยกน้ำ/ไฟ (ต.ค. ตรวจแล้วปกติ จึงไม่อยู่ในลิสต์)
+  //   ช่วงเดียวรวมทุกมิเตอร์ใช้ไม่ได้: บิลไฟ/น้ำออกไม่พร้อมกัน · BN-E-TEMP บิลล่าสุด ก.พ. 69 ลากเป็น "ม.ค.–ต.ค." → ไม่นับมิเตอร์ที่บิลหยุดเกิน billBase.maxAge
+  const rec=brs.flatMap(b=>utRecent(b)), ix=k=>{ const [y,m]=k.split('-').map(Number); return y*12+m; };
+  const MA=utilSettings(utSet(),activeBranch).billBase.maxAge;
+  const span=['water','elec'].map(t=>{
+    const rs=rec.filter(x=>x.type===t); if(!rs.length) return '';
+    const L=rs.reduce((a,x)=>x.bill_month>a?x.bill_month:a,''), by={};
+    rs.forEach(x=>{ (by[x.meter_id]=by[x.meter_id]||[]).push(x.bill_month); });
+    const st=Object.values(by).map(ms=>ms.sort()).filter(ms=>ix(L)-ix(ms[ms.length-1])<=MA).map(ms=>ms[0]).sort()[0]||L;
+    return `${t==='water'?'💧 น้ำ':'⚡ ไฟ'} ${st===L?utMonthTh(L):`${utMonthTh(st)} – ${utMonthTh(L)}`}`;
+  }).filter(Boolean).join(' · ');
+  const scope=`ตรวจ ${B.recent} บิลล่าสุดของแต่ละมิเตอร์: ${span}`;
+  if(!hi.length) return `<div class="ut-check ok">✅ ไม่พบหน่วยสูงผิดปกติ (${brs.map(b=>BM_NAMES[b]||b).join(' · ')}) · ${scope}</div>`;
+  return `<div class="ut-check bad"><b>⚠️ ต้องดู: บิลสูงผิดปกติ ${hi.length} ใบ (${new Set(hi.map(h=>h.x.meter_id)).size} มิเตอร์)</b>
+    <div class="ut-sub">${scope}</div>
     <ul>${hi.map(({b,x})=>`<li>${utFlagText(b,x).filter(f=>f.k==='high').map(f=>f.t).join('')}</li>`).join('')}</ul>
     <div class="ut-sub">เกณฑ์: ค่ากลาง ${B.lookback} บิลก่อน × ${B.ratio} &lt; บิลนี้ และ ค่ากลาง + ${B.minDiff.water} (ไฟ ${utFmt(B.minDiff.elec)}) ≤ บิลนี้</div></div>`;
 }
