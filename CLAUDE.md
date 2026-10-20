@@ -148,7 +148,15 @@ CSS: `night.css` ต้องหลัง `screens.css` · `responsive.css` ต�
 <!-- ส่วนที่เหลือปล่อยให้ git log เล่าเอง -->
 
 - **เว็บจริง:** https://genzeus-web.github.io/saveone-go-admin/
-- **เวอร์ชันบนเว็บจริง = ในโค้ด:** v3.3.3 (push 15 ต.ค. 2569 13:03 · `ea8b629` · ป้ายขึ้น 13:04 · ไม่มี console error)
+- **เวอร์ชันบนเว็บจริง = ในโค้ด:** v3.3.4 (?v=3.3.4.3 · 20 ต.ค. 2569 · ก่อนพรีเซนต์ ผจก. ทุกสาขา 21 ต.ค.)
+  v3.3.4 (merge branch util-v3.3.4 จาก cloud · push 18:43 · `71cf779` · ขึ้น 18:44) = UTIL-23–29 ผจก. เห็นบิลเป็นหน่วย · การ์ดรอเริ่มจด · กราฟไฟจากบิล
+    Apps Script แอปกรอก clasp push 18:34 (billUnitsCsv) · ⚠️ clasp ในเครื่องนี้ใช้ผ่าน npx · Script ID อยู่ในหน้า Apps Script → ⚙️ (สคริปต์ผูกชีต `clasp list` หาไม่เจอ)
+  ?v=3.3.4.2 (push 18:58 · `e33b2bc`) = UTIL-30 แท็บเทียบสาขาเปิดให้ทุกคนที่มี showUtil (ไม่มี showUtilMoney = หน่วยอย่างเดียว)
+    · UTIL-32 พื้นเหลือง/ฟ้าของ UTIL-28 ไม่เคยขึ้น (night.css ทับ .sc) · UTIL-33 กฎ _UTIL · เจ้าของลองแล้ว: ซ่อนเงินใช้ได้
+  ?v=3.3.4.3 (push 19:17 · `2f31bf9`) = ENH-06 คนที่ไม่ใช่ admin ลองเป้าล็อก/วันเองได้ (หน่วยความจำ · ล็อกอินใหม่/F5 = กลับเป้ากลาง)
+  เจ้าของลองบนเว็บจริงแล้วผ่าน (20 ต.ค. ~19:25 · บัญชี ผจก. · ลองเป้าเอง + console)
+  ไฟจดวันจันทร์: ครบ 3 จันทร์ (14 วัน) การ์ดถึงขึ้นตัวเลขแรก — สัปดาห์ปฏิทินต้องครบ 7 วัน (util-calc.js utilWeekly)
+- v3.3.3 (push 15 ต.ค. 2569 13:03 · `ea8b629` · ป้ายขึ้น 13:04 · ไม่มี console error)
   v3.3.3 = UTIL-21 ช่วงแรกที่ค่ากลางยังไม่พอ ใช้ค่าเฉลี่ยต่อวันจาก 3 บิลล่าสุด (ค่ากลางยังเป็นหลัก)
   ?v=3.3.3.3 (push 14:14 · `af66cc3` · ขึ้น 14:15 · ไม่มี console error) = CLEAN-02 ลบ CSS ไม่ใช้ 38 selector · โลโก้ที่ไม่ใช้ · docs 2/3/6 → archive
   ?v=3.3.3.2 (push 13:55 · `f6aee04` · ขึ้น 13:56 · ไม่มี console error · ป้ายคง v3.3.3) = CLEAN-01 ลบโค้ดไม่ใช้ + js/data-fetch.js
@@ -185,8 +193,8 @@ CSS: `night.css` ต้องหลัง `screens.css` · `responsive.css` ต�
   เปิดเว็บจากที่อยู่อื่น (Live Server `127.0.0.1:5500` · โดเมนใหม่) = ล็อกอินไม่ได้ จนกว่าจะเพิ่มในรายการ
   GitGuardian เตือน key นี้ = false positive · เจ้าของยังต้องกด mark ใน GitGuardian
 - **ผัง 3D:** v0.14.0 (20 ส.ค. 2569)
-- **Firestore Rules:** Publish 14 ต.ค. 2569 17:07 (เพิ่มบล็อก `settings/utility` ของ v3.3.0 · Claude วางผ่าน Console ตามที่เจ้าของสั่ง · เทียบก่อนวาง: Console = repo ทุกตัวอักษร) — **ฉบับเต็มอยู่ที่ `docs/firestore-rules/v3.3.4-current.txt`**
-  ⚠️ v3.3.4 (20 ต.ค.) แก้บล็อก data/ (UTIL-33 · _UTIL ต้อง showUtil · ไม่ผ่าน bmBranches) **ยังไม่ได้วางใน Console** — ฉบับที่ Console = commit ก่อนหน้า (v3.3.0-current)
+- **Firestore Rules:** Publish 20 ต.ค. 2569 ~19:19 (UTIL-33 · บล็อก data/ แยก `_UTIL` = admin หรือสาขาที่ดูแล + showUtil · ไม่ผ่าน bmBranches · เจ้าของวางเองทั้งไฟล์) — **ฉบับเต็มอยู่ที่ `docs/firestore-rules/v3.3.4-current.txt`** (ตรงกับ Console)
+  ครั้งก่อน: 14 ต.ค. 17:07 (settings/utility ของ v3.3.0 · Claude วางผ่าน Console)
   ทดสอบหลังวาง (admin · localhost · รอกฎกระจาย ~1 นาที): บันทึกเกณฑ์ได้ · ตั้งจดขาด 3 วัน → เตือนน้ำ BN หาย → ตั้งกลับ 2
   ทดสอบหลังวาง (admin · localhost): อ่านบิลได้ BN 27 · BG 79 · SS 48 แถว
   ราคา `settings/pricing` อ่านได้เฉพาะ `canSeeRevenue()` · `settingsLog` ต้อง `hasProfile()` · รายละเอียด `docs/firestore-rules-settings.md`
