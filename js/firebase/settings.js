@@ -140,15 +140,17 @@ function rerender(){
   }catch(e){ console.warn('settings: วาดใหม่ไม่สำเร็จ', e); }
 }
 
-// ช่องเป้าในไซด์บาร์: admin แก้ได้ · คนอื่นดูอย่างเดียว
+// ช่องเป้าในไซด์บาร์: admin แก้ = เป้ากลาง · คนอื่น (ENH-06) ลองใส่เองได้ ไม่บันทึก (config.js TGT_TRIAL)
+//   เรียกทุกครั้งที่ล็อกอิน (loadSettings) → ล้างเป้าที่ลองไว้ของบัญชีก่อน (logout ไม่รีโหลดหน้า)
 function lockTargetInputs(){
   const admin = isAdmin();
+  if(typeof resetTargetTrial === 'function') resetTargetTrial(true);
   ['targetInputST','targetInputNon'].forEach(id => {
     const el = document.getElementById(id);
-    if(el){ el.disabled = !admin; el.style.opacity = admin ? '' : '.6'; }
+    if(el){ el.disabled = false; el.style.opacity = ''; }
   });
   const n = document.getElementById('tgtShareNote');
-  if(n) n.textContent = admin ? 'เป้าใช้ร่วมกันทุกคน · แก้แล้วมีผลทันที' : 'เป้าใช้ร่วมกันทุกคน · แก้ได้เฉพาะ admin';
+  if(n) n.textContent = admin ? 'เป้าใช้ร่วมกันทุกคน · แก้แล้วมีผลทันที' : 'เป้ากลางตั้งโดย admin · ลองใส่เองได้ (ไม่บันทึก)';
 }
 
 // ═══════════════════════════════════════════════════════════════

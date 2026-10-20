@@ -22,6 +22,14 @@ const TGT_KEY='saveone_targets_v1';
 const TGT_DEF={SS:{st:400,non:0},BG:{st:350,non:120},BN:{st:300,non:90}};
 const TGT_MISS_STREAK=3; // หลุดเป้ากี่วันติดถึงเตือน
 let TARGETS=loadTargets();
+// ENH-06: คนที่ไม่ใช่ admin ลองใส่เป้าเองได้ — เก็บในหน่วยความจำอย่างเดียว ไม่ลง localStorage/Firestore
+//   ล้างทุกครั้งที่ล็อกอิน (settings.js loadSettings) · รีเฟรชหน้า = หายเอง · TARGETS (เป้ากลาง) ไม่ถูกแตะ
+let TGT_TRIAL={};
+function tgtNow(){ const s=TARGETS[activeBranch]||{st:0,non:0}, t=TGT_TRIAL[activeBranch]; return t?{...s,...t}:s; }
+function resetTargetTrial(quiet){
+  TGT_TRIAL={}; syncTargetUI();
+  if(!quiet&&typeof applyAll==='function') applyAll();
+}
 function loadTargets(){
   const def=JSON.parse(JSON.stringify(TGT_DEF));
   try{
@@ -43,7 +51,7 @@ function saveTargets(){
 }
 // เป้าของสาขา+โซนที่เลือกอยู่ (all = ST + Car/Non)
 function currentTarget(){
-  const t=TARGETS[activeBranch]||{st:0,non:0};
+  const t=tgtNow();
   if(zone==='st') return t.st||0;
   if(zone==='non') return t.non||0;
   return (t.st||0)+(t.non||0);
@@ -51,7 +59,7 @@ function currentTarget(){
 // อัปเดตช่อง input + ป้ายในไซด์บาร์ให้ตรงสาขา/โซนปัจจุบัน
 function syncTargetUI(){
   targetLock=Math.max(1,currentTarget()||1);
-  const t=TARGETS[activeBranch]||{st:0,non:0};
+  const t=tgtNow();
   const iSt=document.getElementById('targetInputST'); if(iSt) iSt.value=t.st||0;
   const iNon=document.getElementById('targetInputNon'); if(iNon) iNon.value=t.non||0;
   const names={SS:'ศรีสมาน',BG:'ประตูกรุงเทพ',BN:'บางนา'};
@@ -62,11 +70,22 @@ function syncTargetUI(){
     zl.textContent=`โซนที่ดูอยู่: ${zn} → ใช้เป้า ${fmtN(currentTarget())} ล็อก/วัน`;
   }
   const nl=document.getElementById('tgtNonLbl'); if(nl) nl.textContent=activeBranch==='SS'?'Non':'Car';
+  // ENH-06: กำลังลองเป้าเองในสาขานี้ → บอกเป้ากลาง + ปุ่มกลับ
+  const tn=document.getElementById('tgtTrialNote');
+  if(tn){
+    const s=TARGETS[activeBranch]||{st:0,non:0};
+    tn.style.display=TGT_TRIAL[activeBranch]?'':'none';
+    if(TGT_TRIAL[activeBranch]) tn.innerHTML=`🧪 ลองเป้าเอง ไม่บันทึก · ออก/เข้าใหม่ = กลับเป้ากลาง (ST ${fmtN(s.st||0)} · ${activeBranch==='SS'?'Non':'Car'} ${fmtN(s.non||0)})
+      <a href="#" onclick="resetTargetTrial();return false" style="color:var(--blue)">กลับเป้ากลาง</a>`;
+  }
 }
 function setTargetZone(z,v){
   const t=TARGETS[activeBranch]; if(!t) return;
-  if(window.userRole!=='admin'){ syncTargetUI(); return; } // ช่องถูก disabled อยู่แล้ว กันไว้อีกชั้น
   const val=Math.max(0,Math.min(99999,parseInt(v)||0));
+  if(window.userRole!=='admin'){   // ENH-06: ลองเองในหน่วยความจำ · ไม่บันทึก
+    TGT_TRIAL[activeBranch]={...(TGT_TRIAL[activeBranch]||{}),[z==='non'?'non':'st']:val};
+    syncTargetUI(); applyAll(); return;
+  }
   const before=JSON.parse(JSON.stringify(TARGETS));
   if(z==='non') t.non=val; else t.st=val;
   saveTargets();
