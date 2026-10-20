@@ -15,9 +15,20 @@ const umHot=lv=>['yellow','red','leak'].includes(lv);
 function umPts(m){ return m._weeks||m._days||[]; }
 function umBands(m,p){ return m._weeks?utilWeekBands(p,m._th):utilBands(p,m._th); }
 function umWhen(m,p){ return m._weeks?`สัปดาห์ ${utDM(p.date)}–${utDM(p.end)}`:`วันที่ ${utDM(p.date)}`; }
+// UTIL-26: หัวการ์ดเขียนช่วงเป็นวันที่เต็ม (เจ้าของ 20 ต.ค.: "วันที่ 16/10" งง ว่าทำไมไม่ใช่วันจดล่าสุด)
+//   รายวัน = 14:00 วันนั้น → 14:00 วันถัดไป · รายสัปดาห์ = p.date–p.end · เดือนเดียวกันเขียนเดือนครั้งเดียว
+function umThD(iso){ const [,m,d]=iso.split('-').map(Number); return [d,UT_TH_MON[m-1]]; }
+function umRange(m,p){
+  let e=p.end;
+  if(!m._weeks){ const t=new Date(p.date+'T00:00:00Z'); t.setUTCDate(t.getUTCDate()+1); e=t.toISOString().slice(0,10); }
+  const [d1,m1]=umThD(p.date), [d2,m2]=umThD(e);
+  return m1===m2?`${d1}–${d2} ${m2}`:`${d1} ${m1} – ${d2} ${m2}`;
+}
 function umName(m){ return `${(UT_TYPE[m.type]||'').split(' ')[0]} ${utEsc(m.location||m.meter_id)}`; }
-function umBillHi(){ return new Set(canSeeUtilMoney()?utRecentHigh(UT.br||activeBranch).map(x=>x.meter_id):[]); }
-const UM_HI_TAG='<span class="um-tag">⚠ บิลสูง</span>';
+// UTIL-23: ธงบิลสูงดูจากหน่วย ไม่ต้องมีสิทธิ์เงิน (บิลหน่วยมาจาก data/ แล้ว)
+function umBillHi(){ const h=new Map(); utRecentHigh(UT.br||activeBranch).forEach(x=>h.set(x.meter_id,[...(h.get(x.meter_id)||[]),x.bill_month])); return h; }
+// ป้ายบอกเดือนด้วย (เจ้าของ 20 ต.ค.: การ์ดขึ้น "บิลสูง" แต่บรรทัดบิลล่าสุด +0% ชวนงง — ธงมาจากบิลเดือนก่อน)
+const umHiTag=(hi,id)=>hi.has(id)?`<span class="um-tag">⚠ บิลสูง ${hi.get(id).sort().map(utMonthTh).join(', ')}</span>`:'';
 // ทุกมิเตอร์ที่ utLoad ส่งมา (เปิดอยู่ หรือปิดแล้วแต่มีข้อมูล/บิล — SS ปิดสาขาต้องดูย้อนหลังได้) · ตัวที่ต้องดูขึ้นก่อน
 function umOrder(c){
   return c.meters.map((m,i)=>({m,i})).sort((a,b)=>(UM_RANK[a.m._full?.level]??4)-(UM_RANK[b.m._full?.level]??4));
@@ -100,15 +111,27 @@ function umWarns(m){
 }
 
 // ── การ์ด (บน) ──
+// UTIL-24: ค่าปกติจากค่าเฉลี่ยบิล ณ วันนี้ (ตัวเดียวกับ utilPickBase ช่วงแรก) · รายสัปดาห์ × 7 · ไม่มีบิลใน maxAge เดือน = null
+function umBillRef(c,m){
+  if(!c.bills.length) return null;
+  const S=utilSettings(utSet(),m.branch_code||UT.br), d=new Date(), iso=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const fb=utilBillDaily(c.bills,m.meter_id,iso,S);
+  return fb?{v:fb.perDay*(m.type==='elec'?7:1),months:fb.months}:null;
+}
 function umTilesHtml(c){
-  const money=canSeeUtilMoney()&&!c.billsErr, hi=umBillHi();
+  const money=c.bills.length>0, hi=umBillHi();   // UTIL-23: money = มีบิล (หน่วย) ให้โชว์ · ยอดเงินคุมที่ amount_incl_vat
   return `<div class="um-tiles">${umOrder(c).map(({m,i})=>{
     const p=m._full, lv=p?.level||'nodata', L=UT_LEVEL[lv]||UT_LEVEL.nodata, dp=m._weeks?0:1;
-    let head, big='';
-    if(!m._res.last) head=utilTrue(m.active)?'ยังไม่มีการจด':'ปิดใช้แล้ว';
+    let head, big='', tag=`${L.icon} ${L.txt}`, ref;
+    if(!m._res.last&&utilTrue(m.active)&&(ref=umBillRef(c,m))){
+      // UTIL-24: ยังไม่เคยจด แต่มีบิล → โชว์ค่าปกติจากค่าเฉลี่ยบิล (ตัวที่จะใช้เทียบเมื่อเริ่มจด) แทนการ์ดว่าง · ไม่ระบายสี (ยังไม่มียอดใช้)
+      head=`ค่าปกติ (ค่าเฉลี่ยบิล ${ref.months.length} เดือน) · ยังไม่เริ่มจด`; tag='⏳ รอเริ่มจด';
+      big=`<div class="um-big">${utFmt(ref.v,dp)}<small>${utU(m)}/${m.type==='elec'?'สัปดาห์':'วัน'}</small><span class="um-delta" style="color:var(--ink2)">เริ่มจดแล้วจะเทียบกับเลขนี้</span></div>`;
+    }
+    else if(!m._res.last) head=utilTrue(m.active)?'ยังไม่มีการจด':'ปิดใช้แล้ว';
     else if(!p) head='จดยังไม่ครบ';
     else{
-      head=umWhen(m,p);
+      head=`ใช้ ${umRange(m,p)} · จดล่าสุด ${utWhen(m._res.last)}`;   // UTIL-26
       const d=p.base?Math.round((p.units/p.base-1)*100):null;
       big=`<div class="um-big um-link" onclick="event.stopPropagation();umPointDetail(${i},'${p.date}')" title="ดูวิธีคิด">${utFmt(p.units,dp)}<small>${utU(m)}</small>${d==null?'':`<span class="um-delta" style="color:${umHot(lv)?`rgb(${umRgb(lv)})`:'var(--ink2)'}">${d>0?'+':''}${d}% จากค่ากลาง ${utFmt(p.base,dp)}</span>`}</div>`;
     }
@@ -120,7 +143,7 @@ function umTilesHtml(c){
     }
     const w=umWarns(m);
     return `<div class="um-tile lv-${lv}" onclick="umMeterDetail(${i})" role="button" tabindex="0" onkeydown="if(event.key==='Enter')umMeterDetail(${i})">
-      <div class="um-tile-h"><span>${umName(m)}${hi.has(m.meter_id)?UM_HI_TAG:''}</span><span>${L.icon} ${L.txt}</span></div>
+      <div class="um-tile-h"><span>${umName(m)}${umHiTag(hi,m.meter_id)}</span><span>${tag}</span></div>
       <div class="um-head">${head}${m._weeks&&utilTrue(m.active)?' · จดทุกวันจันทร์':''}</div>${big}
       ${p&&p.base!=null?`<div class="um-tbul">${umBullet(m,p)}</div>`:''}
       ${w.length?`<div class="um-warn">${w.join('<br>')}</div>`:''}${bill}</div>`;
@@ -130,7 +153,7 @@ function umTilesHtml(c){
 
 // ── ตารางความร้อน (ล่าง) ──
 function umHeatHtml(c){
-  const ord=umOrder(c), money=canSeeUtilMoney()&&!c.billsErr;
+  const ord=umOrder(c), money=c.bills.length>0;   // UTIL-23
   let h='';
   if(money){
     const withB=ord.filter(({m})=>c.bills.some(b=>b.meter_id===m.meter_id));
@@ -300,7 +323,7 @@ function umMeterDetail(i){
   const c=UT.cache[UT.br], m=c&&c.meters[i]; if(!m||!m._res) return;
   dChart('cUmFull');
   const r=m._res, p=m._full, lv=p?.level||'nodata', L=UT_LEVEL[lv]||UT_LEVEL.nodata, dp=m._weeks?0:1, unit=utU(m);
-  const hi=umBillHi(), money=canSeeUtilMoney()&&!c.billsErr, pts=umPts(m);
+  const hi=umBillHi(), money=c.bills.length>0, cash=canSeeUtilMoney()&&!c.billsErr, pts=umPts(m);   // UTIL-23: cash = คอลัมน์เงิน
   const d=p?.base?Math.round((p.units/p.base-1)*100):null;
   const sum=p&&p.base!=null?`<div class="um-fsum"><div class="um-big um-link" onclick="umPointDetail(${i},'${p.date}')"><small>${umWhen(m,p)}</small><br>${utFmt(p.units,dp)}<small>${unit}</small>
       <span class="um-delta" style="color:${umHot(lv)?`rgb(${umRgb(lv)})`:'var(--ink2)'}">${d>0?'+':''}${d}% จากค่ากลาง ${utFmt(p.base,dp)}</span></div>
@@ -331,13 +354,13 @@ function umMeterDetail(i){
         const md=r.days.filter(d=>d.date.startsWith(use)), got=md.reduce((s,d)=>s+d.units,0);
         const mk=!f?'':f.high?' <span class="ut-mk hi">⚠</span>':' <span class="ut-mk q">?</span>';
         return `<tr class="um-link" onclick="umBillDetail(${i},'${k}')"><td>${utMonthTh(k)}${mk}</td><td class="n">${utFmt(x.units)}</td><td class="n">${x.med?umFb(x.med,0):'—'}</td>
-          <td class="n">${umPct(x)||'—'}</td><td class="n">${amt[k]?utFmt(amt[k],2):'—'}</td><td class="n">${amt[k]?utFmt(amt[k]/x.units,2):'—'}</td><td class="n">${md.length?utFmt(got):'—'}</td></tr>`; }).join('');
+          <td class="n">${umPct(x)||'—'}</td>${cash?`<td class="n">${amt[k]?utFmt(amt[k],2):'—'}</td><td class="n">${amt[k]?utFmt(amt[k]/x.units,2):'—'}</td>`:''}<td class="n">${md.length?utFmt(got):'—'}</td></tr>`; }).join('');
       bills=`<div class="um-dh">บิลรายเดือน · % จากค่ากลาง ${utilBillCfg(utSet()).lookback} บิลก่อน</div>${row}
         <div class="um-key"><span>เลขบน = % จากค่ากลาง · เลขล่าง = ค่ากลาง · กรอบแดง = ⚠ บิลสูงผิดปกติ · กดช่องหรือแถวดูวิธีคิด</span></div>
-        <div class="ut-bills ut-bills-all"><table><thead><tr><th>เดือนในบิล</th><th class="n">${unit} ตามบิล</th><th class="n">ค่ากลาง</th><th class="n">%</th><th class="n">ยอดเงิน (รวม VAT)</th><th class="n">บาท/${unit}</th><th class="n">จากเลขที่จด</th></tr></thead><tbody>${tr}</tbody></table></div>`;
+        <div class="ut-bills ut-bills-all"><table><thead><tr><th>เดือนในบิล</th><th class="n">${unit} ตามบิล</th><th class="n">ค่ากลาง</th><th class="n">%</th>${cash?`<th class="n">ยอดเงิน (รวม VAT)</th><th class="n">บาท/${unit}</th>`:''}<th class="n">จากเลขที่จด</th></tr></thead><tbody>${tr}</tbody></table></div>`;
     }
   }
-  umModal(`${umName(m)}${hi.has(m.meter_id)?UM_HI_TAG:''}${m.location?` <span class="ut-sub">${utEsc(m.meter_id)}</span>`:''}`,
+  umModal(`${umName(m)}${umHiTag(hi,m.meter_id)}${m.location?` <span class="ut-sub">${utEsc(m.meter_id)}</span>`:''}`,
     `${L.icon} ${L.txt}${r.last?` · จดล่าสุด ${utWhen(r.last)} (${utAgo(r.last)})`:''}${utilTrue(m.active)?'':' · ปิดใช้แล้ว'}`,
     sum+(info.length?`<div class="um-warn">${info.join('<br>')}</div>`:'')+chart+bills, 'um-full');
   document.querySelectorAll('#utModal .um-hscroll').forEach(e=>{ e.scrollLeft=e.scrollWidth; });   // MOB-02: เดือนล่าสุดอยู่ขวาสุด

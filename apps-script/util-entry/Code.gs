@@ -319,6 +319,7 @@ function pushToFirestore() {
   const R_COLS = ['ts', 'read_date', 'meter_id', 'reading', 'meter_reset', 'recorder', 'staff_id', 'source', 'status', 'note', 'photo_id'];
   const M_COLS = ['meter_id', 'branch_code', 'type', 'location', 'active'];
   const B_COLS = ['bill_month', 'meter_id', 'type', 'units', 'amount_incl_vat', 'note'];
+  const BU_COLS = ['bill_month', 'meter_id', 'type', 'units'];   // UTIL-23: ไม่มีเงิน ไม่มีหมายเหตุ (หมายเหตุบิลอาจมียอดเงิน)
   const readings = table_('readings').rows, meters = table_('meters').rows, bills = table_('bills').rows;
   let ok = 0, fail = 0;
   table_('branches').rows.map(b => String(b.branch_code)).filter(Boolean).forEach(br => {
@@ -329,8 +330,10 @@ function pushToFirestore() {
       // ทั้งแท็บว่าง = ชีตน่าจะพัง → ไม่เขียน (กันเอาของว่างทับของดี)
       // สาขาอื่นมีแถว แต่สาขานี้ 0 = ลบจริง → เขียนว่างทับ (15 ต.ค. 69: ลบข้อมูลตัวอย่าง BG หมด แต่เว็บยังโชว์ของเก่า)
       if (rs.length || readings.length) {
+        // UTIL-23: หน่วยในบิล (ไม่มียอดเงิน/หมายเหตุ) ไว้ใน data/ ด้วย → ผจก. ที่ไม่มี showUtilMoney เห็นบิลเทียบเดือน + ค่าเฉลี่ยบิลเป็นค่ากลางช่วงแรก
         writeDoc_('data', br + '_UTIL', { csv: csv_(R_COLS, rs),
-          metersCsv: csv_(M_COLS, meters.filter(m => String(m.branch_code) === br)), rows: rs.length, branch: br });
+          metersCsv: csv_(M_COLS, meters.filter(m => String(m.branch_code) === br)),
+          billUnitsCsv: csv_(BU_COLS, bsLive), rows: rs.length, branch: br });
         ok++;
       }
       if (bs.length || bills.length) { writeDoc_('utilbill', br, { csv: csv_(B_COLS, bsLive), rows: bsLive.length, branch: br }); ok++; }

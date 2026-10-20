@@ -38,7 +38,8 @@ async function utLoad(br){
   UT.loading[br]=(async()=>{
     try{
       const r=await window.fetchUtilFromFirestore(br,money);
-      const readings=utCsv(r.csv), bills=utCsv(r.billsCsv);
+      // UTIL-23: มีสิทธิ์เงิน = บิลเต็ม · ไม่มี (หรืออ่านบิลเต็มไม่ได้) = หน่วยในบิลจาก data/ (ไม่มี amount_incl_vat → ทุกจุดที่โชว์เงินไม่มีเลขให้โชว์)
+      const readings=utCsv(r.csv), full=utCsv(r.billsCsv), bills=full.length?full:utCsv(r.billUnitsCsv||'');
       // มิเตอร์ที่เปิดอยู่ + มิเตอร์ที่ปิดแล้วแต่ยังมีข้อมูล (SS ปิดสาขา = active FALSE ทุกตัว แต่ต้องดูย้อนหลังได้)
       // ไม่มีเอกสาร data/{BR}_UTIL (สาขาที่ไม่เคยจดผ่านแอป) แต่มีบิล → สร้างการ์ดจากบิล
       const used=new Set([...readings,...bills].map(x=>x.meter_id));
@@ -376,7 +377,7 @@ CT_ALT.cUtilCmp={line(cfg){
 // ── สรุปส่วนมิเตอร์รายวัน: ต้องดูตอนนี้ = มิเตอร์ที่เปิดอยู่ ธงล่าสุดแดง/สงสัยรั่ว หรือขาดจด ──
 function utSummary(c){
   const act=c.meters.filter(m=>utilTrue(m.active)), read=act.filter(m=>m._res.last);
-  const billHi=new Set(canSeeUtilMoney()?utRecentHigh(UT.br||activeBranch).map(x=>x.meter_id):[]);   // UTIL-09
+  const billHi=new Set(utRecentHigh(UT.br||activeBranch).map(x=>x.meter_id));   // UTIL-09 · UTIL-23 ดูจากหน่วย ไม่ต้องมีสิทธิ์เงิน
   const zero=new Set(c.meters.filter(m=>umZero(m).length).map(m=>m.meter_id));   // ใช้ 0 = มิเตอร์ค้าง/ลอกเลข (views/util-meter.js)
   const watch=c.meters.filter(m=>(utilTrue(m.active)&&(['red','leak'].includes(m._full?.level)||(m._res.stale&&m._res.last)))||billHi.has(m.meter_id)||zero.has(m.meter_id));
   const name=m=>(UT_TYPE[m.type]||'').split(' ')[0]+' '+utEsc(m.location||m.meter_id)+(billHi.has(m.meter_id)?' (บิลสูง)':'')+(zero.has(m.meter_id)?' (ใช้ 0)':'');

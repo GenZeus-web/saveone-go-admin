@@ -347,7 +347,9 @@ window.fetchUtilFromFirestore = async function(branch, withBills){
     csv: u && typeof u.csv === 'string' ? u.csv : '',
     metersCsv: u && typeof u.metersCsv === 'string' ? u.metersCsv : '',
     ts: u ? Number(u.ts) || 0 : 0,
-    billsCsv: b && typeof b.csv === 'string' ? b.csv : ''
+    billsCsv: b && typeof b.csv === 'string' ? b.csv : '',
+    // UTIL-23: หน่วยในบิล ไม่มียอดเงิน (อยู่ใน data/ ใช้กฎสาขาเดิม) · Apps Script เก่ายังไม่ส่ง = ค่าว่าง
+    billUnitsCsv: u && typeof u.billUnitsCsv === 'string' ? u.billUnitsCsv : ''
   };
 };
 

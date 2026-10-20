@@ -255,7 +255,8 @@ function utilBillCheck(bills,settings){
         const base=utilMedian(pu), min=C.minDiff[b.type]??0;
         if(u>base*C.ratio&&u-base>=min) r.high={base,pct:(u/base-1)*100};
       }
-      const d=[...prev].reverse().find(p=>u>0&&Number(p.units)===u&&Number(p.amount)===Number(b.amount));
+      // UTIL-23: บิลแบบหน่วยอย่างเดียว (ไม่มีสิทธิ์เงิน) ไม่มียอดเงิน → ไม่ตัดสินว่าซ้ำ (ไม่งั้น 0 = 0 ขึ้น ? ทุกเดือนที่หน่วยเท่ากัน)
+      const d=Number(b.amount)>0?[...prev].reverse().find(p=>u>0&&Number(p.units)===u&&Number(p.amount)===Number(b.amount)):null;
       if(d) r.dup=d.bill_month;
       r.round=u>=1000&&u%1000===0;
       out.push(r);
