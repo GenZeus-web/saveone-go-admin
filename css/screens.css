@@ -210,8 +210,10 @@
 .ut-sec-t{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;}
 /* UTIL-28 (แก้ 20 ต.ค. ตามเจ้าของ): ชนิด = พื้นการ์ด (ไฟ เหลืองอ่อน · น้ำ ฟ้าอ่อน) · แท่งคงสีสาขา (ตรง Benchmark)
    สีแต่ละชั้นทำหน้าที่เดียว: พื้น = ไฟ/น้ำ · แท่ง = สาขา · color-mix กับ --surface = ทึบ (หัวติดจอต้องไม่โปร่ง) และตามโหมดมืด/สว่างเอง */
-.ut-sec-elec{--ut-tint:color-mix(in srgb,var(--surface) 86%,#eab308);border-left:4px solid #eab308;background:var(--ut-tint);}
-.ut-sec-water{--ut-tint:color-mix(in srgb,var(--surface) 88%,#3b8ff0);border-left:4px solid var(--blue);background:var(--ut-tint);}
+/* UTIL-32: .sc.ut-sec-* (ไม่ใช่ .ut-sec-*) — night.css โหลดทีหลังและตั้ง .sc{background;border} ทับ → v3.3.4 แรกไม่เห็นพื้น/ขอบสีเลย
+   สี = พื้นหลังของส่วน อยู่หลังการ์ด · การ์ดย่อยข้างใน (KPI · กราฟ · ตาราง) คงสีการ์ดปกติ (เจ้าของ 20 ต.ค.) */
+.sc.ut-sec-elec{--ut-tint:color-mix(in srgb,var(--surface) 91%,#eab308);border-left:4px solid #eab308;background:var(--ut-tint);}
+.sc.ut-sec-water{--ut-tint:color-mix(in srgb,var(--surface) 92%,#3b8ff0);border-left:4px solid var(--blue);background:var(--ut-tint);}
 /* หัวส่วนเทียบสาขา: แถบสีประจำชนิด ติดบนจอตอนเลื่อน (อยู่ใน .content ที่เป็นตัวเลื่อน · ติดเฉพาะในกรอบส่วนของตัวเอง) */
 .ut-cmp-h{position:sticky;top:-16px;z-index:4;margin:-14px -14px 10px;padding:10px 14px;border-radius:8px 8px 0 0;
   font-size:18px;font-weight:700;color:var(--ink);background:var(--surface);border-bottom:1px solid var(--border);}
@@ -227,6 +229,7 @@
 .ut-csub{margin-bottom:12px;}
 .ut-c2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;}
 .ut-c2 .ut-csub{margin-bottom:0;}
+.ut-ckpis.one,.ut-c2.one{grid-template-columns:minmax(0,1fr);}   /* UTIL-30 ไม่มีสิทธิ์เงิน: เหลือการ์ดหน่วยใบเดียว */
 .ut-bills th.n{text-align:right;font-family:inherit;}
 @media (max-width:760px){
   .ut-ckpis,.ut-c2{grid-template-columns:minmax(0,1fr);}

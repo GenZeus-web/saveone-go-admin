@@ -38,9 +38,15 @@ service cloud.firestore {
     //   ⚠️ นี่คือ CSV ดิบรายวัน ไม่ใช่แค่ค่าเฉลี่ยที่หน้าจอแสดง — ดู SEC-08 ใน WORKFLOW.md
     //      ทางแก้ที่รากคือให้ Apps Script เขียนเอกสารสรุป `benchmark/{branch}` แล้ว
     //      ถอดเงื่อนไข myBmBranches() บรรทัดล่างนี้ออกทั้งหมด กลับไปเป็น ARCH-01 เดิม
+    //
+    // UTIL-33 (v3.3.4): {BR}_UTIL (เลขไมล์ + หน่วยในบิล billUnitsCsv) แยกออกจากกฎข้างบน
+    //   อ่านได้: admin ทุกสาขา · หรือสาขาที่ดูแล + ติ๊ก showUtil — ไม่เปิดผ่าน bmBranches (Benchmark ไม่ใช้)
     match /data/{docId} {
-      allow get: if hasProfile() && (docId.split('_')[0] in myBranches()
-                                  || docId.split('_')[0] in myBmBranches());
+      allow get: if hasProfile() && (
+        (!docId.matches('.*_UTIL') && (docId.split('_')[0] in myBranches()
+                                    || docId.split('_')[0] in myBmBranches()))
+        || (docId.matches('.*_UTIL') && (isAdmin()
+              || (docId.split('_')[0] in myBranches() && myDoc().showUtil == true))));
       allow list: if false;
       allow write: if false;
     }
@@ -93,7 +99,8 @@ service cloud.firestore {
 
     // UTIL-03 (v3.2.0): บิลน้ำ-ไฟ + ยอดเงิน — Apps Script เขียนเอง (OAuth เจ้าของสคริปต์ ข้ามกฎ) · docId = สาขา
     //   อ่านได้: admin ทุกสาขา · หรือสาขาที่ดูแล + ติ๊กทั้ง showUtil และ showUtilMoney
-    //   เลขไมล์ (data/{BR}_UTIL) ไม่มีเงิน ใช้กฎ data/ เดิม
+    //   เลขไมล์ + หน่วยบิล (data/{BR}_UTIL) ไม่มีเงิน → กฎ UTIL-33 ในบล็อก data/ (ต้องมี showUtil)
+    //   v3.3.4 UTIL-30: แท็บเทียบสาขาเปิดให้ทุกคนที่มี showUtil · เงินในแท็บนั้นมาจากเอกสารนี้ = ด่านจริงของเงิน
     match /utilbill/{branch} {
       allow get: if isAdmin()
                  || (hasProfile() && branch in myBranches()

@@ -10,7 +10,7 @@
 | `4_walkin-system.md` | ระบบวอล์กอิน |
 | `5_revenue-calculator.md` | สูตรคิดรายรับ · ราคาตามฤดูกาล/วันหยุด |
 | `walkin-diagram.png` | ผังระบบวอล์กอิน |
-| `firestore-rules/v3.3.0-current.txt` | กฎสิทธิ์ Firestore ฉบับเต็ม (วางทั้งไฟล์ใน Console · ประวัติดู `git log`) |
+| `firestore-rules/v3.3.4-current.txt` | กฎสิทธิ์ Firestore ฉบับเต็ม (วางทั้งไฟล์ใน Console · ประวัติดู `git log`) |
 | `firestore-rules-settings.md` | คำอธิบายกฎส่วนตั้งค่าราคา |
 | `adr/` | บันทึกการตัดสินใจ (ADR) |
 | `agents/` | ตั้งค่า issue tracker / label / domain docs ของ agent skills |

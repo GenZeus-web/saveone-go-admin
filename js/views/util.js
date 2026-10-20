@@ -18,8 +18,7 @@ const UT_LEVEL={
 const UT_TYPE={water:'💧 น้ำ',elec:'⚡ ไฟ'};
 const utU=t=>(t&&t.type||t)==='water'?'ลบ.ม.':'หน่วย';   // หน่วยวัดตามชนิด (รับ meter หรือชนิด)
 
-function canSeeUtilMoney(){ return window.userPerms?.showUtilMoney===true; }
-function utEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function canSeeUtilMoney(){ return window.userPerms?.showUtilMoney===true; }function utEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function utNum(v){ const n=Number(String(v==null?'':v).replace(/[,\s]/g,'')); return Number.isFinite(n)?n:null; }
 function utFmt(n,dp=0){ return n==null?'—':n.toLocaleString('th-TH',{minimumFractionDigits:dp,maximumFractionDigits:dp}); }
 function utDM(iso){ const [,m,d]=iso.split('-'); return `${+d}/${+m}`; }
@@ -62,11 +61,11 @@ async function utLoad(br){
   return UT.loading[br];
 }
 
-// สาขาที่ต้องโหลด = สาขาที่เปิดดู (มิเตอร์รายวัน) + สาขาที่เลือกเทียบบิล (ต้องมีสิทธิ์ยอดเงิน)
+// สาขาที่ต้องโหลด = สาขาที่เปิดดู (มิเตอร์รายวัน) + สาขาที่เลือกเทียบบิล (UTIL-30: ไม่มีสิทธิ์เงินก็เทียบหน่วยได้)
 function renderUtil(){
   const host=document.getElementById('utilBody'); if(!host) return;
   const br=activeBranch, money=canSeeUtilMoney();
-  const need=[...new Set([br,...(money?utCmpBranches():[])])];
+  const need=[...new Set([br,...utCmpBranches()])];
   // สิทธิ์ยอดเงินเปลี่ยน (admin แก้แล้ว login ใหม่) = โหลดใหม่ · ไม่งั้นใช้ของในเครื่องไม่เกิน 5 นาที
   const stale=need.filter(b=>{ const c=UT.cache[b]; return !c||Date.now()-c.at>UT_TTL||c.money!==money; });
   if(stale.length){
@@ -83,10 +82,10 @@ function utDraw(host,br){
   UT.br=br;   // ต้องตั้งก่อนสร้างการ์ด (utSummary/util-meter อ่านธงบิลของสาขานี้)
   const money=canSeeUtilMoney();
   // แท็บย่อย: 📊 เทียบสาขา (บิลรายเดือน · แบบที่ ผอ. ส่งมา · หน้าหลัก) | 📟 มิเตอร์รายวัน (ตรวจรั่ว)
-  //   ไม่มีสิทธิ์ยอดเงิน = เทียบสาขาอ่านบิลไม่ได้ → เหลือมิเตอร์รายวันอย่างเดียว ไม่มีแถบแท็บย่อย
-  const sub=money?utSub():'meter';
-  UT.shown=sub;   // แท็บย่อยที่แสดงจริง (ไม่มีสิทธิ์เงิน = meter แม้จำ cmp ไว้) — utVals ใช้ตัวนี้
-  const bar=utToolbar(money,sub);
+  //   UTIL-30: ไม่มีสิทธิ์ยอดเงิน = เทียบสาขาเห็นแต่หน่วย (billUnitsCsv) · ตัด KPI/กราฟ/คอลัมน์เงินใน utCompareHtml
+  const sub=utSub();
+  UT.shown=sub;   // แท็บย่อยที่แสดงจริง — utVals ใช้ตัวนี้
+  const bar=utToolbar(sub);
   if(sub==='cmp'){
     host.innerHTML=bar+utCompareHtml();
     UT.br=br; utCompareCharts();
@@ -167,9 +166,9 @@ function utValOpts(o,only){
   if(utVals()) o.scales.y.afterDataLimits=s=>{ s.max+=(s.max-s.min)*0.14; };
   return o;
 }
-function utToolbar(money,sub){
-  const tabs=money?[['cmp','📊 เทียบสาขา (บิลรายเดือน)'],['meter','📟 มิเตอร์ · ตรวจรั่ว']]
-    .map(([k,t])=>`<button class="mc-pill${sub===k?' sel':''}" role="tab" aria-selected="${sub===k}" onclick="setUtSub('${k}')">${t}</button>`).join(''):'';
+function utToolbar(sub){
+  const tabs=[['cmp','📊 เทียบสาขา (บิลรายเดือน)'],['meter','📟 มิเตอร์ · ตรวจรั่ว']]
+    .map(([k,t])=>`<button class="mc-pill${sub===k?' sel':''}" role="tab" aria-selected="${sub===k}" onclick="setUtSub('${k}')">${t}</button>`).join('');
   // ปุ่มตัวเลขบนกราฟ: เฉพาะเทียบสาขา (แท็บมิเตอร์ UTIL-15 ไม่มีป้ายตัวเลขบนกราฟ)
   const vals=sub==='cmp'?`<button class="mc-pill" onclick="toggleUtVals()" aria-pressed="${utVals()}">🔢 ${utVals()?'ซ่อนตัวเลข':'แสดงตัวเลข'}</button>`:'';
   return `<div class="ut-subtabs"><div class="ut-subtabs-l" role="tablist">${tabs}</div>${vals}</div>`;
@@ -190,7 +189,8 @@ function utMake(id,cfg){ if(cfg&&makeChart(id,cfg)) UT.chartIds.push(id); }
 
 // ── ส่วน 1–2: เทียบสาขาจากบิลรายเดือน (ต้นแบบจาก ผอ.) ──
 //   12 เดือนล่าสุด · ค่าเฉลี่ย/ตารางสรุปคิดเฉพาะ "ช่วงที่ทับกัน" (ทุกสาขาที่เลือกมีบิลชนิดนั้นครบเดือน) ให้เทียบกันได้จริง
-//   สาขาที่เทียบได้ = admin ทุกสาขา · คนอื่น = สาขาที่ดูแล (กฎ utilbill/ เปิดแค่นั้น)
+//   สาขาที่เทียบได้ = admin ทุกสาขา · คนอื่น = สาขาที่ดูแล (กฎ utilbill/ เปิดแค่นั้น · ไม่มีสิทธิ์เงินก็ใช้ชุดเดียวกัน)
+//   UTIL-30: ไม่มีสิทธิ์เงิน = บิลไม่มี amount_incl_vat → ซ่อน KPI เงิน/บาทต่อหน่วย · กราฟเงิน · คอลัมน์เงินในตาราง
 const UT_ALL_BR=['BG','BN','SS'];
 function utCmpReadable(){ return window.userRole==='admin'?UT_ALL_BR:UT_ALL_BR.filter(b=>(window.userBranches||[]).includes(b)); }
 function utCmpBranches(){
@@ -309,12 +309,12 @@ const utFlagPlugin={id:'utFlag',afterDatasetsDraw(ch){
 function utMonthFlags(b,type,mo){ return (UT.cache[b].check||[]).filter(x=>x.type===type&&x.bill_month===mo&&(x.high||x.dup||x.round)); }
 
 function utCompareHtml(){
-  const ok=utCmpReadable(), sel=new Set(utCmpBranches());
+  const ok=utCmpReadable(), sel=new Set(utCmpBranches()), $=canSeeUtilMoney(), one=$?'':' one';
   const pills=ok.length>1?`<div class="ut-pills">เทียบสาขา: ${ok.map(b=>`<button class="mc-pill${sel.has(b)?' sel':''}" onclick="toggleUtCmp('${b}')">${utEsc(BM_NAMES[b]||b)} (${b})${b==='SS'?' · ปิดแล้ว':''}</button>`).join('')}</div>`:'';
   return pills+utRangeHtml()+utCheckBox()+UT_SECS.map(([type,icon,name,money,unit],k)=>{
     const d=utCmpData(type);
     // หัวส่วนติดบนจอตอนเลื่อน + สีประจำชนิด (ไฟ เหลือง · น้ำ ฟ้า · UTIL-28 พื้นการ์ด) — เจ้าของ: เลื่อนเร็วๆ ไม่รู้ส่วนไหนไฟ ส่วนไหนน้ำ
-    const t=`<div class="ut-cmp-h">${icon} ${name}<span>หน่วยใช้และ${money}</span></div>`, sec=`sc ut-sec ut-sec-${type}`;
+    const t=`<div class="ut-cmp-h">${icon} ${name}<span>หน่วยใช้${$?'และ'+money:''}</span></div>`, sec=`sc ut-sec ut-sec-${type}`;
     if(!d) return `<div class="${sec}">${t}<div class="ut-empty">ยังไม่มีบิล${name}ของสาขาที่เลือก</div></div>`;
     if(!d.months.length) return `<div class="${sec}">${t}<div class="ut-empty">ไม่มีบิล${name}ในช่วงที่เลือก · บิลล่าสุด ${utMonthTh(d.last)}<br>
       <button class="mc-pill" style="margin-top:8px" onclick="setUtRange('12')">12 เดือนล่าสุด</button></div></div>`;
@@ -330,17 +330,17 @@ function utCompareHtml(){
     const kpi=(lbl,key,dp,pre)=>`<div class="kpi ut-ckpi"><div class="kpi-lbl">${lbl}</div>
       ${d.stat.map(s=>`<div class="ut-crow">${dot(s.b)}<span>${nm(s.b)}</span><b>${s[key]==null?'—':(pre||'')+utFmt(s[key],dp)}</b></div>`).join('')}
       <div class="kpi-sub">${vs(key)||'&nbsp;'}</div></div>`;
-    const rows=d.stat.map(s=>`<tr><td>${dot(s.b)}${nm(s.b)}</td><td class="n">${utFmt(s.units)}</td><td class="n">${utFmt(s.amt)}</td><td class="n">${s.rate==null?'—':utFmt(s.rate,2)}</td></tr>`).join('');
+    const rows=d.stat.map(s=>`<tr><td>${dot(s.b)}${nm(s.b)}</td><td class="n">${utFmt(s.units)}</td>${$?`<td class="n">${utFmt(s.amt)}</td><td class="n">${s.rate==null?'—':utFmt(s.rate,2)}</td>`:''}</tr>`).join('');
     const sumT=ov?`${utMonthTh(d.overlap[0])} – ${utMonthTh(d.overlap[ov-1])}`:'ตามข้อมูลของแต่ละสาขา';
     return `<div class="${sec}">${t}<div class="ut-sub" style="margin-bottom:10px">${range}</div>
-      <div class="ut-ckpis">${kpi(`${icon} หน่วย${name==='ไฟฟ้า'?'ไฟ':'น้ำ'}เฉลี่ยต่อเดือน (${unit})`,'avgU',0)}${kpi(`${icon} ${money}เฉลี่ยต่อเดือน (บาท)`,'avgA',0)}${kpi(`${icon} ${money}ต่อหน่วย (บาท)`,'rate',2)}</div>
+      <div class="ut-ckpis${one}">${kpi(`${icon} หน่วย${name==='ไฟฟ้า'?'ไฟ':'น้ำ'}เฉลี่ยต่อเดือน (${unit})`,'avgU',0)}${$?kpi(`${icon} ${money}เฉลี่ยต่อเดือน (บาท)`,'avgA',0)+kpi(`${icon} ${money}ต่อหน่วย (บาท)`,'rate',2):''}</div>
       ${utSecFlags(d)}
       <div class="sc ut-csub"><div class="sc-title">${icon} หน่วย${name==='ไฟฟ้า'?'ไฟ':'น้ำ'}ที่ใช้รายเดือน (${unit}) ${UT_MK_NOTE}</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}U"></canvas></div></div>
-      <div class="ut-c2">
-        <div class="sc ut-csub"><div class="sc-title">${icon} ${money}รายเดือน (บาท) ${UT_MK_NOTE}</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}A"></canvas></div></div>
+      <div class="ut-c2${one}">
+        ${$?`<div class="sc ut-csub"><div class="sc-title">${icon} ${money}รายเดือน (บาท) ${UT_MK_NOTE}</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}A"></canvas></div></div>`:''}
         <div class="sc ut-csub"><div class="sc-title">${icon} สรุป${name} ${sumT}</div>
-          <div class="ut-bills"><table><thead><tr><th>สาขา</th><th class="n">หน่วยรวม</th><th class="n">${money}รวม (บาท)</th><th class="n">บาท/หน่วย</th></tr></thead><tbody>${rows}</tbody></table></div>
-          <div class="ut-sub" style="margin-top:8px">รวม VAT ทุกมิเตอร์ของสาขา</div></div>
+          <div class="ut-bills"><table><thead><tr><th>สาขา</th><th class="n">หน่วยรวม</th>${$?`<th class="n">${money}รวม (บาท)</th><th class="n">บาท/หน่วย</th>`:''}</tr></thead><tbody>${rows}</tbody></table></div>
+          <div class="ut-sub" style="margin-top:8px">${$?'รวม VAT ทุกมิเตอร์ของสาขา':'รวมทุกมิเตอร์ของสาขา'}</div></div>
       </div></div>`;
   }).join('');
 }
@@ -365,7 +365,7 @@ function utCompareCharts(){
         options:o,plugins:[utFlagPlugin]};
     };
     utMake(`cUtilCmp_${type}U`,cfg('units',false));
-    utMake(`cUtilCmp_${type}A`,cfg('amt',true));
+    if(canSeeUtilMoney()) utMake(`cUtilCmp_${type}A`,cfg('amt',true));   // UTIL-30: ไม่มีสิทธิ์เงิน = ไม่มี canvas นี้
   });
 }
 CT_SPEC.cUtilCmp={icon:'bar',opts:[['orig','แท่งคู่','เทียบสาขาทีละเดือน'],['line','เส้น','แนวโน้มแต่ละสาขา']]};
