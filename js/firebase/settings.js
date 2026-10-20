@@ -578,7 +578,7 @@ function utilCur(){
   return {
     thresholds:{ water:{...D.thresholds.water, staleDays:D.staleDays, ...(th.water||{})}, elec:{...D.thresholds.elec, ...(th.elec||{})} },
     baseWeeks: s.baseWeeks ?? D.baseWeeks, baseMinDays: s.baseMinDays ?? D.baseMinDays,
-    billCheck:{ ratio:B.ratio, lookback:B.lookback, minPrev:B.minPrev, warmup:B.warmup, minDiff:{water:B.minDiff.water, elec:B.minDiff.elec} },
+    billCheck:{ ratio:B.ratio, lookback:B.lookback, minPrev:B.minPrev, warmup:B.warmup, minDiff:{water:B.minDiff.water, elec:B.minDiff.elec}, ask:!!B.ask },
   };
 }
 // ช่องกรอก: path → [ชื่อในประวัติ, ต่ำสุด, สูงสุด, จำนวนเต็ม, คูณตอนแสดง]
@@ -602,10 +602,12 @@ const UF = {
   'billCheck.lookback':         ['บิล · ค่ากลางจากกี่บิลก่อน', 2, 24, true],
   'billCheck.minPrev':          ['บิล · ต้องมีบิลก่อนหน้าอย่างน้อย', 1, 24, true],
   'billCheck.warmup':           ['บิล · ไม่ตรวจกี่เดือนแรกของสาขา', 0, 36, true],
+  'billCheck.ask':              ['บิล · ป้าย ? (ซ้ำทุกหลัก · เลขกลม)'],   // UTIL-36 สวิตช์ (setUtilAsk) ไม่ใช่ช่องตัวเลข
 };
 const getP = (o,p) => p.split('.').reduce((x,k) => x?.[k], o);
 function setP(o,p,v){ const ks = p.split('.'), last = ks.pop(); ks.reduce((x,k) => x[k] ??= {}, o)[last] = v; }
-const ufShow = (p,v) => +(v * (UF[p][4] || 1)).toFixed(4);
+const ufShow = (p,v) => typeof v === 'boolean' ? (v ? 'เปิด' : 'ปิด') : +(v * (UF[p][4] || 1)).toFixed(4);
+window.setUtilAsk = function(on){ setP(S.util, 'billCheck.ask', !!on); render(); };
 function uin(p){
   const v = getP(S.util, p), old = getP(utilCur(), p);
   return `<input type="number" step="any" min="${UF[p][1]}" max="${UF[p][2]}" class="set-num set-uin${v!==old?' changed':''}" value="${ufShow(p,v)}"
@@ -622,7 +624,7 @@ window.resetUtilDefaults = function(){
   const D = UTIL_DEFAULTS, B = D.billCheck;
   S.util = { thresholds:{ water:{...D.thresholds.water, staleDays:D.staleDays}, elec:{...D.thresholds.elec} },
     baseWeeks:D.baseWeeks, baseMinDays:D.baseMinDays,
-    billCheck:{ ratio:B.ratio, lookback:B.lookback, minPrev:B.minPrev, warmup:B.warmup, minDiff:{...B.minDiff} } };
+    billCheck:{ ratio:B.ratio, lookback:B.lookback, minPrev:B.minPrev, warmup:B.warmup, minDiff:{...B.minDiff}, ask:!!B.ask } };
   render();
 };
 function utilErrs(){
@@ -676,6 +678,10 @@ function utilHtml(){
       ${row('⚠', `ค่ากลาง × ${uin('billCheck.ratio')} &lt; บิลนี้`, `ค่ากลาง + ${uin('billCheck.minDiff.water')} (น้ำ) / ${uin('billCheck.minDiff.elec')} (ไฟ) ≤ บิลนี้`)}
       ${row('⏸', `ไม่ตรวจ ${uin('billCheck.warmup')} เดือนแรกของสาขา`)}
       <div class="set-muted">เช่น บิลน้ำ ค่ากลาง 200 → เกิน ${nf(line(200,B.ratio,B.minDiff.water))} = ⚠</div>
+      <label class="set-frow" style="cursor:pointer"><span class="set-ficon">?</span>
+        <input type="checkbox"${B.ask?' checked':''} onchange="setUtilAsk(this.checked)"${B.ask!==utilCur().billCheck.ask?' class="changed"':''}>
+        <span>แสดงป้าย ? ข้อมูลต้องเช็คกับบัญชี (บิลซ้ำเดือนก่อนทุกหลัก · หน่วยเป็นเลขกลมหลักพัน)</span></label>
+      <div class="set-muted">ปิดเป็นค่าตั้งต้น — เลขพวกนี้อาจเป็นของจริง · ไม่กระทบ ⚠ บิลสูงผิดปกติ</div>
     </div>
     ${errs.length?`<div class="set-warn">${errs.map(esc).join('<br>')}</div>`:''}
     <div class="set-savebar">

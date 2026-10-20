@@ -242,16 +242,22 @@ test('ตรวจบิล: เพิ่มน้อยกว่าขั้น
   assert.deepEqual(highs(r),[]);                                          // +19 หน่วย < 50
 });
 
-test('ตรวจบิล: ข้อมูลต้องเช็ค — ซ้ำบิลก่อนทุกหลัก (ย้อนได้ 6 ใบ) · เลขกลมหลักพัน',()=>{
+test('ตรวจบิล: ข้อมูลต้องเช็ค (เปิด ask) — ซ้ำบิลก่อนทุกหลัก (ย้อนได้ 6 ใบ) · เลขกลมหลักพัน',()=>{
+  const ON={billCheck:{ask:true}};
   const rows=[...bill('BG','water','BG-W-MAIN',[['2026-06',645],['2026-07',607],['2026-08',646],['2026-09',607]]),
               ...bill('BN','elec','BN-E-MAIN',[['2026-08',40000],['2026-09',33000],['2026-10',33417]])];
-  const r=utilBillCheck(rows), at=(m,mo)=>r.find(x=>x.meter_id===m&&x.bill_month===mo);
+  const r=utilBillCheck(rows,ON), at=(m,mo)=>r.find(x=>x.meter_id===m&&x.bill_month===mo);
   assert.equal(at('BG-W-MAIN','2026-09').dup,'2026-07');                  // ไม่ใช่เดือนติดกันก็จับได้
   assert.equal(at('BG-W-MAIN','2026-08').dup,null);
   assert.equal(at('BN-E-MAIN','2026-09').round,true);
   assert.equal(at('BN-E-MAIN','2026-10').round,false);
   const diffAmt=[...bill('X','water','X',[['2026-01',100]]),{bill_month:'2026-02',branch_code:'X',type:'water',meter_id:'X',units:100,amount:1}];
-  assert.equal(utilBillCheck(diffAmt)[1].dup,null);                       // หน่วยเท่าแต่เงินต่าง = ไม่ใช่คัดลอก
+  assert.equal(utilBillCheck(diffAmt,ON)[1].dup,null);                    // หน่วยเท่าแต่เงินต่าง = ไม่ใช่คัดลอก
+  // UTIL-36: ค่าตั้งต้น = ปิด → ไม่มี ? เลย แต่ธงบิลสูง (high) ยังตรวจเหมือนเดิม
+  const off=utilBillCheck(rows), atO=(m,mo)=>off.find(x=>x.meter_id===m&&x.bill_month===mo);
+  assert.equal(atO('BG-W-MAIN','2026-09').dup,null);
+  assert.equal(atO('BN-E-MAIN','2026-09').round,false);
+  assert.deepEqual(highs(utilBillCheck(BN_BILLS)),highs(utilBillCheck(BN_BILLS,ON)));
 });
 
 test('ไฟจดทุกวันจันทร์: เลยไป 5 วันยังไม่เตือน · 9 วันเตือน · น้ำ 3 วันเตือน',()=>{

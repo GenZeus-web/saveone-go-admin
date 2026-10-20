@@ -261,7 +261,8 @@ function utRangeHtml(){
     <span class="ut-sub">เดือน = เดือนที่บิลออก</span></div>`;
 }
 // ── ผลตรวจบิล (UTIL-09) ──
-const UT_MK_NOTE='<span class="ut-mknote"><b class="hi">⚠</b> บิลสูงผิดปกติ · <b>?</b> ต้องเช็คกับบัญชี · ชี้ที่แท่งดูเหตุผล</span>';
+// UTIL-36: ป้าย ? ปิดอยู่ (settings billCheck.ask) = ไม่ต้องอธิบาย ?
+const utMkNote=()=>`<span class="ut-mknote"><b class="hi">⚠</b> บิลสูงผิดปกติ${utilBillCfg(utSet()).ask?' · <b>?</b> ต้องเช็คกับบัญชี':''} · ชี้ที่แท่งดูเหตุผล</span>`;
 function utMeterName(b,id){ const m=(UT.cache[b]?.meters||[]).find(x=>x.meter_id===id); return (m&&m.location)||id; }
 function utFlagText(b,x){
   const who=`${utEsc(BM_NAMES[b]||b)} · ${UT_TYPE[x.type]?UT_TYPE[x.type].split(' ')[0]+' ':''}${utEsc(utMeterName(b,x.meter_id))}`;
@@ -282,8 +283,10 @@ function utCheckBox(){
   const brs=utCmpBranches().filter(b=>UT.cache[b]&&UT.cache[b].check);
   const hi=brs.flatMap(b=>utRecentHigh(b).map(x=>({b,x}))).sort((a,z)=>a.x.bill_month<z.x.bill_month?1:-1);
   const B=utilBillCfg(utSet()), n=B.recent;
-  if(!hi.length) return `<div class="ut-check ok">✅ ตรวจบิล ${n} ใบล่าสุดของทุกมิเตอร์ (${brs.map(b=>BM_NAMES[b]||b).join(' · ')}) — ไม่พบหน่วยสูงผิดปกติ</div>`;
-  return `<div class="ut-check bad"><b>⚠️ ต้องดู: บิล ${n} ใบล่าสุดสูงผิดปกติ ${new Set(hi.map(h=>h.x.meter_id)).size} มิเตอร์</b>
+  if(!hi.length) return `<div class="ut-check ok">✅ ตรวจบิล ${n} เดือนล่าสุดของทุกมิเตอร์ (${brs.map(b=>BM_NAMES[b]||b).join(' · ')}) — ไม่พบหน่วยสูงผิดปกติ</div>`;
+  // UTIL-35: เดิม "บิล 3 ใบล่าสุดสูงผิดปกติ 2 มิเตอร์" แต่ลิสต์ 4 รายการ — เจ้าของงง (3 = ย้อนดูกี่เดือนต่อมิเตอร์ ไม่ใช่จำนวนที่เจอ)
+  //   → พูดเป็น "เดือน" + นับบิลให้ตรงกับรายการ (BN: 2 มิเตอร์ × ส.ค./ก.ย. = 4 ใบ · ต.ค. ปกติ)
+  return `<div class="ut-check bad"><b>⚠️ ต้องดู: ${n} เดือนล่าสุด มีบิลสูงผิดปกติ ${hi.length} ใบ (${new Set(hi.map(h=>h.x.meter_id)).size} มิเตอร์)</b>
     <ul>${hi.map(({b,x})=>`<li>${utFlagText(b,x).filter(f=>f.k==='high').map(f=>f.t).join('')}</li>`).join('')}</ul>
     <div class="ut-sub">เกณฑ์: ค่ากลาง ${B.lookback} บิลก่อน × ${B.ratio} &lt; บิลนี้ และ ค่ากลาง + ${B.minDiff.water} (ไฟ ${utFmt(B.minDiff.elec)}) ≤ บิลนี้</div></div>`;
 }
@@ -335,9 +338,9 @@ function utCompareHtml(){
     return `<div class="${sec}">${t}<div class="ut-sub" style="margin-bottom:10px">${range}</div>
       <div class="ut-ckpis${one}">${kpi(`${icon} หน่วย${name==='ไฟฟ้า'?'ไฟ':'น้ำ'}เฉลี่ยต่อเดือน (${unit})`,'avgU',0)}${$?kpi(`${icon} ${money}เฉลี่ยต่อเดือน (บาท)`,'avgA',0)+kpi(`${icon} ${money}ต่อหน่วย (บาท)`,'rate',2):''}</div>
       ${utSecFlags(d)}
-      <div class="sc ut-csub"><div class="sc-title">${icon} หน่วย${name==='ไฟฟ้า'?'ไฟ':'น้ำ'}ที่ใช้รายเดือน (${unit}) ${UT_MK_NOTE}</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}U"></canvas></div></div>
+      <div class="sc ut-csub"><div class="sc-title">${icon} หน่วย${name==='ไฟฟ้า'?'ไฟ':'น้ำ'}ที่ใช้รายเดือน (${unit}) ${utMkNote()}</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}U"></canvas></div></div>
       <div class="ut-c2${one}">
-        ${$?`<div class="sc ut-csub"><div class="sc-title">${icon} ${money}รายเดือน (บาท) ${UT_MK_NOTE}</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}A"></canvas></div></div>`:''}
+        ${$?`<div class="sc ut-csub"><div class="sc-title">${icon} ${money}รายเดือน (บาท) ${utMkNote()}</div><div class="ut-chart-mid"><canvas id="cUtilCmp_${type}A"></canvas></div></div>`:''}
         <div class="sc ut-csub"><div class="sc-title">${icon} สรุป${name} ${sumT}</div>
           <div class="ut-bills"><table><thead><tr><th>สาขา</th><th class="n">หน่วยรวม</th>${$?`<th class="n">${money}รวม (บาท)</th><th class="n">บาท/หน่วย</th>`:''}</tr></thead><tbody>${rows}</tbody></table></div>
           <div class="ut-sub" style="margin-top:8px">${$?'รวม VAT ทุกมิเตอร์ของสาขา':'รวมทุกมิเตอร์ของสาขา'}</div></div>

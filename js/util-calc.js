@@ -26,7 +26,8 @@ const UTIL_DEFAULTS={
   rates:[],          // [{meter_id, field:'multiplier'|'rate', value, effective_from}] — ห้ามแก้ย้อน (ADR 0001)
   billMonthOffset:-1, // บิลเดือน M = ใช้จริงเดือน M-1 (เทียบใบจดบางนา ก.ย.–ต.ค. 69) — รอบัญชียืนยัน
   // ตรวจบิลรายเดือน (UTIL-09) — เพิ่มหลังน้ำ BN บิล ก.ค.–ก.ย. 69 พุ่งแต่ตัวตรวจรายวันไม่เห็น (เริ่มจดรายวัน 4 ก.ย.)
-  billCheck:{ratio:1.3,lookback:6,minPrev:3,warmup:6,minDiff:{water:50,elec:3000},recent:3},
+  // ask = ป้าย ? (บิลซ้ำทุกหลัก · เลขกลมหลักพัน) — ปิดเป็นค่าตั้งต้น (เจ้าของ 20 ต.ค.: อาจเป็นเลขจริง เปิดเองในหน้าตั้งค่า · UTIL-36)
+  billCheck:{ratio:1.3,lookback:6,minPrev:3,warmup:6,minDiff:{water:50,elec:3000},recent:3,ask:false},
   // ช่วงแรกที่ค่ากลางยังไม่พอ → ค่าเฉลี่ยต่อวันจาก n บิลล่าสุด (UTIL-21) · บิลล่าสุดเก่าเกิน maxAge เดือน = ไม่ใช้
   //   maxAge 4: บิลเดือน M ออกช้า (ต.ค. ยังไม่มีบิลไฟ BG ใช้จริง ก.ย.) → ต.ค. ยังได้ มิ.ย.–ส.ค. ครบ 3
   billBase:{n:3,maxAge:4}
@@ -256,9 +257,11 @@ function utilBillCheck(bills,settings){
         if(u>base*C.ratio&&u-base>=min) r.high={base,pct:(u/base-1)*100};
       }
       // UTIL-23: บิลแบบหน่วยอย่างเดียว (ไม่มีสิทธิ์เงิน) ไม่มียอดเงิน → ไม่ตัดสินว่าซ้ำ (ไม่งั้น 0 = 0 ขึ้น ? ทุกเดือนที่หน่วยเท่ากัน)
-      const d=Number(b.amount)>0?[...prev].reverse().find(p=>u>0&&Number(p.units)===u&&Number(p.amount)===Number(b.amount)):null;
-      if(d) r.dup=d.bill_month;
-      r.round=u>=1000&&u%1000===0;
+      if(C.ask){   // UTIL-36: ปิด = ไม่ตัดสิน ? เลย (ทุกจุดที่โชว์ ? อ่าน dup/round จากที่นี่)
+        const d=Number(b.amount)>0?[...prev].reverse().find(p=>u>0&&Number(p.units)===u&&Number(p.amount)===Number(b.amount)):null;
+        if(d) r.dup=d.bill_month;
+        r.round=u>=1000&&u%1000===0;
+      }
       out.push(r);
     });
   }
