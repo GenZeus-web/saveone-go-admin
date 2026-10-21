@@ -26,7 +26,7 @@
   .meter { display:flex; justify-content:space-between; align-items:center; gap:12px; text-align:left;
            background:var(--card); border:1px solid var(--line); margin-bottom:10px; }
   .meter b { display:block; font-size:17px; }
-  .tag { font-size:13px; padding:2px 8px; border-radius:99px; background:var(--brand-soft); color:var(--brand); white-space:nowrap; }
+  .tag { font-size:17px; padding:3px 10px; border-radius:99px; background:var(--brand-soft); color:var(--brand); white-space:nowrap; }
   .err { background:var(--bad-soft); color:var(--bad); padding:10px 12px; border-radius:10px; margin:12px 0; }
   .done { background:var(--brand-soft); color:var(--ok); padding:10px 12px; border-radius:10px; margin:12px 0; }
   .photo { border:2px dashed var(--line); border-radius:12px; padding:16px; text-align:center; color:var(--ink2); }
@@ -263,7 +263,11 @@ function undoBtn(x){
 function renderList(){
   var box = $('meters'); box.innerHTML = '';
   if (!S.meters.length) { box.innerHTML = '<div class="card muted">สาขานี้ยังไม่มีมิเตอร์ในแท็บ meters</div>'; return; }
-  S.meters.forEach(function(m){
+  // น้ำก่อนไฟ · ในชนิดเดียวกันคงลำดับแถวในแท็บ meters (เจ้าของ 21 ต.ค.)
+  var ORDER = { water:0, elec:1 }, rank = function(t){ return t in ORDER ? ORDER[t] : 9; };
+  S.meters.map(function(m, i){ return { m:m, i:i }; }).sort(function(a, b){
+    return (rank(a.m.type) - rank(b.m.type)) || a.i - b.i;
+  }).forEach(function(x){ var m = x.m;
     var b = document.createElement('button'); b.className = 'meter';
     var last = m.last ? 'ครั้งก่อน ' + m.last.reading.toLocaleString('th-TH') + ' · ' + m.last.at : 'ยังไม่เคยจด';
     b.innerHTML = '<span><b></b><span class="muted"></span><span class="st"></span></span><span class="tag"></span>';
