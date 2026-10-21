@@ -98,7 +98,8 @@ function ensureStaff_() {
 //   ผิด 5 ครั้งใน 15 นาที → ล็อกเฉพาะสาขานั้น 15 นาที · 6 หลัก = 1,000,000 แบบ ÷ 5 ครั้ง/15 นาที = เดาไม่ทัน
 //   สาขาปิด (branches.active = FALSE) → ทุกคนในสาขานั้นเข้าไม่ได้
 //   branch_code = * → เข้าได้ทุกสาขาที่เปิดอยู่ (admin/เจ้าของ) · รหัสห้ามซ้ำกับคนในสาขาใดๆ
-//   พิมพ์รหัสฝั่งบัญชี (acc_code · SG/SB) ได้ = จำง่าย ขึ้นต้น S (เจ้าของ 21 ต.ค. 69) · ข้างในยังใช้ branch_code (BG/BN) ทั้งระบบ
+//   ใช้รหัสฝั่งบัญชี (acc_code · SG/SB) = จำง่าย ขึ้นต้น S (เจ้าของ 21 ต.ค. 69) · ข้างในยังใช้ branch_code (BG/BN) ทั้งระบบ
+//   สาขาที่มี acc_code รับรหัสเดียว (BG/BN ไม่รับ · เจ้าของ: กันงง) · สาขาที่ยังไม่มี acc_code ใช้ branch_code
 function login(branch, code) {
   const cache = CacheService.getScriptCache();
   branch = String(branch || '').trim().toUpperCase();
@@ -110,7 +111,8 @@ function login(branch, code) {
     open[br] = String(b.name_th || br);
     if (a) { acc[br] = a; byAcc[a] = br; }
   });
-  if (!open[branch] && byAcc[branch]) branch = byAcc[branch];   // branch_code มาก่อน ถ้าชนกัน
+  if (byAcc[branch]) branch = byAcc[branch];
+  else if (acc[branch]) throw new Error('รหัสสาขาเปลี่ยนเป็น ' + acc[branch] + ' แล้ว');
   if (!open[branch]) throw new Error('ไม่พบรหัสสาขา ' + (branch || '(ว่าง)') + ' หรือสาขายังไม่เปิดใช้');
   const lockKey = 'lock_' + branch, failKey = 'fail_' + branch;
   if (cache.get(lockKey)) throw new Error('ใส่รหัสผิดหลายครั้ง · สาขานี้ลองใหม่อีก 15 นาที');
