@@ -27,7 +27,7 @@
 |---|---|---|
 | `branches` | admin | `branch_code` `name_th` `acc_code` `pin` (ไม่ใช้แล้ว) `active` |
 | `staff` (ซ่อน + ล็อก) | admin | `staff_id` `name` `branch_code` `emp_code` `active` |
-| `meters` | admin | `meter_id` `branch_code` `type` `location` `account_no` `device_no` `active` `note` |
+| `meters` | admin | `meter_id` `branch_code` `type` `location` `account_no` `device_no` `active` `note` `hint` (วิธีอ่านหน้าปัด · ขึ้นในแอปจด · ไม่ส่งขึ้นเว็บ) |
 | `readings` | แอปเท่านั้น | `ts` `read_date` `branch_code` `meter_id` `reading` `meter_reset` `recorder` `source` `status` `note` `photo_id` `staff_id` |
 | `bills` | บัญชี | `bill_month` `branch_code` `type` `meter_id` `account_no` `units` `amount_incl_vat` `note` (+ แอปเติม `entered_by` `entered_at` `status`) |
 

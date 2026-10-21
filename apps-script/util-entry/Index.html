@@ -7,7 +7,8 @@
 <title>จดมิเตอร์ น้ำ-ไฟ</title>
 <style>
   :root { --brand:#1F6F5C; --brand-soft:#DDEFE9; --ink:#1d2321; --ink2:#5b6461; --line:#d8dedc;
-          --bg:#f5f7f6; --card:#fff; --bad:#b3261e; --bad-soft:#fde8e7; --ok:#1F6F5C; }
+          --bg:#f5f7f6; --card:#fff; --bad:#b3261e; --bad-soft:#fde8e7; --ok:#1F6F5C;
+          --warn:#7a4f00; --warn-soft:#fff1cc; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Noto Sans Thai",sans-serif; }
   .wrap { max-width:480px; margin:0 auto; padding:16px; }
@@ -26,6 +27,9 @@
   .meter { display:flex; justify-content:space-between; align-items:center; gap:12px; text-align:left;
            background:var(--card); border:1px solid var(--line); margin-bottom:10px; }
   .meter b { display:block; font-size:17px; }
+  /* วิธีอ่านหน้าปัด (meters.hint) · การ์ด = บรรทัดสั้น · หน้าจด = กล่องเด่นเหนือช่องกรอก */
+  .hint { display:block; font-size:14px; font-weight:600; color:var(--warn); margin-top:2px; }
+  .hintbox { background:var(--warn-soft); color:var(--warn); font-weight:600; padding:10px 12px; border-radius:10px; margin:0 0 12px; }
   .tag { font-size:17px; padding:3px 10px; border-radius:99px; background:var(--brand-soft); color:var(--brand); white-space:nowrap; }
   .err { background:var(--bad-soft); color:var(--bad); padding:10px 12px; border-radius:10px; margin:12px 0; }
   .done { background:var(--brand-soft); color:var(--ok); padding:10px 12px; border-radius:10px; margin:12px 0; }
@@ -96,6 +100,7 @@
     <button class="ghost" id="backBtn">← กลับ</button>
     <h1 id="fTitle"></h1>
     <div class="muted" id="fLast"></div>
+    <div class="hintbox hidden" id="fHint"></div>
     <div class="card">
       <label>1. ถ่ายรูปหน้ามิเตอร์ <span class="muted" id="photoReq">(ไม่บังคับ)</span></label>
       <div class="photo" id="photoBox">📷 แตะเพื่อถ่ายรูป</div>
@@ -270,7 +275,8 @@ function renderList(){
   }).forEach(function(x){ var m = x.m;
     var b = document.createElement('button'); b.className = 'meter';
     var last = m.last ? 'ครั้งก่อน ' + m.last.reading.toLocaleString('th-TH') + ' · ' + m.last.at : 'ยังไม่เคยจด';
-    b.innerHTML = '<span><b></b><span class="muted"></span><span class="st"></span></span><span class="tag"></span>';
+    b.innerHTML = '<span><b></b><span class="hint"></span><span class="muted"></span><span class="st"></span></span><span class="tag"></span>';
+    var h = b.querySelector('.hint'); if (m.hint) h.textContent = '👉 ' + m.hint; else h.remove();
     var R = { done:'✅ จดรอบนี้แล้ว', due:'⏰ ถึงรอบ · ยังไม่จด', late:'⚠️ เลยรอบ · ยังไม่จด' };
     if (m.status) { b.querySelector('.st').textContent = R[m.status]; b.querySelector('.st').className = 'st ' + m.status; }
     b.querySelector('b').textContent = m.location || m.meter_id;
@@ -286,6 +292,7 @@ function openForm(m){
   S.cur = m; S.photo = null; msg($('listMsg'), '', 'done');
   $('fTitle').textContent = (TYPE[m.type] || '') + ' ' + (m.location || m.meter_id);
   $('fLast').textContent = m.last ? 'ครั้งก่อน ' + m.last.reading.toLocaleString('th-TH') + ' (' + m.last.at + ')' : 'ยังไม่เคยจดมิเตอร์นี้';
+  $('fHint').textContent = m.hint ? '👉 ' + m.hint : ''; $('fHint').classList.toggle('hidden', !m.hint);
   $('photoBox').innerHTML = '📷 แตะเพื่อถ่ายรูป';
   $('reading').value = ''; $('note').value = ''; $('reset').checked = false; $('diff').textContent = '';
   renderLog($('fLog'), S.log.filter(function(x){ return x.meter_id === m.meter_id; }), false);

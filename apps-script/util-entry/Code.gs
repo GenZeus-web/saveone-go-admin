@@ -424,6 +424,7 @@ function state_(me) {
     const l = last[String(m.meter_id)];
     return {
       meter_id: String(m.meter_id), type: String(m.type), location: String(m.location || ''),
+      hint: String(m.hint || '').trim(),   // วิธีอ่านหน้าปัด (คอลัมน์ hint แท็บ meters · เช่น ไฟ TOU รอรหัส 010)
       last: l ? { reading: Number(l.r.reading), at: fmt_(new Date(l.t), 'd/M HH:mm'), t: l.t } : null,
       rate: rate_(hist[String(m.meter_id)] || []),
       status: !rd ? null : (l && l.t >= rd.start) ? 'done' : rd.open ? 'due' : 'late'
