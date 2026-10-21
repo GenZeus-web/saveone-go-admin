@@ -139,7 +139,7 @@ onAuthStateChanged(auth, async (user) => {
     if (pe) pe.textContent = user.email || '';
     const pr = document.getElementById('profRole');
     if (pr) pr.textContent = (role === 'admin' ? 'ผู้ดูแลระบบ (admin)' : 'ผู้จัดการ (manager)')
-      + ' · ' + (Array.isArray(branches) ? branches.join(', ') : '');
+      + ' · ' + (Array.isArray(branches) ? branches.map(brCode).join(', ') : '');
 
     // USR-01: เมนูจัดการผู้ใช้ — เฉพาะ admin เท่านั้น
     const usersBtn = document.getElementById('profUsers');

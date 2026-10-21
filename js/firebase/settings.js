@@ -162,7 +162,7 @@ window.saveSharedTargets = async function(T, before){
   const changes = [];
   PRICE_BRANCHES.forEach(b => ['st','non'].forEach(z => {
     const a = before?.[b]?.[z], n = T[b]?.[z];
-    if(a !== n) changes.push({label:`เป้า ${b} · ${zoneName(b,z)}`, from:a ?? null, to:n});
+    if(a !== n) changes.push({label:`เป้า ${brCode(b)} · ${zoneName(b,z)}`, from:a ?? null, to:n});
   }));
   if(!changes.length) return;
   try{
@@ -230,7 +230,7 @@ function render(){
 
 function branchPills(){
   return `<div class="set-pills">${PRICE_BRANCHES.map(b =>
-    `<button class="set-pill${S.br===b?' on':''}" onclick="setBr('${b}')">${b} · ${BR_NAME[b]}</button>`).join('')}</div>`;
+    `<button class="set-pill${S.br===b?' on':''}" onclick="setBr('${b}')">${brCode(b)} · ${BR_NAME[b]}</button>`).join('')}</div>`;
 }
 
 // ── การเปลี่ยนที่รอมีผล ──
@@ -268,7 +268,7 @@ function priceHtml(){
           <td>${inp(s.key,z,'wi',0)}</td><td>${inp(s.key,z,'wi',1)}</td></tr>`).join('')}</tbody>
       </table></div>
     </div>`).join('') +
-    `<div class="set-muted">บาท/ล็อก/วัน · ช่องสีทอง = แก้จากราคาชุดล่าสุด · กติกาวันฝนยังเหมือนเดิม (SS ลดครึ่งเฉพาะออนไลน์ · BG/BN ลดครึ่งทุกประเภท)</div>`;
+    `<div class="set-muted">บาท/ล็อก/วัน · ช่องสีทอง = แก้จากราคาชุดล่าสุด · กติกาวันฝนยังเหมือนเดิม (SR ลดครึ่งเฉพาะออนไลน์ · SG/SB ลดครึ่งทุกประเภท)</div>`;
 }
 window.setPrice = function(br,sk,z,k,i,v){
   const n = Math.max(0, Math.min(99999, parseInt(v)||0));
@@ -350,37 +350,39 @@ function diffDraft(){
     const A = lv.seasons?.[br] || [], B = S.draft.seasons[br] || [];
     B.forEach(s => {
       const o = A.find(x => x.key === s.key);
-      if(!o) out.push({label:`${br} · เพิ่มฤดูกาล "${s.name}" ${thMD(s.from)} – ${thMD(s.to)}`, from:null, to:null});
+      if(!o) out.push({label:`${brCode(br)} · เพิ่มฤดูกาล "${s.name}" ${thMD(s.from)} – ${thMD(s.to)}`, from:null, to:null});
       else{
-        if(o.name !== s.name) out.push({label:`${br} · เปลี่ยนชื่อฤดูกาล "${o.name}" → "${s.name}"`, from:null, to:null});
+        if(o.name !== s.name) out.push({label:`${brCode(br)} · เปลี่ยนชื่อฤดูกาล "${o.name}" → "${s.name}"`, from:null, to:null});
         if(o.from+''!==s.from+'' || o.to+''!==s.to+'')
-          out.push({label:`${br} · ช่วง ${s.name}: ${thMD(o.from)}–${thMD(o.to)} → ${thMD(s.from)}–${thMD(s.to)}`, from:null, to:null});
+          out.push({label:`${brCode(br)} · ช่วง ${s.name}: ${thMD(o.from)}–${thMD(o.to)} → ${thMD(s.from)}–${thMD(s.to)}`, from:null, to:null});
       }
     });
-    A.forEach(o => { if(!B.find(x => x.key === o.key)) out.push({label:`${br} · ลบฤดูกาล "${o.name}"`, from:null, to:null}); });
+    A.forEach(o => { if(!B.find(x => x.key === o.key)) out.push({label:`${brCode(br)} · ลบฤดูกาล "${o.name}"`, from:null, to:null}); });
     B.forEach(s => ['st','non'].forEach(z => ['on','wi'].forEach(k => [0,1].forEach(i => {
       const was = lv.prices?.[br]?.[s.key]?.[z]?.[k]?.[i];
       const now = S.draft.prices?.[br]?.[s.key]?.[z]?.[k]?.[i];
       if(was !== undefined && was !== now)
-        out.push({label:`${br} · ${zoneName(br,z)} · ${s.name} · ${KIND[k]} ${DAYK[i]}`, from:was, to:now});
+        out.push({label:`${brCode(br)} · ${zoneName(br,z)} · ${s.name} · ${KIND[k]} ${DAYK[i]}`, from:was, to:now});
     }))));
   });
   return out;
 }
 const pct = c => (c.from ? Math.round((c.to - c.from) / c.from * 100) : (c.to ? 100 : 0));
-const changeLine = c => c.from===null ? c.label : `${c.label}: ${c.from} → ${c.to} (${pct(c)>0?'+':''}${pct(c)}%)`;
+// BR-02: ประวัติเก่าใน settingsLog เก็บป้ายเป็น SS/BG/BN → แปลงตอนแสดง (ไม่แก้ข้อมูลเดิม)
+const changeLabel = c => String(c.label ?? '').replace(/\b(SS|BG|BN)\b/g, brCode);
+const changeLine = c => c.from===null ? changeLabel(c) : `${changeLabel(c)}: ${c.from} → ${c.to} (${pct(c)>0?'+':''}${pct(c)}%)`;
 
 function validate(){
   const errs = [];
   if(!S.effective || S.effective < minEffective()) errs.push(`วันเริ่มใช้ต้องตั้งแต่ ${thDate(minEffective())} เป็นต้นไป`);
   PRICE_BRANCHES.forEach(br => {
     const list = S.draft.seasons[br] || [];
-    if(!list.length) errs.push(`${br}: ต้องมีอย่างน้อย 1 ฤดูกาล`);
+    if(!list.length) errs.push(`${brCode(br)}: ต้องมีอย่างน้อย 1 ฤดูกาล`);
     const g = coverageGaps(list);
-    if(g.length) errs.push(`${br}: ฤดูกาลยังไม่ครบทั้งปี (${g.join(', ')})`);
+    if(g.length) errs.push(`${brCode(br)}: ฤดูกาลยังไม่ครบทั้งปี (${g.join(', ')})`);
     list.forEach(s => ['st','non'].forEach(z => ['on','wi'].forEach(k => [0,1].forEach(i => {
       const v = S.draft.prices?.[br]?.[s.key]?.[z]?.[k]?.[i];
-      if(!Number.isInteger(v) || v < 0) errs.push(`${br} · ${s.name}: ราคา ${zoneName(br,z)} ${KIND[k]} ${DAYK[i]} ยังไม่ได้ใส่`);
+      if(!Number.isInteger(v) || v < 0) errs.push(`${brCode(br)} · ${s.name}: ราคา ${zoneName(br,z)} ${KIND[k]} ${DAYK[i]} ยังไม่ได้ใส่`);
     }))));
   });
   return errs;
@@ -531,7 +533,7 @@ function applyLocal(docData){
 function targetHtml(){
   return `<div class="set-card"><div class="set-tblwrap"><table class="set-tbl">
     <thead><tr><th>สาขา</th><th>ST (ล็อก/วัน)</th><th>Car / Non (ล็อก/วัน)</th></tr></thead>
-    <tbody>${PRICE_BRANCHES.map(b => `<tr><td>${b} · ${BR_NAME[b]}</td>
+    <tbody>${PRICE_BRANCHES.map(b => `<tr><td>${brCode(b)} · ${BR_NAME[b]}</td>
       <td><input type="number" min="0" max="99999" class="set-num" id="tg_${b}_st" value="${TARGETS[b]?.st ?? 0}"></td>
       <td><input type="number" min="0" max="99999" class="set-num" id="tg_${b}_non" value="${TARGETS[b]?.non ?? 0}"></td></tr>`).join('')}</tbody>
   </table></div>
@@ -757,7 +759,7 @@ window.renderPriceNote = function(){
   box.innerHTML = brs.map(br => {
     const pb = pend.filter(v => (v.summary||[]).some(s => s.startsWith(br+' ')));
     return `<div style="margin-bottom:20px;padding:12px;border-radius:8px;border:1px solid var(--border)">
-      <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px">${br} · ${BR_NAME[br]} — ราคาที่ใช้วันนี้</div>
+      <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px">${brCode(br)} · ${BR_NAME[br]} — ราคาที่ใช้วันนี้</div>
       ${table(cur, br)}
       <div class="fd-mark" style="margin-top:8px;font-size:11px">วันฝน: ${br==='SS'
         ? 'ลด 50% เฉพาะออนไลน์ (ลา/ไม่มา รวมอยู่ในออนไลน์) · วอล์กอิน/ล็อกเสริมราคาเต็ม'

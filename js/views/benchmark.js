@@ -126,7 +126,7 @@ function bmZoneLabel(branches){
   if(zone==='st') return 'ST · Street Food';
   if(zone!=='non') return 'ทุกโซน';
   const hasSS=branches.includes('SS'), hasCar=branches.some(b=>b!=='SS');
-  return hasSS&&hasCar?'Non (SS) / Car (BG·BN)':hasSS?'Non · Boot Seller':'Car';
+  return hasSS&&hasCar?'Non (SR) / Car (SG·SB)':hasSS?'Non · Boot Seller':'Car';
 }
 
 // ── v2.5.8 BM-01/BM-02: เทรนด์ล็อกเฉลี่ย/วัน รายเดือน + ป้ายเตือนสาขาไหลลง ──

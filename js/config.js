@@ -13,6 +13,11 @@ let period=90,selMonth='',zone='all',group='all',view='overview';
 let customFrom=null,customTo=null;
 let activeBranch='BG'; // SS, BG, BN · เปิดเว็บมาที่ประตูกรุงเทพ (เจ้าของสั่ง 14 ต.ค. 69 · SS ปิดสาขาแล้ว) — ไม่มีสิทธิ์ BG = auth.js ย้ายไปสาขาแรกที่มีสิทธิ์
 let targetLock=400; // เป้าล็อกต่อวัน ของสาขา+โซนที่เลือกอยู่ (คำนวณจาก TARGETS)
+// BR-02: รหัสที่คนเห็น = รหัสฝั่งบัญชี (เจ้าของ 21 ต.ค. 69 · จำง่าย ขึ้นต้น S)
+//   ข้างใน (ข้อมูล · สิทธิ์ users.branches · เอกสาร Firestore · กฎ · ราคา/เป้า · ผัง 3D ?branch=) ยังใช้ SS/BG/BN
+//   แสดงรหัสสาขาที่ไหน ผ่าน brCode() เสมอ · ตรงกับคอลัมน์ acc_code แท็บ branches ของชีต UTIL
+const BR_CODE_SHOW={SS:'SR',BG:'SG',BN:'SB'};
+const brCode=b=>BR_CODE_SHOW[b]||b;
 
 // ── ENH-05: เป้าแยกสาขา × โซน ──
 // SET-01: เป้าใช้ร่วมกันทุกคน เก็บที่ Firestore settings/targets · แก้ได้เฉพาะ admin

@@ -326,7 +326,7 @@ function utMonthFlags(b,type,mo){ return (UT.cache[b].check||[]).filter(x=>x.typ
 
 function utCompareHtml(){
   const ok=utCmpReadable(), sel=new Set(utCmpBranches()), $=canSeeUtilMoney(), one=$?'':' one';
-  const pills=ok.length>1?`<div class="ut-pills">เทียบสาขา: ${ok.map(b=>`<button class="mc-pill${sel.has(b)?' sel':''}" onclick="toggleUtCmp('${b}')">${utEsc(BM_NAMES[b]||b)} (${b})${b==='SS'?' · ปิดแล้ว':''}</button>`).join('')}</div>`:'';
+  const pills=ok.length>1?`<div class="ut-pills">เทียบสาขา: ${ok.map(b=>`<button class="mc-pill${sel.has(b)?' sel':''}" onclick="toggleUtCmp('${b}')">${utEsc(BM_NAMES[b]||b)} (${brCode(b)})${b==='SS'?' · ปิดแล้ว':''}</button>`).join('')}</div>`:'';
   return pills+utRangeHtml()+utCheckBox()+UT_SECS.map(([type,icon,name,money,unit],k)=>{
     const d=utCmpData(type);
     // หัวส่วนติดบนจอตอนเลื่อน + สีประจำชนิด (ไฟ เหลือง · น้ำ ฟ้า · UTIL-28 พื้นการ์ด) — เจ้าของ: เลื่อนเร็วๆ ไม่รู้ส่วนไหนไฟ ส่วนไหนน้ำ
@@ -376,7 +376,7 @@ function utCompareCharts(){
       o.scales.y.beginAtZero=true; o.scales.y.ticks.callback=v=>utFmt(v);
       o.layout={padding:{top:14}};   // เว้นที่ให้ป้ายบนแท่งสูงสุด
       utValOpts(o); utAxis(o);
-      return {type:'bar',data:{labels:lbl,datasets:d.has.map(b=>({type:'bar',label:`${BM_NAMES[b]||b} (${b})`,
+      return {type:'bar',data:{labels:lbl,datasets:d.has.map(b=>({type:'bar',label:`${BM_NAMES[b]||b} (${brCode(b)})`,
         data:d.months.map(mo=>d.by[b][mo]?+d.by[b][mo][key].toFixed(2):null),backgroundColor:BM_COLORS[b],borderRadius:3,maxBarThickness:28}))},
         options:o,plugins:[utFlagPlugin]};
     };

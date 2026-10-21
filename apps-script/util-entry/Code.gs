@@ -98,12 +98,19 @@ function ensureStaff_() {
 //   ผิด 5 ครั้งใน 15 นาที → ล็อกเฉพาะสาขานั้น 15 นาที · 6 หลัก = 1,000,000 แบบ ÷ 5 ครั้ง/15 นาที = เดาไม่ทัน
 //   สาขาปิด (branches.active = FALSE) → ทุกคนในสาขานั้นเข้าไม่ได้
 //   branch_code = * → เข้าได้ทุกสาขาที่เปิดอยู่ (admin/เจ้าของ) · รหัสห้ามซ้ำกับคนในสาขาใดๆ
+//   พิมพ์รหัสฝั่งบัญชี (acc_code · SG/SB) ได้ = จำง่าย ขึ้นต้น S (เจ้าของ 21 ต.ค. 69) · ข้างในยังใช้ branch_code (BG/BN) ทั้งระบบ
 function login(branch, code) {
   const cache = CacheService.getScriptCache();
   branch = String(branch || '').trim().toUpperCase();
   code = String(code || '').trim();
-  const open = {};
-  table_('branches').rows.forEach(b => { if (truthy_(b.active)) open[String(b.branch_code)] = String(b.name_th || b.branch_code); });
+  const open = {}, acc = {}, byAcc = {};
+  table_('branches').rows.forEach(b => {
+    if (!truthy_(b.active)) return;
+    const br = String(b.branch_code), a = String(b.acc_code || '').trim().toUpperCase();
+    open[br] = String(b.name_th || br);
+    if (a) { acc[br] = a; byAcc[a] = br; }
+  });
+  if (!open[branch] && byAcc[branch]) branch = byAcc[branch];   // branch_code มาก่อน ถ้าชนกัน
   if (!open[branch]) throw new Error('ไม่พบรหัสสาขา ' + (branch || '(ว่าง)') + ' หรือสาขายังไม่เปิดใช้');
   const lockKey = 'lock_' + branch, failKey = 'fail_' + branch;
   if (cache.get(lockKey)) throw new Error('ใส่รหัสผิดหลายครั้ง · สาขานี้ลองใหม่อีก 15 นาที');
@@ -122,7 +129,7 @@ function login(branch, code) {
                role: role_(s) };
   const token = Utilities.getUuid();
   cache.put('s_' + token, JSON.stringify(me), SESSION_SEC);
-  const out = { token: token, branch: me.branch, branchName: open[me.branch], staff: me.name,
+  const out = { token: token, branch: me.branch, branchName: open[me.branch], branchAcc: acc[me.branch] || '', staff: me.name,
                 photoRequired: photoRequired_(), canMeter: canMeter_(me), canBill: canBill_(me) };
   if (out.canMeter) Object.assign(out, state_(me));
   if (out.canBill) out.bill = billState_(me);

@@ -120,7 +120,7 @@ function renderUserRow(u){
       + (isSelf ? ' <span style="font-size:9px;background:var(--surface3);color:var(--ink3);padding:1px 5px;border-radius:3px">คุณ</span>' : '')
       + '<div style="font-size:9px;color:var(--ink3);font-family:\'JetBrains Mono\',monospace">' + esc(u.uid) + '</div></td>'
     + '<td style="padding:9px 6px"><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:' + (admin?'rgba(240,165,0,.15)':'var(--surface3)') + ';color:' + (admin?'var(--gold)':'var(--ink2)') + '">' + esc(u.role || 'manager') + '</span></td>'
-    + '<td style="padding:9px 6px">' + (brs.length ? esc(brs.join(', ')) : '<span style="color:var(--ink3)">—</span>') + '</td>'
+    + '<td style="padding:9px 6px">' + (brs.length ? esc(brs.map(brCode).join(', ')) : '<span style="color:var(--ink3)">—</span>') + '</td>'
     + '<td style="padding:9px 6px;font-size:11px;color:var(--ink2)">' + permTxt + '</td>'
     + '<td style="padding:9px 6px;text-align:right;white-space:nowrap">'
       + '<button onclick="editUser(\'' + esc(u.uid) + '\')" style="background:var(--surface2);border:1px solid var(--border);color:var(--ink2);padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px;font-family:\'Noto Sans Thai\',sans-serif;margin-right:4px">แก้ไข</button>'
@@ -151,10 +151,10 @@ window.editUser = async function(uid){
         + '<option value="manager"' + (u.role!=='admin'?' selected':'') + '>manager</option>'
         + '<option value="admin"' + (u.role==='admin'?' selected':'') + '>admin</option></select></div>'
       + '<div><div style="font-size:10px;color:var(--ink3);margin-bottom:4px">สาขา</div><div style="display:flex;gap:12px">'
-        + ALL_BRANCHES.map(b => cb('edBr_' + uid + '_' + b, brs.includes(b), b)).join('') + '</div>'
+        + ALL_BRANCHES.map(b => cb('edBr_' + uid + '_' + b, brs.includes(b), brCode(b))).join('') + '</div>'
         // BM-04: สาขาที่เอาข้อมูลมาเทียบได้ในหน้า Benchmark เท่านั้น (ไม่ใช่สาขาที่ดูแล)
         + '<div id="edBmBox_' + uid + '" style="margin-top:8px"><div style="font-size:10px;color:var(--ink3);margin-bottom:4px">สาขาที่เทียบได้ใน Benchmark</div><div style="display:flex;gap:12px">'
-        + ALL_BRANCHES.map(b => cb('edBm_' + uid + '_' + b, bms.includes(b), b)).join('') + '</div></div></div>'
+        + ALL_BRANCHES.map(b => cb('edBm_' + uid + '_' + b, bms.includes(b), brCode(b))).join('') + '</div></div></div>'
       + '<div><div style="font-size:10px;color:var(--ink3);margin-bottom:4px">สิทธิ์</div>'
         + '<div id="edPermBox_' + uid + '" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 14px">'
         + PERM_KEYS.map(k => cb('edP_' + uid + '_' + k, u[k] === true, PERM_LABEL[k])).join('') + '</div></div>'

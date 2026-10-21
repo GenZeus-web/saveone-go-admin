@@ -190,7 +190,7 @@ function calcWhatIf(){
   //   ไม่มีสิทธิ์ หรือโหลดราคาไม่ได้ = ไม่คำนวณเงินเลย (ไม่ใช่ซ่อนด้วย CSS ที่ยังเหลือเลขใน DOM) · canSeeRev() ใน utils.js
   if(!canSeeRev()){
     res.innerHTML=lockCards;
-    note.innerHTML=`สมมติฐาน: ${wkndDays} วันหยุด (ศ-อา) ${wdDays} วันธรรมดา | สาขา ${activeBranch} | โซน ${zoneLbl}`;
+    note.innerHTML=`สมมติฐาน: ${wkndDays} วันหยุด (ศ-อา) ${wdDays} วันธรรมดา | สาขา ${brCode(activeBranch)} | โซน ${zoneLbl}`;
     return;
   }
 
@@ -216,7 +216,7 @@ function calcWhatIf(){
     <div class="fc-card" style="background:rgba(63,185,80,.1);border-color:rgba(63,185,80,.3)"><div class="fc-val" style="color:var(--green)">${fmtN(revPerDayRound)}</div><div class="fc-lbl">รายรับเฉลี่ย/วัน (฿)</div></div>
     <div class="fc-card" style="background:rgba(63,185,80,.1);border-color:rgba(63,185,80,.3)"><div class="fc-val" style="color:var(--green)">${fmtN(totalRev)}</div><div class="fc-lbl">รายรับรวม ${days} วัน (฿)</div></div>
   `;
-  note.innerHTML=`สมมติฐาน: ${wkndDays} วันหยุด (ศ-อา) ${wdDays} วันธรรมดา | สาขา ${activeBranch} | โซน ${zoneLbl} | ราคาตามฤดูกาลปัจจุบัน`;
+  note.innerHTML=`สมมติฐาน: ${wkndDays} วันหยุด (ศ-อา) ${wdDays} วันธรรมดา | สาขา ${brCode(activeBranch)} | โซน ${zoneLbl} | ราคาตามฤดูกาลปัจจุบัน`;
 }
 
 

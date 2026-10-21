@@ -65,7 +65,7 @@
     <div class="brand"><svg class="wm" viewBox="0 0 2824 624" role="img" aria-label="ตลาดเซฟวัน GO"><use href="#wm"/></svg><div class="muted">💧⚡ จดมิเตอร์ น้ำ-ไฟ</div></div>
     <div class="card">
       <label for="br">รหัสสาขา</label>
-      <input id="br" class="big" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="เช่น BN">
+      <input id="br" class="big" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="เช่น SB">
       <label for="pin">รหัสพนักงาน (6 หลัก)</label>
       <input id="pin" class="big" type="password" inputmode="numeric" maxlength="6" autocomplete="off">
       <div id="pinErr" class="err hidden"></div>
@@ -181,7 +181,7 @@ $('pinBtn').onclick = function(){
     b.disabled = false; $('pin').value = ''; remember(br);
     S.token = res.token; S.branch = res.branch; S.photoRequired = !!res.photoRequired;
     $('photoReq').textContent = S.photoRequired ? '(บังคับ · ให้เห็นตัวเลขชัด)' : '(ไม่บังคับ · ให้เห็นตัวเลขชัด)';
-    $('brName').textContent = 'สาขา' + res.branchName;
+    $('brName').textContent = 'สาขา' + res.branchName + (res.branchAcc ? ' (' + res.branchAcc + ')' : '');
     $('who').textContent = 'ผู้จด: ' + res.staff;
     $('bWho').textContent = 'ผู้กรอก: ' + res.staff;
     S.canMeter = !!res.canMeter; S.canBill = !!res.canBill;

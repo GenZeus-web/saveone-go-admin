@@ -25,8 +25,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0e0c0b"><!-- APP-ICON v3.0.2: สีพื้นธีมตลาดกลางคืน (night.css --bg) · iPhone ใช้ black-translucent ไม่อ่านค่านี้ -->
-<link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=3.3.5">
-<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png?v=3.3.5">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=3.3.5.2">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png?v=3.3.5.2">
 <link rel="manifest" href="manifest.webmanifest">
 
 <!-- ไลบรารีภายนอก -->
@@ -39,12 +39,12 @@
      │ การสลับลำดับ = สลับ cascade = สไตล์บางอย่างจะถูกทับผิดตัว        │
      │ responsive.css ต้องอยู่ท้ายสุดเสมอ (media query ทับของเดิม)      │
      └────────────────────────────────────────────────────────────────┘ -->
-<link rel="stylesheet" href="css/base.css?v=3.3.5">
-<link rel="stylesheet" href="css/layout.css?v=3.3.5">
-<link rel="stylesheet" href="css/components.css?v=3.3.5">
-<link rel="stylesheet" href="css/screens.css?v=3.3.5">
-<link rel="stylesheet" href="css/night.css?v=3.3.5"><!-- UI-NIGHT คอนเซปต์: ลบบรรทัดนี้ = หน้าตาเดิม -->
-<link rel="stylesheet" href="css/responsive.css?v=3.3.5">
+<link rel="stylesheet" href="css/base.css?v=3.3.5.2">
+<link rel="stylesheet" href="css/layout.css?v=3.3.5.2">
+<link rel="stylesheet" href="css/components.css?v=3.3.5.2">
+<link rel="stylesheet" href="css/screens.css?v=3.3.5.2">
+<link rel="stylesheet" href="css/night.css?v=3.3.5.2"><!-- UI-NIGHT คอนเซปต์: ลบบรรทัดนี้ = หน้าตาเดิม -->
+<link rel="stylesheet" href="css/responsive.css?v=3.3.5.2">
 
 <!-- ┌── Firebase (ES module) ────────────────────────────────────────┐
      │ type="module" ถูก defer โดยอัตโนมัติ → ทำงานหลัง DOM พร้อม      │
@@ -52,8 +52,8 @@
      │ จึงเรียก showSplash() / loadAll() / setBranch() ได้อย่างปลอดภัย  │
      │ init.js ถูก import จากทั้งสองไฟล์ แต่รันครั้งเดียว (ES module)   │
      └────────────────────────────────────────────────────────────────┘ -->
-<script type="module" src="js/firebase/auth.js?v=3.3.5"></script>
-<script type="module" src="js/firebase/user-admin.js?v=3.3.5"></script>
+<script type="module" src="js/firebase/auth.js?v=3.3.5.2"></script>
+<script type="module" src="js/firebase/user-admin.js?v=3.3.5.2"></script>
 </head>
 <body>
 
@@ -169,15 +169,15 @@
          class active ยังอยู่ที่ SS เพราะ activeBranch ตั้งต้น = 'SS' (config.js) — ย้ายต้องแก้คู่กัน -->
     <div class="branch-item active" onclick="setBranch('BG',this)" data-branch="BG">
       <div class="branch-dot" style="background:var(--blue)"></div>
-      <div><div class="branch-name">ประตูกรุงเทพ</div><div class="branch-sub">BG · มีข้อมูล</div></div>
+      <div><div class="branch-name">ประตูกรุงเทพ</div><div class="branch-sub">SG · มีข้อมูล</div></div>
     </div>
     <div class="branch-item" onclick="setBranch('BN',this)" data-branch="BN">
       <div class="branch-dot" style="background:var(--green)"></div>
-      <div><div class="branch-name">บางนา</div><div class="branch-sub">BN · มีข้อมูล</div></div>
+      <div><div class="branch-name">บางนา</div><div class="branch-sub">SB · มีข้อมูล</div></div>
     </div>
     <div class="branch-item" onclick="setBranch('SS',this)" data-branch="SS">
       <div class="branch-dot" style="background:var(--gold)"></div>
-      <div><div class="branch-name">ศรีสมาน (ปิดแล้ว)</div><div class="branch-sub">SS · ปิดสิ้น ก.ย. 69 · ดูย้อนหลัง</div></div>
+      <div><div class="branch-name">ศรีสมาน (ปิดแล้ว)</div><div class="branch-sub">SR · ปิดสิ้น ก.ย. 69 · ดูย้อนหลัง</div></div>
     </div>
     <!-- ผังตลาด 3D (repo แยก: 3D-Market-SR) — เปิดแท็บใหม่ ไม่ให้เสีย filter ที่ตั้งไว้
          · v2.10.0 LAY-03: **ถอด `data-branch="SS"` ออกแล้ว** — เดิมลูปซ่อนสาขาใน
@@ -565,7 +565,7 @@
           <strong>หมายเหตุสำหรับผู้บริหาร:</strong><br>
           • <strong>ราคา</strong> — admin ตั้งในเมนูโปรไฟล์ → ตั้งค่า · เปลี่ยนแล้วมีผลเฉพาะวันข้างหน้า วันที่ผ่านมาคิดราคาเดิมเสมอ<br>
           • <strong>จ–พฤ</strong> ราคาต่ำกว่า <strong>ศ–อา</strong> เพราะปริมาณลูกค้าต่างกัน<br>
-          • <strong>SS</strong> — วันฝนลดเฉพาะออนไลน์ · <strong>BG/BN</strong> — วันฝนลด 50% ทุกประเภท<br>
+          • <strong>SR</strong> — วันฝนลดเฉพาะออนไลน์ · <strong>SG/SB</strong> — วันฝนลด 50% ทุกประเภท<br>
           • <strong>วันฝน (FreeDay)</strong> — ลด 50% เป็นนโยบายดูแลพ่อค้าแม่ค้า<br>
           • <strong>ค่าไฟ</strong> — 200W แรก = 30฿, เกิน 100W ละ 10฿ บันทึกจากมิเตอร์จริงรายวัน
         </div>
@@ -662,9 +662,9 @@
       <div class="mc-panel">
         <div style="font-size:13px;font-weight:700;margin-bottom:12px">&#9878; Benchmark เปรียบเทียบสาขา <span id="bmZoneTag" style="font-size:11px;font-weight:600;color:var(--ink3);margin-left:6px">ทุกโซน</span><span style="font-size:10px;font-weight:400;color:var(--ink3);margin-left:6px">(เปลี่ยนโซน / ช่วงเวลา ได้ที่เมนูด้านข้าง)</span></div>
         <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap" id="bmBranchPills">
-          <button class="mc-pill" onclick="toggleBmBranch('BG',this)">ประตูกรุงเทพ (BG)</button>
-          <button class="mc-pill" onclick="toggleBmBranch('BN',this)">บางนา (BN)</button>
-          <button class="mc-pill sel" onclick="toggleBmBranch('SS',this)">ศรีสมาน (SS · ปิดแล้ว)</button>
+          <button class="mc-pill" onclick="toggleBmBranch('BG',this)">ประตูกรุงเทพ (SG)</button>
+          <button class="mc-pill" onclick="toggleBmBranch('BN',this)">บางนา (SB)</button>
+          <button class="mc-pill sel" onclick="toggleBmBranch('SS',this)">ศรีสมาน (SR · ปิดแล้ว)</button>
           <!-- BM-08: ซ่อน/แสดงตัวเลขบนจุดและแท่ง (จำในเครื่อง) · syncBmPills ข้ามปุ่มนี้เพราะไม่มี toggleBmBranch -->
           <button class="mc-pill" id="bmValsBtn" onclick="toggleBmVals()" aria-pressed="false" style="margin-left:auto">🔢 แสดงตัวเลข</button>
         </div>
@@ -780,17 +780,17 @@
 
         <div style="font-size:11px;color:var(--ink2);margin-bottom:6px">สาขาที่เข้าได้</div>
         <div style="display:flex;gap:14px;margin-bottom:12px;font-size:12px">
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBrSS" checked> SS</label>
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBrBG"> BG</label>
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBrBN"> BN</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBrSS" checked> SR</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBrBG"> SG</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBrBN"> SB</label>
         </div>
 
         <!-- BM-04: สาขาที่เอาข้อมูลมาเทียบได้ในหน้า Benchmark เท่านั้น (คนละแกนกับ "สาขาที่เข้าได้") -->
         <div style="font-size:11px;color:var(--ink2);margin-bottom:6px">สาขาที่เทียบได้ใน Benchmark</div>
         <div id="nuBmBox" style="display:flex;gap:14px;margin-bottom:12px;font-size:12px">
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBmSS"> SS</label>
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBmBG"> BG</label>
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBmBN"> BN</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBmSS"> SR</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBmBG"> SG</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="nuBmBN"> SB</label>
         </div>
 
         <div style="font-size:11px;color:var(--ink2);margin-bottom:6px">สิทธิ์เพิ่มเติม</div>
@@ -846,27 +846,27 @@
      │     ui.js      → startAutoRefresh(5)                           │
      │   ซึ่ง hoisting ใช้ได้ "ภายในไฟล์เดียวกัน" เท่านั้น              │
      └────────────────────────────────────────────────────────────────┘ -->
-<script src="js/config.js?v=3.3.5"></script>
-<script src="js/utils.js?v=3.3.5"></script>
-<script src="js/data-cache.js?v=3.3.5"></script>
-<script src="js/data-load.js?v=3.3.5"></script>
-<script src="js/filters.js?v=3.3.5"></script>
-<script src="js/trend.js?v=3.3.5"></script><!-- TREND-01: ต้องอยู่ก่อน overview.js -->
-<script src="js/views/overview.js?v=3.3.5"></script>
-<script src="js/views/forecast.js?v=3.3.5"></script>
-<script src="js/views/raw.js?v=3.3.5"></script>
-<script src="js/charts.js?v=3.3.5"></script>
-<script src="js/chart-types.js?v=3.3.5"></script><!-- CHT-04: ต้องหลัง charts.js (ใช้ chartClr/charts) · makeChart เรียก ctResolve/ctMount ตอนวาด -->
-<script src="js/views/compare.js?v=3.3.5"></script>
-<script src="js/views/heatmap.js?v=3.3.5"></script>
-<script src="js/views/benchmark.js?v=3.3.5"></script>
-<script src="js/util-calc.js?v=3.3.5"></script><!-- UTIL-01: ฟังก์ชันล้วน · ต้องอยู่ก่อน views/util.js -->
-<script src="js/views/util.js?v=3.3.5"></script>
-<script src="js/views/util-meter.js?v=3.3.5"></script>
-<script src="js/export.js?v=3.3.5"></script>
-<script src="js/ui.js?v=3.3.5"></script>
-<script src="js/login-fx.js?v=3.3.5"></script>
-<script src="js/today.js?v=3.3.5"></script><!-- TODAY-01: ใช้ของจาก utils/data-load ตอนเรียกเท่านั้น -->
+<script src="js/config.js?v=3.3.5.2"></script>
+<script src="js/utils.js?v=3.3.5.2"></script>
+<script src="js/data-cache.js?v=3.3.5.2"></script>
+<script src="js/data-load.js?v=3.3.5.2"></script>
+<script src="js/filters.js?v=3.3.5.2"></script>
+<script src="js/trend.js?v=3.3.5.2"></script><!-- TREND-01: ต้องอยู่ก่อน overview.js -->
+<script src="js/views/overview.js?v=3.3.5.2"></script>
+<script src="js/views/forecast.js?v=3.3.5.2"></script>
+<script src="js/views/raw.js?v=3.3.5.2"></script>
+<script src="js/charts.js?v=3.3.5.2"></script>
+<script src="js/chart-types.js?v=3.3.5.2"></script><!-- CHT-04: ต้องหลัง charts.js (ใช้ chartClr/charts) · makeChart เรียก ctResolve/ctMount ตอนวาด -->
+<script src="js/views/compare.js?v=3.3.5.2"></script>
+<script src="js/views/heatmap.js?v=3.3.5.2"></script>
+<script src="js/views/benchmark.js?v=3.3.5.2"></script>
+<script src="js/util-calc.js?v=3.3.5.2"></script><!-- UTIL-01: ฟังก์ชันล้วน · ต้องอยู่ก่อน views/util.js -->
+<script src="js/views/util.js?v=3.3.5.2"></script>
+<script src="js/views/util-meter.js?v=3.3.5.2"></script>
+<script src="js/export.js?v=3.3.5.2"></script>
+<script src="js/ui.js?v=3.3.5.2"></script>
+<script src="js/login-fx.js?v=3.3.5.2"></script>
+<script src="js/today.js?v=3.3.5.2"></script><!-- TODAY-01: ใช้ของจาก utils/data-load ตอนเรียกเท่านั้น -->
 
 </body>
 </html>

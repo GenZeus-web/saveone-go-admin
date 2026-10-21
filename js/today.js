@@ -46,7 +46,7 @@ function _todayBranchHtml(br, r){
   const carRai=(r.nonOnlineRai||0)+(r.nonWalkInRai||0);
 
   let h=`<div class="tdy-br">
-    <div class="tdy-brh"><span>${TODAY_BR_NAME[br]} <span class="tdy-code">${br}</span></span>${chip}</div>`;
+    <div class="tdy-brh"><span>${TODAY_BR_NAME[br]} <span class="tdy-code">${brCode(br)}</span></span>${chip}</div>`;
   h+=sec('🍜','ST · Street Food','var(--gold)')+big(stLock,stRai)+'<div class="day-grp st">';
   h+=rl('ออนไลน์',r.onlineRai,r.onlineLock);
   h+=rl('วอล์กอิน',r.walkInRai,r.walkInLock);
@@ -85,7 +85,7 @@ function openTodayModal(){
 
   let h='';
   if(!picks.length){
-    h='<div class="tdy-note">บัญชีนี้ไม่มีสาขาที่เปิดอยู่ (BG/BN)</div>';
+    h='<div class="tdy-note">บัญชีนี้ไม่มีสาขาที่เปิดอยู่ (SG/SB)</div>';
   }else{
     picks.forEach(p=>{
       if(!p.r){ h+=`<div class="tdy-br"><div class="tdy-brh"><span>${TODAY_BR_NAME[p.br]}</span></div><div class="tdy-note">ยังไม่มีข้อมูล</div></div>`; return; }

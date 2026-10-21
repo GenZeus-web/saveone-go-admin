@@ -107,7 +107,7 @@ function renderDataHealth(){
   if(!el) return;
   // v2.7.1 PERM-01: เตือนเฉพาะสาขาที่ผู้ใช้มีสิทธิ์ — สาขาที่ไม่ได้โหลดเพราะไม่มีสิทธิ์ ไม่ใช่ "ข้อมูลไม่ครบ"
   const _mine=myBranches();
-  const NAME={SS:'ศรีสมาน (SS)', BG:'ประตูกรุงเทพ (BG)', BN:'บางนา (BN)'};
+  const NAME={SS:'ศรีสมาน (SR)', BG:'ประตูกรุงเทพ (SG)', BN:'บางนา (SB)'};
   const bad=_mine.filter(b=>!dataLoaded[b]).map(b=>NAME[b]);
   // v2.10.0 BM-04: เอกสารที่พลาดเพราะเป็นสาขาที่ "เทียบได้เฉยๆ" (bmBranches) ไม่ใช่สาขาที่ดูแล
   //   ไม่ใช่ "ข้อมูลไม่ครบ" ของคนนี้ — ขึ้นแบนเนอร์แดงจะเป็นการเตือนมั่ว (docId = SS_ST / BG_CAR …)
