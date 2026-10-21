@@ -9,7 +9,7 @@
 // ============================================================
 
 // ── ของที่ใช้ร่วม ──
-const UM_RANK={red:0,leak:0,yellow:1,green:2,partial:3,nodata:3};
+const UM_TYPE_RANK={water:0,elec:1};
 const umRgb=lv=>sc(`rgb(${(UT_LEVEL[lv]||UT_LEVEL.nodata).rgb})`).replace(/^rgb\(|\)$/g,'');
 const umHot=lv=>['yellow','red','leak'].includes(lv);
 function umPts(m){ return m._days||[]; }
@@ -28,9 +28,10 @@ function umName(m){ return `${(UT_TYPE[m.type]||'').split(' ')[0]} ${utEsc(m.loc
 function umBillHi(){ const h=new Map(); utRecentHigh(UT.br||activeBranch).forEach(x=>h.set(x.meter_id,[...(h.get(x.meter_id)||[]),x.bill_month])); return h; }
 // ป้ายบอกเดือนด้วย (เจ้าของ 20 ต.ค.: การ์ดขึ้น "บิลสูง" แต่บรรทัดบิลล่าสุด +0% ชวนงง — ธงมาจากบิลเดือนก่อน)
 const umHiTag=(hi,id)=>hi.has(id)?`<span class="um-tag">⚠ บิลสูง ${hi.get(id).sort().map(utMonthTh).join(', ')}</span>`:'';
-// ทุกมิเตอร์ที่ utLoad ส่งมา (เปิดอยู่ หรือปิดแล้วแต่มีข้อมูล/บิล — SS ปิดสาขาต้องดูย้อนหลังได้) · ตัวที่ต้องดูขึ้นก่อน
+// ทุกมิเตอร์ที่ utLoad ส่งมา (เปิดอยู่ หรือปิดแล้วแต่มีข้อมูล/บิล — SS ปิดสาขาต้องดูย้อนหลังได้)
+// UTIL-40: น้ำก่อนไฟ ในชนิดเดียวกันคงลำดับแถวในแท็บ meters = เหมือนแอปจด ที่เดิมทุกวัน (เดิมเรียงแดงขึ้นก่อน)
 function umOrder(c){
-  return c.meters.map((m,i)=>({m,i})).sort((a,b)=>(UM_RANK[a.m._full?.level]??4)-(UM_RANK[b.m._full?.level]??4));
+  return c.meters.map((m,i)=>({m,i})).sort((a,b)=>((UM_TYPE_RANK[a.m.type]??9)-(UM_TYPE_RANK[b.m.type]??9))||a.i-b.i);
 }
 function umGroups(c){
   const all=umOrder(c).filter(({m})=>umPts(m).length);
