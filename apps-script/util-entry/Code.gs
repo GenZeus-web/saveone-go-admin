@@ -10,8 +10,8 @@
 const TZ = 'Asia/Bangkok';               // ไทย UTC+7 ไม่มีเวลาออมแสง
 const FS_PROJECT = 'saveone-go-5fe9d';
 const LOG_ROWS = 10;                     // log ในแอป: จดล่าสุดของสาขากี่รายการ
-const DEFAULT_ROUNDS = '14:00';          // เวลารอบจด น้ำ+ไฟ ถ้าแท็บ branches ช่อง rounds ว่าง (น้ำวันละรอบ 14 ต.ค. · ไฟรายวันตามที่ประชุม 21 ต.ค.)
-const ROUND_EARLY_MIN = 60, ROUND_LATE_MIN = 60;   // จดได้ก่อน/หลังเวลารอบกี่นาที (±1 ชม.)
+const DEFAULT_ROUNDS = '16:00';          // เวลารอบจด น้ำ+ไฟ ถ้าแท็บ branches ช่อง rounds ว่าง (ไฟรายวันตามที่ประชุม 21 ต.ค. · 14:00 → 16:00 เจ้าของ 21 ต.ค. เย็น)
+const ROUND_EARLY_MIN = 0, ROUND_LATE_MIN = 60;    // ช่วงจด = เวลารอบ → +1 ชม. (UTIL-38 · เจ้าของ 21 ต.ค. 69: 16:00–17:00 ทุกสาขา)
 const JUMP_X = 3;                        // เลขเพิ่มเกินกี่เท่าของปกติ → หน้าแอปถามยืนยันก่อนบันทึก (พิมพ์เกิน เช่น 1,211 แทน 1,121)
 const RATE_PAIRS = 7, RATE_MIN_PAIRS = 3; // ปกติ = ค่ากลางของช่วงจดล่าสุดกี่ช่วง · ต้องมีอย่างน้อยกี่ช่วง
 const BILL_ROWS = 12;                  // หน้าบัญชี: บิลล่าสุดกี่รายการ
@@ -40,7 +40,7 @@ function setup() {
   ensureCol_('readings', 'staff_id', 'รหัสคนจด', 'staff_id ของคนจด (แท็บ staff) · แอปใส่ให้เอง');
   ensureStaff_();
   ensureCol_('staff', 'role', 'บทบาท', 'ว่าง/meter = จดมิเตอร์ · acct = บัญชีกรอกบิล · admin = ทั้งสองอย่าง');
-  ensureCol_('branches', 'rounds', 'เวลารอบจด', 'เช่น 14:00,01:00 · ว่าง = ' + DEFAULT_ROUNDS + ' · จดได้ก่อน/หลังรอบ 1 ชม.');
+  ensureCol_('branches', 'rounds', 'เวลารอบจด', 'เช่น 16:00 · ว่าง = ' + DEFAULT_ROUNDS + ' · จดได้ตั้งแต่เวลารอบ ถึงหลังรอบ 1 ชม.');
   ensureCol_('bills', 'entered_by', 'กรอกโดย', 'แอปใส่ให้เอง (หน้าบัญชี) · แถวเก่าจาก Excel เว้นว่าง');
   ensureCol_('bills', 'entered_at', 'เวลากรอก', 'แอปใส่ให้เอง');
   ensureCol_('bills', 'status', 'สถานะ', 'ว่าง = ใช้ · void = ยกเลิก (ไม่นับ ไม่ส่งขึ้นเว็บ)');
@@ -232,7 +232,12 @@ function rounds_(branch) {
   const b = table_('branches').rows.find(x => String(x.branch_code) === branch) || {};
   return (String(b.rounds || '').trim() || DEFAULT_ROUNDS).split(/[,\s]+/)
     .map(s => /^(\d{1,2})[:.](\d{2})$/.exec(s)).filter(Boolean)
-    .map(m => ({ label: ('0' + (+m[1] % 24)).slice(-2) + ':' + m[2], min: (+m[1] % 24) * 60 + (+m[2]) }));
+    .map(m => (+m[1] % 24) * 60 + (+m[2]))
+    .map(min => ({ label: hm_(min - ROUND_EARLY_MIN) + '–' + hm_(min + ROUND_LATE_MIN), min: min }));   // ป้าย = ช่วงจด เช่น 16:00–17:00
+}
+function hm_(min) {
+  min = ((min % 1440) + 1440) % 1440;
+  return ('0' + Math.floor(min / 60)).slice(-2) + ':' + ('0' + (min % 60)).slice(-2);
 }
 function round_(rounds, nowMs) {
   if (!rounds.length) return null;
