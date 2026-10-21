@@ -18,6 +18,7 @@
   input[type=text], input[type=password], input[type=number], input[type=month], textarea, select {
     width:100%; font:inherit; padding:12px; border:1px solid var(--line); border-radius:10px; background:#fff; }
   input.big { font-size:28px; letter-spacing:2px; text-align:center; }
+  select.big { font-size:20px; }
   button { font:inherit; border:0; border-radius:10px; padding:14px; width:100%; cursor:pointer; }
   .primary { background:var(--brand); color:#fff; font-weight:600; }
   .primary:disabled { opacity:.5; }
@@ -65,7 +66,7 @@
     <div class="brand"><svg class="wm" viewBox="0 0 2824 624" role="img" aria-label="ตลาดเซฟวัน GO"><use href="#wm"/></svg><div class="muted">💧⚡ จดมิเตอร์ น้ำ-ไฟ</div></div>
     <div class="card">
       <label for="br">รหัสสาขา</label>
-      <input id="br" class="big" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="เช่น SB">
+      <select id="br" class="big"><option value="">กำลังโหลดสาขา…</option></select>
       <label for="pin">รหัสพนักงาน (6 หลัก)</label>
       <input id="pin" class="big" type="password" inputmode="numeric" maxlength="6" autocomplete="off">
       <div id="pinErr" class="err hidden"></div>
@@ -161,7 +162,22 @@ function show(v){
 function msg(el, text, cls){ el.className = text ? cls : cls + ' hidden'; el.textContent = text || ''; }
 // จำรหัสสาขาไว้ในเครื่อง (ความสะดวกเท่านั้น · เปิดในโหมดส่วนตัว/ล้างข้อมูล = พิมพ์ใหม่)
 function remember(v){ try { if (v === undefined) return localStorage.getItem('util_branch') || ''; localStorage.setItem('util_branch', v); } catch (e) { return ''; } }
-$('br').value = remember();
+// UTIL-39: เลือกสาขาจากรายการ (สาขาที่เปิด · รหัสบัญชี SG/SB) · เลือกสาขาที่จำไว้ให้เอง · มีสาขาเดียว = เลือกให้เลย
+function loadBranches(){
+  var sel = $('br'); sel.disabled = true;
+  google.script.run.withSuccessHandler(function(list){
+    var keep = remember();
+    sel.innerHTML = '';
+    var o = document.createElement('option'); o.value = ''; o.textContent = '— เลือกสาขา —'; sel.appendChild(o);
+    list.forEach(function(b){ var x = document.createElement('option'); x.value = b.code; x.textContent = b.code + ' · ' + b.name; sel.appendChild(x); });
+    if (list.some(function(b){ return b.code === keep; })) sel.value = keep;
+    else if (list.length === 1) sel.value = list[0].code;
+    sel.disabled = false;
+  }).withFailureHandler(function(){
+    sel.innerHTML = '<option value="">โหลดสาขาไม่ได้ · ลองรีเฟรช</option>'; sel.disabled = false;
+  }).branchList();
+}
+loadBranches();
 
 // เรียก server · หมดเวลา → กลับหน้า PIN เอง
 function call(fn, args, ok, fail){
@@ -177,6 +193,7 @@ function call(fn, args, ok, fail){
 $('pinBtn').onclick = function(){
   var b = this; b.disabled = true; msg($('pinErr'), '', 'err');
   var br = $('br').value.trim().toUpperCase();
+  if (!br) { b.disabled = false; return msg($('pinErr'), 'เลือกสาขาก่อน', 'err'); }
   call('login', [br, $('pin').value], function(res){
     b.disabled = false; $('pin').value = ''; remember(br);
     S.token = res.token; S.branch = res.branch; S.photoRequired = !!res.photoRequired;
@@ -191,7 +208,7 @@ $('pinBtn').onclick = function(){
   }, function(m){ b.disabled = false; msg($('pinErr'), m, 'err'); });
 };
 $('pin').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('pinBtn').click(); });
-$('br').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('pin').focus(); });
+$('br').addEventListener('change', function(){ if (this.value) $('pin').focus(); });
 $('outBtn').onclick = function(){ S.token = null; show('vPin'); };
 
 // ── รายการ + log ──

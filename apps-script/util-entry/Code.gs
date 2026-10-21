@@ -94,6 +94,15 @@ function ensureStaff_() {
 
 // ── เรียกจากหน้าเว็บ (google.script.run) ──
 
+// UTIL-39: รายการสาขาให้เลือกหน้าเข้าแอป (เจ้าของ: กดเลือกสะดวกกว่าพิมพ์) · เฉพาะสาขาที่เปิด
+//   code = acc_code (SG/SB) ไม่มี = branch_code · ชื่อ/รหัสสาขาไม่ใช่ความลับ ด่านจริงคือรหัสพนักงาน
+function branchList() {
+  return table_('branches').rows.filter(b => truthy_(b.active) && String(b.branch_code || '').trim()).map(b => {
+    const c = String(b.acc_code || '').trim().toUpperCase() || String(b.branch_code).trim();
+    return { code: c, name: String(b.name_th || c) };
+  });
+}
+
 // รหัสสาขา + รหัสพนักงาน 6 หลัก → ต้องเป็นคนของสาขานั้น (ใช้รหัสตัวเองเข้าสาขาอื่นไม่ได้)
 //   ผิด 5 ครั้งใน 15 นาที → ล็อกเฉพาะสาขานั้น 15 นาที · 6 หลัก = 1,000,000 แบบ ÷ 5 ครั้ง/15 นาที = เดาไม่ทัน
 //   สาขาปิด (branches.active = FALSE) → ทุกคนในสาขานั้นเข้าไม่ได้
