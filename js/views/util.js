@@ -127,7 +127,7 @@ function utHelpHtml(S,hasElec){
         <tr><td>🟡 เหลือง</td><td>เกินเส้นเหลือง</td><td>จับตาดู</td></tr>
         <tr><td>🔴 แดง</td><td>เกินเส้นแดง</td><td>ไปดูหน้างาน</td></tr>
         <tr><td>🟣 ม่วง</td><td>เกินเส้นเหลืองติดกัน ${w.streak} วัน</td><td>เช็คท่อ/ก๊อก น่าจะรั่ว</td></tr></table>
-      <p>สีจาง = วันที่ไม่ได้จด (ระบบเฉลี่ยให้) · สีเทา = จดยังไม่ครบ${hasElec?' · ⚡ ไฟ ช่องละ 1 สัปดาห์':''}</p>
+      <p>สีจาง = วันที่ไม่ได้จด (ระบบเฉลี่ยให้) · สีเทา = จดยังไม่ครบ</p>
 
       <div class="ut-help-h">วิธีคำนวณ</div>
       <ol>
@@ -135,7 +135,7 @@ function utHelpHtml(S,hasElec){
         <li><b>ค่ากลาง</b> = ตัวกลางของวันเดียวกันในสัปดาห์ ย้อน ${S.baseWeeks} สัปดาห์ (ต้องมีอย่างน้อย ${S.baseMinDays}) ไม่นับวันที่แดง · เช่น 30 · 34 · 36 · 80 → ${utFmt(utilMedian([30,34,36,80]))}<br>ช่วงแรกที่ยังมีไม่ถึง ${S.baseMinDays} = ใช้ค่าเฉลี่ยต่อวันจาก ${S.billBase.n} บิลล่าสุดแทน</li>
         <li><b>🟡 เหลือง</b> = ${rule(w.yellow,w.minDiff,'ที่ใช้')}<br><b>🔴 แดง</b> = ${rule(w.red,w.minDiff,'ที่ใช้')}<br>เช่น ${ex(20)} · ${ex(5)}</li>
         <li><b>🟣 ม่วง</b> = วันนั้นเหลือง และเกินเส้นเหลืองติดกันถึงวันที่ ${w.streak} (วันแดงนับรวม)</li>
-        ${hasElec?`<li><b>⚡ ไฟ</b> = นับรายสัปดาห์ · เหลือง ${rule(e.yellow,utFmt(e.minDiff*7),'ที่ใช้')} · แดง ค่ากลาง × ${e.red} · ไม่มีม่วง</li>`:''}
+        ${hasElec?`<li><b>⚡ ไฟ</b> = เหลือง ${rule(e.yellow,utFmt(e.minDiff),'ที่ใช้')} · แดง ค่ากลาง × ${e.red} · ม่วง เหลืองติดกัน ${e.streak} วัน</li>`:''}
         <li><b>⚠ บิล</b> = ค่ากลาง ${B.lookback} บิลก่อน × ${B.ratio} &lt; บิลนี้ <b>และ</b> ค่ากลาง + ${B.minDiff.water} (ไฟ ${utFmt(B.minDiff.elec)}) ≤ บิลนี้
           · ต้องมีบิลก่อนหน้าอย่างน้อย ${B.minPrev} ใบ · ไม่ตรวจ ${B.warmup} เดือนแรกของสาขา
           <br>เช่น บิลน้ำสำนักงานบางนา ก.ค. 69 = ${bNow} · ${utFmt(bBase)} × ${B.ratio} = ${utFmt(bBase*B.ratio,1)} &lt; ${bNow} และ ${utFmt(bBase)} + ${B.minDiff.water} = ${utFmt(bBase+B.minDiff.water)} ≤ ${bNow} → ⚠ +${utFmt((bNow/bBase-1)*100)}%</li>
@@ -406,23 +406,15 @@ function utSummary(c){
   return `<div class="kpi-row ut-kpis">${h}</div>`;
 }
 
-// ผลวิเคราะห์ 1 มิเตอร์ เก็บที่ m._res / m._days / m._weeks / m._full / m._th / m._anoms
+// ผลวิเคราะห์ 1 มิเตอร์ เก็บที่ m._res / m._days / m._full / m._th / m._anoms
 //   ให้การ์ด สรุป ตาราง และกล่องรายละเอียด (views/util-meter.js) ใช้ต่อ ไม่คำนวณซ้ำ
-const UT_MIN_WEEKS=8;
+//   น้ำ + ไฟ รายวันเหมือนกัน (UTIL-37 · ไฟเคยจดทุกวันจันทร์แล้วรวมเป็นรายสัปดาห์ UTIL-13)
 function utPrep(m,c,S,now){
   const meter={meter_id:m.meter_id,type:m.type,branch_code:m.branch_code};
   const res=utilAnalyze(c.readings,meter,utSet(),now,c.bills);   // บิล = ฐานช่วงแรก (UTIL-21)
   const days=applyPeriod(res.days.map(d=>({date:new Date(d.date+'T00:00:00'),d}))).map(x=>x.d);
-  // ไฟจดทุกวันจันทร์ (UTIL-13) → รายสัปดาห์ · สัปดาห์ที่คาบช่วงเวลาในเมนูข้าง แต่อย่างน้อย UT_MIN_WEEKS สัปดาห์ล่าสุด
-  //   (เลือก 7/30 วัน ได้แท่งเดียวสองแท่ง ดูแนวโน้มไม่ได้)
-  let weeks=null;
-  if(m.type==='elec'){
-    const all=utilWeekly(res.days,meter,S,c.bills), inP=new Set(days.map(d=>utilWeekIdx(d.idx)));
-    weeks=all.filter(w=>inP.has(w.idx));
-    if(weeks.length<UT_MIN_WEEKS) weeks=all.slice(-UT_MIN_WEEKS);
-  }
-  m._res=res; m._days=days; m._weeks=weeks; m._th=S.thresholds[m.type]||S.thresholds.water;
-  m._full=weeks?[...weeks].reverse().find(w=>w.cover>=6.999):[...res.days].reverse().find(d=>d.cover>=0.999);
+  m._res=res; m._days=days; m._th=S.thresholds[m.type]||S.thresholds.water;
+  m._full=[...res.days].reverse().find(d=>d.cover>=0.999);
   m._anoms=res.anomalies.filter(a=>!days.length||a.t>=Date.parse(days[0].date)).slice(-3).map(a=>
     a.kind==='backward'?`เลขถอยหลัง ${utFmt(a.from)} → ${utFmt(a.to)} (${utWhen(a.t)}) · ไม่นับแถวนี้`
                        :`เปลี่ยนมิเตอร์ (${utWhen(a.t)}) · เลขใหม่เป็นจุดตั้งต้น`);

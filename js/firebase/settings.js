@@ -582,7 +582,6 @@ function utilCur(){
   };
 }
 // ช่องกรอก: path → [ชื่อในประวัติ, ต่ำสุด, สูงสุด, จำนวนเต็ม, คูณตอนแสดง]
-//   ไฟ "ค่ากลาง +" เก็บเป็นต่อวัน (util-calc คูณ 7 เอง) แต่แสดง/กรอกเป็นต่อสัปดาห์
 const UF = {
   'baseWeeks':                  ['ค่ากลาง · ย้อนกี่สัปดาห์', 2, 12, true],
   'baseMinDays':                ['ค่ากลาง · ต้องมีอย่างน้อย', 1, 12, true],
@@ -594,8 +593,9 @@ const UF = {
   'thresholds.water.closedRate':['น้ำ · ช่วงตลาดปิด ลบ.ม./ชม.', 0, 100],
   'thresholds.elec.yellow':     ['ไฟ · เหลือง ค่ากลาง ×', 1.01, 10],
   'thresholds.elec.red':        ['ไฟ · แดง ค่ากลาง ×', 1.01, 20],
-  'thresholds.elec.minDiff':    ['ไฟ · ค่ากลาง + (ต่อสัปดาห์)', 0, 1000000, false, 7],
-  'thresholds.elec.staleDays':  ['ไฟ · เตือนจดขาดเกินกี่วัน', 1, 60],
+  'thresholds.elec.minDiff':    ['ไฟ · ค่ากลาง +', 0, 100000],
+  'thresholds.elec.streak':     ['ไฟ · ม่วง เหลืองติดกันกี่วัน', 2, 14, true],
+  'thresholds.elec.staleDays':  ['ไฟ · เตือนจดขาดเกินกี่วัน', 1, 30],
   'billCheck.ratio':            ['บิล · ค่ากลาง ×', 1.01, 10],
   'billCheck.minDiff.water':    ['บิลน้ำ · ค่ากลาง +', 0, 100000],
   'billCheck.minDiff.elec':     ['บิลไฟ · ค่ากลาง +', 0, 10000000],
@@ -654,7 +654,7 @@ function utilHtml(){
     <div class="set-card">
       <div class="set-h">📐 ค่ากลาง (ใช้ทั้งน้ำและไฟ)</div>
       ${row('', `ค่ากลาง = ตัวกลางของวันเดียวกัน ย้อน ${uin('baseWeeks')} สัปดาห์`, `ต้องมีอย่างน้อย ${uin('baseMinDays')} สัปดาห์`)}
-      <div class="set-muted">ไม่นับวันที่แดงแล้ว · ไฟนับเป็นสัปดาห์ เทียบกับสัปดาห์ก่อนๆ</div>
+      <div class="set-muted">ไม่นับวันที่แดงแล้ว</div>
     </div>
     <div class="set-card">
       <div class="set-h">💧 น้ำ · ดูรายวัน</div>
@@ -666,11 +666,12 @@ function utilHtml(){
       <div class="set-muted">${ex(20,W,W.minDiff,'ลบ.ม.')}<br>${ex(5,W,W.minDiff,'ลบ.ม.')}<br>"ค่ากลาง +" ใช้ทั้งเหลืองและแดง · ช่วงตลาดปิดใช้ได้เมื่อจดวันละ 2 รอบ</div>
     </div>
     <div class="set-card">
-      <div class="set-h">⚡ ไฟ · ดูรายสัปดาห์</div>
+      <div class="set-h">⚡ ไฟ · ดูรายวัน</div>
       ${row('🟡', `ค่ากลาง × ${uin('thresholds.elec.yellow')} &lt; ที่ใช้`, `ค่ากลาง + ${uin('thresholds.elec.minDiff')} ≤ ที่ใช้`)}
-      ${row('🔴', `ค่ากลาง × ${uin('thresholds.elec.red')} &lt; ที่ใช้`, `ค่ากลาง + ${nf(E.minDiff*7,0)} ≤ ที่ใช้`)}
+      ${row('🔴', `ค่ากลาง × ${uin('thresholds.elec.red')} &lt; ที่ใช้`, `ค่ากลาง + ${nf(E.minDiff,0)} ≤ ที่ใช้`)}
+      ${row('🟣', `เกินเส้นเหลืองติดกัน ${uin('thresholds.elec.streak')} วัน (วันนั้นเหลือง)`)}
       ${row('⚠️', `ไม่มีการจดเกิน ${uin('thresholds.elec.staleDays')} วัน`)}
-      <div class="set-muted">${ex(6500,E,E.minDiff*7,'หน่วย')} · ไฟไม่มีม่วง</div>
+      <div class="set-muted">${ex(900,E,E.minDiff,'หน่วย')}</div>
     </div>
     <div class="set-card">
       <div class="set-h">🧾 บิลรายเดือน</div>

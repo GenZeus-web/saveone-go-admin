@@ -20,8 +20,8 @@ const UTIL_DEFAULTS={
   baseMinDays:2,     // วันปกติเหลือน้อยกว่านี้ → ใช้ค่าเฉลี่ยบิล (billBase) แทน
   thresholds:{
     water:{yellow:1.5,red:2,minDiff:10,streak:3,closedRate:0.5},  // จดวันละรอบ 14:00 (เจ้าของเลือก 14 ต.ค. 69)
-    // ไฟ: ยังไม่มีข้อมูลจริง minDiff/closedRate เป็นค่าเดา · จดทุกวันจันทร์ → เลยรอบ 1 วันยังไม่เตือน
-    elec:{yellow:1.5,red:2,minDiff:100,streak:3,closedRate:null,staleDays:8}
+    // ไฟ: ยังไม่มีข้อมูลจริง minDiff/closedRate เป็นค่าเดา · จดวันละรอบเหมือนน้ำ (ที่ประชุม 21 ต.ค. 69 · เดิมทุกวันจันทร์ staleDays 8)
+    elec:{yellow:1.5,red:2,minDiff:100,streak:3,closedRate:null,staleDays:2}
   },
   rates:[],          // [{meter_id, field:'multiplier'|'rate', value, effective_from}] — ห้ามแก้ย้อน (ADR 0001)
   billMonthOffset:-1, // บิลเดือน M = ใช้จริงเดือน M-1 (เทียบใบจดบางนา ก.ย.–ต.ค. 69) — รอบัญชียืนยัน
@@ -137,11 +137,11 @@ function utilBillDaily(bills,meterId,iso,S){
 
 // เลือกฐาน: ค่ากลาง (หลัก) → ค่าเฉลี่ยจากบิล (ช่วงแรก) → ไม่มี
 //   ฐานตั้งต้นแบบกรอกเอง (baseline) เอาออก 15 ต.ค. 69 — ไม่มีหน้าให้กรอก ค่าเฉลี่ยบิลทำหน้าที่แทน
-//   mult = 1 รายวัน · 7 รายสัปดาห์ · ตั้ง o.base / o.baseFrom ('median'|'bill'|null) / o.billMonths
-function utilPickBase(o,hist,meter,S,bills,iso,mult){
+//   ตั้ง o.base / o.baseFrom ('median'|'bill'|null) / o.billMonths
+function utilPickBase(o,hist,meter,S,bills,iso){
   let fb;
   if(hist.length>=S.baseMinDays){ o.base=utilMedian(hist); o.baseFrom='median'; }
-  else if((fb=utilBillDaily(bills,meter.meter_id,iso,S))){ o.base=fb.perDay*mult; o.baseFrom='bill'; o.billMonths=fb.months; }
+  else if((fb=utilBillDaily(bills,meter.meter_id,iso,S))){ o.base=fb.perDay; o.baseFrom='bill'; o.billMonths=fb.months; }
   else{ o.base=null; o.baseFrom=null; }
 }
 
@@ -156,7 +156,7 @@ function utilFlags(days,meter,S,bills){
     if(d.cover<0.999){ d.level='partial'; continue; }
     const hist=[];
     for(let w=1;w<=S.baseWeeks;w++){ const h=byIdx.get(d.idx-7*w); if(h&&h.cover>=0.999&&!bad.has(h.idx)) hist.push(h.units); }
-    utilPickBase(d,hist,meter,S,bills,d.date,1);
+    utilPickBase(d,hist,meter,S,bills,d.date);
     if(d.base==null){ d.level='nodata'; lastHot=false; lastIdx=d.idx; continue; }
     d.ratio=d.base>0?d.units/d.base:Infinity; d.diff=d.units-d.base;
     const over=x=>d.ratio>x&&d.diff>=th.minDiff;
@@ -187,41 +187,6 @@ function utilAnalyze(readings,meter,settings,now,bills){
   const ageDays=last?(now-last.t)/UTIL_DAY:null, staleDays=S.thresholds[meter.type]?.staleDays??S.staleDays;
   return {days:utilFlags(utilDaily(segs,meter.meter_id,S),meter,S,bills),closed:utilClosed(segs,meter,S),anomalies,
           last:last&&last.t,ageDays,staleDays,stale:last==null||ageDays>staleDays};
-}
-
-// ── รายสัปดาห์ (UTIL-13 · ไฟจดทุกวันจันทร์ 14:00) ──
-// รวมวันตลาดเป็นสัปดาห์ จันทร์–อาทิตย์ · วันตลาดเริ่ม 14:00 → จดจันทร์ 14:00 = ขอบสัปดาห์พอดี (1 ช่วงจด = 1 สัปดาห์เต็ม)
-//   ธงรายวันใช้กับไฟไม่ได้: ช่วงจด 7 วันถูกเฉลี่ยเท่ากันทุกวัน แท่งรายวันแบนเหมือนจดทุกวันทั้งที่ไม่ได้จด
-//   ฐาน = ค่ากลางสัปดาห์เต็มย้อน baseWeeks สัปดาห์ (ข้ามสัปดาห์แดง · น้อยกว่า baseMinDays = ค่าเฉลี่ยบิล × 7)
-//   เกณฑ์ "กี่เท่า" เท่ารายวัน · "เพิ่มขั้นต่ำ" = minDiff ต่อวัน × 7 · ไม่มีธงรั่ว (3 รอบติด = 3 สัปดาห์ ช้าเกินมีความหมาย)
-// days = ผลจาก utilAnalyze().days · คืน [{idx, date (จันทร์), end (อาทิตย์), units, cover (วัน), est, base, ratio, diff, level}]
-function utilWeekIdx(dayIdx){ return dayIdx-((dayIdx+3)%7); }   // idx 0 = 1970-01-01 วันพฤหัส → (idx+3)%7 = 0 คือวันจันทร์
-function utilWeekly(days,meter,S,bills){
-  const th=S.thresholds[meter.type]||S.thresholds.water, by=new Map();
-  for(const d of days||[]){
-    const w=utilWeekIdx(d.idx), o=by.get(w)||{idx:w,date:utilIso(w),end:utilIso(w+6),units:0,cover:0,est:false};
-    // est ของสัปดาห์ = ช่วงจดยาวเกิน 7.5 วัน (ขาดจดวันจันทร์) · est รายวัน (>1.5 วัน) จริงทุกสัปดาห์สำหรับไฟ ใช้ไม่ได้
-    o.units+=d.units; o.cover+=d.cover; o.est=o.est||(d.span||0)>7.5; by.set(w,o);
-  }
-  const weeks=[...by.values()].sort((a,b)=>a.idx-b.idx), bad=new Set(), minDiff=th.minDiff*7;
-  for(const w of weeks){
-    if(w.cover<6.999){ w.level='partial'; continue; }
-    const hist=[];
-    for(let k=1;k<=S.baseWeeks;k++){ const h=by.get(w.idx-7*k); if(h&&h.cover>=6.999&&!bad.has(h.idx)) hist.push(h.units); }
-    utilPickBase(w,hist,meter,S,bills,utilIso(w.idx+3),7);   // เดือนของสัปดาห์ = เดือนของวันพฤหัส
-    if(w.base==null){ w.level='nodata'; continue; }
-    w.ratio=w.base>0?w.units/w.base:Infinity; w.diff=w.units-w.base;
-    const over=x=>w.ratio>x&&w.diff>=minDiff;
-    w.level=over(th.red)?'red':over(th.yellow)?'yellow':'green';
-    if(w.level==='red') bad.add(w.idx);
-  }
-  return weeks;
-}
-// เส้นเกณฑ์ของสัปดาห์ — สูตรเดียวกับ over() ใน utilWeekly
-function utilWeekBands(w,th){
-  if(!w||w.base==null) return {base:null,yellow:null,red:null};
-  const b=w.base, line=x=>Math.max(b*x,b+th.minDiff*7);
-  return {base:b,yellow:line(th.yellow),red:line(th.red)};
 }
 
 // ── ตรวจบิลรายเดือน (UTIL-09) ──
