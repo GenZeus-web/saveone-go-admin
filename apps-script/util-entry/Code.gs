@@ -271,7 +271,7 @@ function submit(token, f) {
   const note = String(f.note || '').trim().slice(0, 200);
   if (String(f.reading || '').trim() === '' || !isFinite(reading) || reading < 0) throw new Error('เลขไมล์ไม่ถูกต้อง');
   if (reset && !note) throw new Error('เปลี่ยนมิเตอร์ใหม่ ต้องใส่หมายเหตุ');
-  if (!f.photo && photoRequired_()) throw new Error('ต้องถ่ายรูปหน้ามิเตอร์');
+  if (!f.photo && photoRequired_()) throw new Error('ต้องแนบรูปหน้ามิเตอร์');
 
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
