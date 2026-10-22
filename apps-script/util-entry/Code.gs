@@ -11,7 +11,7 @@ const TZ = 'Asia/Bangkok';               // ไทย UTC+7 ไม่มีเ�
 const FS_PROJECT = 'saveone-go-5fe9d';
 const LOG_ROWS = 10;                     // log ในแอป: จดล่าสุดของสาขากี่รายการ
 const DEFAULT_ROUNDS = '16:00';          // เวลารอบจด น้ำ+ไฟ ถ้าแท็บ branches ช่อง rounds ว่าง (ไฟรายวันตามที่ประชุม 21 ต.ค. · 14:00 → 16:00 เจ้าของ 21 ต.ค. เย็น)
-const ROUND_EARLY_MIN = 0, ROUND_LATE_MIN = 60;    // ช่วงจด = เวลารอบ → +1 ชม. (UTIL-38 · เจ้าของ 21 ต.ค. 69: 16:00–17:00 ทุกสาขา)
+const ROUND_EARLY_MIN = 60, ROUND_LATE_MIN = 60;   // ช่วงจด = เวลารอบ ±1 ชม. = 15:00–17:00 (UTIL-43 · เจ้าของ 22 ต.ค. 69 · เดิม UTIL-38 16:00–17:00 จด 15:40 ขึ้น "เลยรอบ")
 const JUMP_X = 3;                        // เลขเพิ่มเกินกี่เท่าของปกติ → หน้าแอปถามยืนยันก่อนบันทึก (พิมพ์เกิน เช่น 1,211 แทน 1,121)
 const RATE_PAIRS = 7, RATE_MIN_PAIRS = 3; // ปกติ = ค่ากลางของช่วงจดล่าสุดกี่ช่วง · ต้องมีอย่างน้อยกี่ช่วง
 const BILL_ROWS = 12;                  // หน้าบัญชี: บิลล่าสุดกี่รายการ
@@ -40,7 +40,7 @@ function setup() {
   ensureCol_('readings', 'staff_id', 'รหัสคนจด', 'staff_id ของคนจด (แท็บ staff) · แอปใส่ให้เอง');
   ensureStaff_();
   ensureCol_('staff', 'role', 'บทบาท', 'ว่าง/meter = จดมิเตอร์ · acct = บัญชีกรอกบิล · admin = ทั้งสองอย่าง');
-  ensureCol_('branches', 'rounds', 'เวลารอบจด', 'เช่น 16:00 · ว่าง = ' + DEFAULT_ROUNDS + ' · จดได้ตั้งแต่เวลารอบ ถึงหลังรอบ 1 ชม.');
+  ensureCol_('branches', 'rounds', 'เวลารอบจด', 'เช่น 16:00 · ว่าง = ' + DEFAULT_ROUNDS + ' · จดได้ก่อนรอบ 1 ชม. ถึงหลังรอบ 1 ชม.');
   ensureCol_('bills', 'entered_by', 'กรอกโดย', 'แอปใส่ให้เอง (หน้าบัญชี) · แถวเก่าจาก Excel เว้นว่าง');
   ensureCol_('bills', 'entered_at', 'เวลากรอก', 'แอปใส่ให้เอง');
   ensureCol_('bills', 'status', 'สถานะ', 'ว่าง = ใช้ · void = ยกเลิก (ไม่นับ ไม่ส่งขึ้นเว็บ)');
