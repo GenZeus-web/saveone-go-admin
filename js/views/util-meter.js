@@ -30,8 +30,11 @@ function umBillHi(){ const h=new Map(); utRecentHigh(UT.br||activeBranch).forEac
 const umHiTag=(hi,id)=>hi.has(id)?`<span class="um-tag">⚠ บิลสูง ${hi.get(id).sort().map(utMonthTh).join(', ')}</span>`:'';
 // ทุกมิเตอร์ที่ utLoad ส่งมา (เปิดอยู่ หรือปิดแล้วแต่มีข้อมูล/บิล — SS ปิดสาขาต้องดูย้อนหลังได้)
 // UTIL-40: น้ำก่อนไฟ ในชนิดเดียวกันคงลำดับแถวในแท็บ meters = เหมือนแอปจด ที่เดิมทุกวัน (เดิมเรียงแดงขึ้นก่อน)
+// UTIL-44: สาขาที่ยังมีมิเตอร์เปิดอยู่ ไม่โชว์ตัวที่ปิดแล้ว (SB-E-TEMP ใช้ก่อนติดตั้งตัวหลัก · การ์ด "ปิดใช้แล้ว" คั่นกลางชวนงง)
+//   SS ปิดทุกตัว = โชว์ครบดูย้อนหลัง · c.meters ไม่ตัด (แท็บเทียบสาขา/ชื่อมิเตอร์ยังใช้)
 function umOrder(c){
-  return c.meters.map((m,i)=>({m,i})).sort((a,b)=>((UM_TYPE_RANK[a.m.type]??9)-(UM_TYPE_RANK[b.m.type]??9))||a.i-b.i);
+  const open=c.meters.some(m=>utilTrue(m.active));
+  return c.meters.map((m,i)=>({m,i})).filter(({m})=>!open||utilTrue(m.active)).sort((a,b)=>((UM_TYPE_RANK[a.m.type]??9)-(UM_TYPE_RANK[b.m.type]??9))||a.i-b.i);
 }
 function umGroups(c){
   const all=umOrder(c).filter(({m})=>umPts(m).length);
