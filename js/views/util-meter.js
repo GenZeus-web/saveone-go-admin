@@ -17,6 +17,9 @@ function umBands(m,p){ return utilBands(p,m._th); }
 function umWhen(m,p){ return `วันที่ ${utDM(p.date)}`; }
 // ≈ = เฉลี่ยไปก่อน: ช่วงไม่ได้จด (est) / จดคลาดรอบ เฉลี่ยเต็มวัน (fill · UTIL-47)
 function umApprox(p){ return p&&(p.est||p.fill)?'≈':''; }
+// UTIL-49 ขาดจดเกิน staleDays → กี่วันแล้ว (0 = ไม่ขาด) · ป้ายการ์ดใช้แทนสถานะของวันล่าสุดที่จดครบ
+//   (SB ห้องน้ำจดล่าสุด 12 ต.ค. แต่ 23 ต.ค. การ์ดยังขึ้น ✅ ปกติ +9% = ยอดวันที่ 11)
+function umStale(m){ const r=m._res; return r&&r.stale&&r.last&&utilTrue(m.active)?Math.floor(r.ageDays):0; }
 // UTIL-26: หัวการ์ดเขียนช่วงเป็นวันที่เต็ม (เจ้าของ 20 ต.ค.: "วันที่ 16/10" งง ว่าทำไมไม่ใช่วันจดล่าสุด)
 //   รอบจด (dayStart 16:00) วันนั้น → รอบจดวันถัดไป · เดือนเดียวกันเขียนเดือนครั้งเดียว
 function umThD(iso){ const [,m,d]=iso.split('-').map(Number); return [d,UT_TH_MON[m-1]]; }
@@ -126,8 +129,8 @@ function umBillRef(c,m){
 function umTilesHtml(c){
   const money=c.bills.length>0, hi=umBillHi();   // UTIL-23: money = มีบิล (หน่วย) ให้โชว์ · ยอดเงินคุมที่ amount_incl_vat
   return `<div class="um-tiles">${umOrder(c).map(({m,i})=>{
-    const p=m._full, lv=p?.level||'nodata', L=UT_LEVEL[lv]||UT_LEVEL.nodata, dp=1;
-    let head, big='', tag=`${L.icon} ${L.txt}`, ref;
+    const p=m._full, st=umStale(m), lv=st?'nodata':p?.level||'nodata', L=UT_LEVEL[lv]||UT_LEVEL.nodata, dp=1;
+    let head, big='', tag=st?`⏸ ขาดจด ${st} วัน`:`${L.icon} ${L.txt}`, ref;
     if(!m._res.last&&utilTrue(m.active)&&(ref=umBillRef(c,m))){
       // UTIL-24: ยังไม่เคยจด แต่มีบิล → โชว์ค่าปกติจากค่าเฉลี่ยบิล (ตัวที่จะใช้เทียบเมื่อเริ่มจด) แทนการ์ดว่าง · ไม่ระบายสี (ยังไม่มียอดใช้)
       head=`ค่าปกติ (ค่าเฉลี่ยบิล ${ref.months.length} เดือน) · ยังไม่เริ่มจด`; tag='⏳ รอเริ่มจด';
@@ -399,7 +402,7 @@ function umMeterDetail(i){
     }
   }
   umModal(`${umName(m)}${umHiTag(hi,m.meter_id)}${m.location?` <span class="ut-sub">${utEsc(m.meter_id)}</span>`:''}`,
-    `${L.icon} ${L.txt}${r.last?` · จดล่าสุด ${utWhen(r.last)} (${utAgo(r.last)})`:''}${utilTrue(m.active)?'':' · ปิดใช้แล้ว'}`,
+    `${umStale(m)?`⏸ ขาดจด ${umStale(m)} วัน`:`${L.icon} ${L.txt}`}${r.last?` · จดล่าสุด ${utWhen(r.last)} (${utAgo(r.last)})`:''}${utilTrue(m.active)?'':' · ปิดใช้แล้ว'}`,
     sum+(info.length?`<div class="um-warn">${info.join('<br>')}</div>`:'')+chart+bills, 'um-full');
   document.querySelectorAll('#utModal .um-hscroll').forEach(e=>{ e.scrollLeft=e.scrollWidth; });   // MOB-02: เดือนล่าสุดอยู่ขวาสุด
   if(pts.length||bp.length) makeChart('cUmFull',umFullCfg(m,i));   // ไม่เข้า UT.chartIds — แท็บวาดใหม่ (รีเฟรช 5 นาที) ต้องไม่ลบกราฟในกล่อง

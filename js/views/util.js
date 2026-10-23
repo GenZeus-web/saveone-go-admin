@@ -396,7 +396,7 @@ function utSummary(c){
   const zero=new Set(c.meters.filter(m=>umZero(m).length).map(m=>m.meter_id));   // ใช้ 0 = มิเตอร์ค้าง/ลอกเลข (views/util-meter.js)
   const watch=c.meters.filter(m=>(utilTrue(m.active)&&(['red','leak'].includes(m._full?.level)||(m._res.stale&&m._res.last)))||billHi.has(m.meter_id)||zero.has(m.meter_id));
   const nm=m=>(UT_TYPE[m.type]||'').split(' ')[0]+' '+utEsc(m.location||m.meter_id);
-  const name=m=>nm(m)+(billHi.has(m.meter_id)?' (บิลสูง)':'')+(zero.has(m.meter_id)?' (ใช้ 0)':'');
+  const name=m=>nm(m)+(umStale(m)?` (ขาดจด ${umStale(m)} วัน)`:'')+(billHi.has(m.meter_id)?' (บิลสูง)':'')+(zero.has(m.meter_id)?' (ใช้ 0)':'');   // UTIL-49
   // UTIL-48 นับเฉพาะรอบจดล่าสุด (16:00 ±1 ชม.) · ยังอยู่ในช่วงจด = รอจด · พ้นช่วงแล้ว = ขาด (ส้ม)
   const R=utilRound(Date.now(),utilSettings(utSet(),UT.br||activeBranch)), miss=read.length?act.filter(m=>!(m._res.last>=R.from)):[];
   const late=miss.length&&!R.open, rnd=`จดรอบ ${utDM(R.date)} แล้ว ${act.length-miss.length}/${act.length}${miss.length?` · ${late?'ขาด':'รอจด'}: ${miss.map(nm).join(' · ')}`:''}`;
