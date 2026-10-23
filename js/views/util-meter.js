@@ -15,8 +15,10 @@ const umHot=lv=>['yellow','red','leak'].includes(lv);
 function umPts(m){ return m._days||[]; }
 function umBands(m,p){ return utilBands(p,m._th); }
 function umWhen(m,p){ return `วันที่ ${utDM(p.date)}`; }
+// ≈ = เฉลี่ยไปก่อน: ช่วงไม่ได้จด (est) / จดคลาดรอบ เฉลี่ยเต็มวัน (fill · UTIL-47)
+function umApprox(p){ return p&&(p.est||p.fill)?'≈':''; }
 // UTIL-26: หัวการ์ดเขียนช่วงเป็นวันที่เต็ม (เจ้าของ 20 ต.ค.: "วันที่ 16/10" งง ว่าทำไมไม่ใช่วันจดล่าสุด)
-//   14:00 วันนั้น → 14:00 วันถัดไป · เดือนเดียวกันเขียนเดือนครั้งเดียว
+//   รอบจด (dayStart 16:00) วันนั้น → รอบจดวันถัดไป · เดือนเดียวกันเขียนเดือนครั้งเดียว
 function umThD(iso){ const [,m,d]=iso.split('-').map(Number); return [d,UT_TH_MON[m-1]]; }
 function umRange(m,p){
   const t=new Date(p.date+'T00:00:00Z'); t.setUTCDate(t.getUTCDate()+1); const e=t.toISOString().slice(0,10);
@@ -136,7 +138,7 @@ function umTilesHtml(c){
     else{
       head=`ใช้ ${umRange(m,p)} · จดล่าสุด ${utWhen(m._res.last)}`;   // UTIL-26
       const d=p.base?Math.round((p.units/p.base-1)*100):null;
-      big=`<div class="um-big um-link" onclick="event.stopPropagation();umPointDetail(${i},'${p.date}')" title="ดูวิธีคิด">${utFmt(p.units,dp)}<small>${utU(m)}</small>${d==null?'':`<span class="um-delta" style="color:${umHot(lv)?`rgb(${umRgb(lv)})`:'var(--ink2)'}">${d>0?'+':''}${d}% จากค่ากลาง ${utFmt(p.base,dp)}</span>`}</div>`;
+      big=`<div class="um-big um-link" onclick="event.stopPropagation();umPointDetail(${i},'${p.date}')" title="ดูวิธีคิด">${umApprox(p)}${utFmt(p.units,dp)}<small>${utU(m)}</small>${d==null?'':`<span class="um-delta" style="color:${umHot(lv)?`rgb(${umRgb(lv)})`:'var(--ink2)'}">${d>0?'+':''}${d}% จากค่ากลาง ${utFmt(p.base,dp)}</span>`}</div>`;
     }
     let bill='';
     if(money){
@@ -172,7 +174,7 @@ function umHeatHtml(c){
     }
   }
   const lvCell=(m,i,d)=>!d?'<span class="c na"></span>'
-    :`<span class="c" onclick="umPointDetail(${i},'${d.date}')" data-tip="${umName(m)}|${umWhen(m,d)}|ใช้ ${utFmt(d.units,1)} ${utU(m)}${d.base!=null?' · ค่ากลาง '+utFmt(d.base,1):''}|${(UT_LEVEL[d.level]||UT_LEVEL.nodata).icon} ${(UT_LEVEL[d.level]||UT_LEVEL.nodata).txt}${d.est?'|ไม่ได้จด (ยอดเฉลี่ย)':''}"
+    :`<span class="c" onclick="umPointDetail(${i},'${d.date}')" data-tip="${umName(m)}|${umWhen(m,d)}|ใช้ ${utFmt(d.units,1)} ${utU(m)}${d.base!=null?' · ค่ากลาง '+utFmt(d.base,1):''}|${(UT_LEVEL[d.level]||UT_LEVEL.nodata).icon} ${(UT_LEVEL[d.level]||UT_LEVEL.nodata).txt}${d.est?'|ไม่ได้จด (ยอดเฉลี่ย)':d.fill?'|จดคลาดรอบ (เฉลี่ยเต็มวัน)':''}"
        style="background:rgba(${umRgb(d.level)},${d.level==='partial'||d.level==='nodata'?.3:d.est?.55:.9})"></span>`;
   umGroups(c).forEach(([t,ms])=>{
     const dates=[...new Set(ms.flatMap(({m})=>umPts(m).map(d=>d.date)))].sort().slice(-28);
@@ -244,7 +246,7 @@ function umBillDetail(i,mo){
         <tr><td>ค่ากลาง + ${utFmt(min)} ≤ บิลนี้</td><td>${umFb(med,0)} + ${utFmt(min)} = ${umFb(med+min,0)} ≤ ${utFmt(u)}</td><td>${over2?'✔ ผ่าน':'— ไม่ผ่าน'}</td></tr></table>
       <p class="um-res">${over1&&over2?'⚠ ผ่านทั้ง 2 ข้อ = บิลสูงผิดปกติ':'✅ ไม่ผ่านครบ 2 ข้อ = ไม่ขึ้นธง'} · ${u>=med?'+':''}${utFmt((u/med-1)*100)}% จากค่ากลาง</p>`;
   }
-  const q=f&&(f.dup||f.round)?`<p class="um-sub2">? ${utFlagText(UT.br||activeBranch,f).filter(x=>x.k==='q').map(x=>x.t.replace(/<[^>]+>/g,'')).join(' · ')}</p>`:'';
+  const q=f&&f.dup?`<p class="um-sub2">? ${utFlagText(UT.br||activeBranch,f).filter(x=>x.k==='q').map(x=>x.t.replace(/<[^>]+>/g,'')).join(' · ')}</p>`:'';
   const got=m._res?.days.filter(d=>d.date.startsWith(use))||[], gu=got.reduce((s,d)=>s+d.units,0), gc=got.reduce((s,d)=>s+d.cover,0);
   umModal(`${umName(m)} · บิล ${utMonthTh(mo)}`,`ใช้จริงเดือน ${utMonthTh(use)} (บิลออกเดือนถัดไป)`,
     `<div class="um-dbig">${utFmt(u)} <small>${unit}</small>${amt[mo]?`<span>${utFmt(amt[mo],2)} บาท · ${utFmt(amt[mo]/u,2)} บาท/${unit}</span>`:''}</div>
@@ -270,13 +272,15 @@ function umPointDetail(i,iso){
   const L=UT_LEVEL[p.level]||UT_LEVEL.nodata, Bd=umBands(m,p);
   let calc='';
   if(p.level==='partial') calc=`<p>วันนี้จดยังไม่ครบ (มีข้อมูล ${utFmt(p.cover*100)}% ของวัน) ยังไม่ตัดสิน</p>`;
-  else if(p.base==null) calc=`<p>ข้อมูลยังไม่พอเทียบ: ต้องมีวันเดียวกันก่อนหน้าที่จดครบอย่างน้อย ${S.baseMinDays} วัน (มี ${used.length})</p>`;
+  else if(p.base==null) calc=`<p>ข้อมูลยังไม่พอเทียบ: ต้องจดครบอย่างน้อย ${S.baseMinDays} วัน</p>`;
   else{
     // UTIL-21 ช่วงแรกค่ากลางยังไม่พอ → ค่าเฉลี่ยบิล: เดือนละแถว = หน่วยในบิล ÷ วันในเดือน
-    const bm=p.baseFrom==='bill'?umBillAvgRows(c,m,p.billMonths):null;
-    calc=`<div class="um-dh">ค่ากลาง = <b>${fb(p.base)}</b> ${unit} ${bm?`· ค่าเฉลี่ยบิล ${bm.length} เดือน`:`จาก ${used.length} วันก่อน`}</div>
+    // UTIL-47 ไม่มีบิล → ค่าเฉลี่ยวันที่จดครบล่าสุด (avgN วัน)
+    const bm=p.baseFrom==='bill'?umBillAvgRows(c,m,p.billMonths):null, av=p.baseFrom==='avg';
+    calc=`<div class="um-dh">ค่ากลาง = <b>${fb(p.base)}</b> ${unit} ${bm?`· ค่าเฉลี่ยบิล ${bm.length} เดือน`:av?`· ค่าเฉลี่ย ${p.avgN} วันล่าสุดที่จด`:`จาก ${used.length} วันก่อน`}</div>
       ${bm?`<ol class="um-med">${bm.map(x=>`<li><span>ใช้เดือน ${x.t}</span><b>${fmt(x.v)}</b></li>`).join('')}</ol>
         <p class="um-sub2">ช่วงแรก จดวันเดียวกันยังไม่ถึง ${S.baseMinDays} ครั้ง · ครบแล้วใช้ค่ากลางจากเลขที่จด</p>`
+      :av?`<p class="um-sub2">ช่วงแรก ยังไม่มีบิลและจดวันเดียวกันยังไม่ถึง ${S.baseMinDays} ครั้ง · ครบแล้วใช้ค่ากลางจากเลขที่จด</p>`
       :umMedList(used.map(h=>({t:h.t,v:h.d.units})),fmt)}
       ${skip.length?`<p class="um-sub2">ไม่นับ: ${skip.map(h=>`${h.t} (${!h.d?'ไม่มีข้อมูล':h.d.cover<full?'จดไม่ครบ':'แดงไปแล้ว'})`).join(' · ')}</p>`:''}
       <div class="um-dh">เทียบกับเกณฑ์ (ต้องผ่านทั้ง 2 ข้อ)</div>
@@ -285,7 +289,7 @@ function umPointDetail(i,iso){
           <tr><td>ค่ากลาง + ${utFmt(minD)} ≤ ที่ใช้ · ${fb(p.base)} + ${utFmt(minD)} = ${fmt(p.base+minD)} ≤ ${fmt(p.units)}</td><td>${b?'✔ ผ่าน':'— ไม่ผ่าน'}</td></tr>`; }).join('')}</table>
       <p class="um-res">${L.icon} ใช้ ${fmt(p.units)} ${p.units>Bd.red?'เกินเส้นแดง':p.units>Bd.yellow?'เกินเส้นเหลือง':'ไม่เกินเส้นเหลือง'} = ${L.txt}${p.level==='leak'?` (สูงกว่าปกติติดกัน ${th.streak} วัน)`:''}</p>`;
   }
-  umModal(`${umName(m)} · ${umWhen(m,p)}`,`นับ ${S.hours.default.open} วันที่ ${utDM(iso)} ถึง ${S.hours.default.open} วันถัดไป${p.est?' · มีช่วงไม่ได้จด (ยอดเฉลี่ย)':''}`,
+  umModal(`${umName(m)} · ${umWhen(m,p)}`,`นับ ${S.dayStart} วันที่ ${utDM(iso)} ถึง ${S.dayStart} วันถัดไป${p.est?' · มีช่วงไม่ได้จด (ยอดเฉลี่ย)':p.fill?` · จดคลาดรอบ เฉลี่ยเต็มวันไปก่อน (มีข้อมูล ${utFmt(p.fill*100)}%)`:''}`,
     `<div class="um-dbig">${fmt(p.units)} <small>${unit}</small><span>${L.icon} ${L.txt}</span></div>${calc}
      <button class="mc-pill" onclick="umMeterDetail(${i})">ดูมิเตอร์นี้ทั้งหมด</button>`);
 }
@@ -337,7 +341,7 @@ function umFullCfg(m,i){
   const pts=[...umBillPts(m),...umPts(m)], bands=pts.map(d=>d.bill?{base:null,yellow:null,red:null}:umBands(m,d)), dp=1;   // UTIL-29
   const o=cOpts(); o.plugins.legend={display:false}; o.plugins.umZone={bands};
   o.plugins.tooltip={callbacks:{title:it=>umWhen(m,pts[it[0].dataIndex]),
-    label:it=>{ const d=pts[it.dataIndex]; if(d.bill) return `${utFmt(d.units,dp)} ${utU(m)} · เฉลี่ยจากบิล ${utMonthTh(d.billMonth)} (ไม่ใช่เลขจด)`; return it.datasetIndex?`ค่ากลาง ${utFmt(d.base,dp)}`:`ใช้ ${utFmt(d.units,dp)} ${utU(m)} · ${(UT_LEVEL[d.level]||UT_LEVEL.nodata).txt}${d.est?' · ไม่ได้จด (ยอดเฉลี่ย)':''}`; },
+    label:it=>{ const d=pts[it.dataIndex]; if(d.bill) return `${utFmt(d.units,dp)} ${utU(m)} · เฉลี่ยจากบิล ${utMonthTh(d.billMonth)} (ไม่ใช่เลขจด)`; return it.datasetIndex?`ค่ากลาง ${utFmt(d.base,dp)}`:`ใช้ ${utFmt(d.units,dp)} ${utU(m)} · ${(UT_LEVEL[d.level]||UT_LEVEL.nodata).txt}${d.est?' · ไม่ได้จด (ยอดเฉลี่ย)':d.fill?' · จดคลาดรอบ (เฉลี่ยเต็มวัน)':''}`; },
     footer:it=>pts[it[0].dataIndex]?.bill?'':'กดเพื่อดูวิธีคิด'}};
   o.scales.y.beginAtZero=true; o.scales.x.grid={display:false};
   o.scales.y.suggestedMax=Math.max(0,...pts.map((d,k)=>Math.max(d.units*1.15,(bands[k].yellow||0)*1.1)));
@@ -357,7 +361,7 @@ function umMeterDetail(i){
   const r=m._res, p=m._full, lv=p?.level||'nodata', L=UT_LEVEL[lv]||UT_LEVEL.nodata, dp=1, unit=utU(m);
   const hi=umBillHi(), money=c.bills.length>0, cash=canSeeUtilMoney()&&!c.billsErr, pts=umPts(m);   // UTIL-23: cash = คอลัมน์เงิน
   const d=p?.base?Math.round((p.units/p.base-1)*100):null;
-  const sum=p&&p.base!=null?`<div class="um-fsum"><div class="um-big um-link" onclick="umPointDetail(${i},'${p.date}')"><small>${umWhen(m,p)}</small><br>${utFmt(p.units,dp)}<small>${unit}</small>
+  const sum=p&&p.base!=null?`<div class="um-fsum"><div class="um-big um-link" onclick="umPointDetail(${i},'${p.date}')"><small>${umWhen(m,p)}</small><br>${umApprox(p)}${utFmt(p.units,dp)}<small>${unit}</small>
       <span class="um-delta" style="color:${umHot(lv)?`rgb(${umRgb(lv)})`:'var(--ink2)'}">${d>0?'+':''}${d}% จากค่ากลาง ${utFmt(p.base,dp)}</span></div>
       <div class="um-tbul">${umBullet(m,p)}</div><div class="um-key" style="margin-top:4px">${umBulKey()}</div></div>`
     :`<p class="um-sub2">${!r.last?(utilTrue(m.active)?'ยังไม่มีการจด':'ปิดใช้แล้ว'):'ข้อมูลยังไม่พอเทียบ'}</p>`;

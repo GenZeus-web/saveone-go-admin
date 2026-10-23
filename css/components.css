@@ -57,6 +57,9 @@
 .charts-grid2{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:14px;}
 @media(max-width:1200px){.charts-grid{grid-template-columns:1fr 1fr;}}
 .sc{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;}
+/* FONT-02: ช่องกริด 1fr ไม่หดต่ำกว่าความกว้าง canvas ข้างใน → ตัวอักษรใหญ่ (zoom) ช่องแคบลงแต่ canvas กว้างเท่าเดิม
+   การ์ดกราฟดันล้นขวาเกินจอ (ภาพรวม · Benchmark · วันฟรี · พยากรณ์) · min-width:0 ให้การ์ดหดตามช่องได้ */
+.sc{min-width:0;}
 .sc-title{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:10px;}
 .sc-sub{font-size:10px;color:var(--ink3);margin-top:-8px;margin-bottom:10px;}
 .ch-sm{height:160px;position:relative;}

@@ -49,7 +49,7 @@ async function utLoad(br){
       // UTIL-09 ตรวจบิล: ทำครั้งเดียวตอนโหลด · chk[meter@เดือน] ให้กราฟ/ตาราง/การ์ดเปิดดูเร็ว
       const check=utilBillCheck(bills.map(x=>({bill_month:x.bill_month,branch_code:br,type:x.type,meter_id:x.meter_id,
         units:utNum(x.units),amount:utNum(x.amount_incl_vat)})),utSet());
-      const chk={}; check.forEach(x=>{ if(x.high||x.dup||x.round) chk[x.meter_id+'@'+x.bill_month]=x; });
+      const chk={}; check.forEach(x=>{ if(x.high||x.dup) chk[x.meter_id+'@'+x.bill_month]=x; });
       UT.cache[br]={at:Date.now(),money,ts:r.ts,readings,meters,bills,billsErr:r.billsErr,check,chk};
     }catch(e){
       UT.cache[br]={at:Date.now(),money,err:e.code==='permission-denied'
@@ -131,8 +131,8 @@ function utHelpHtml(S,hasElec){
 
       <div class="ut-help-h">วิธีคำนวณ</div>
       <ol>
-        <li><b>ใช้ต่อวัน</b> = เลขครั้งนี้ − เลขครั้งก่อน · 1 วัน นับ ${H.open} ถึง ${H.open} วันถัดไป</li>
-        <li><b>ค่ากลาง</b> = ตัวกลางของวันเดียวกันในสัปดาห์ ย้อน ${S.baseWeeks} สัปดาห์ (ต้องมีอย่างน้อย ${S.baseMinDays}) ไม่นับวันที่แดง · เช่น 30 · 34 · 36 · 80 → ${utFmt(utilMedian([30,34,36,80]))}<br>ช่วงแรกที่ยังมีไม่ถึง ${S.baseMinDays} = ใช้ค่าเฉลี่ยต่อวันจาก ${S.billBase.n} บิลล่าสุดแทน</li>
+        <li><b>ใช้ต่อวัน</b> = เลขครั้งนี้ − เลขครั้งก่อน · 1 วัน นับ ${S.dayStart} ถึง ${S.dayStart} วันถัดไป<br>จดคลาดเวลาไม่เกิน ${utFmt((1-S.fillMin)*24)} ชม. = เฉลี่ยเต็มวันไปก่อน (≈)</li>
+        <li><b>ค่ากลาง</b> = ตัวกลางของวันเดียวกันในสัปดาห์ ย้อน ${S.baseWeeks} สัปดาห์ (ต้องมีอย่างน้อย ${S.baseMinDays}) ไม่นับวันที่แดง · เช่น 30 · 34 · 36 · 80 → ${utFmt(utilMedian([30,34,36,80]))}<br>ช่วงแรกที่ยังมีไม่ถึง ${S.baseMinDays} = ใช้ค่าเฉลี่ยต่อวันจาก ${S.billBase.n} บิลล่าสุดแทน · ไม่มีบิล = ค่าเฉลี่ย ${S.avgDays} วันล่าสุดที่จด</li>
         <li><b>🟡 เหลือง</b> = ${rule(w.yellow,w.minDiff,'ที่ใช้')}<br><b>🔴 แดง</b> = ${rule(w.red,w.minDiff,'ที่ใช้')}<br>เช่น ${ex(20)} · ${ex(5)}</li>
         <li><b>🟣 ม่วง</b> = วันนั้นเหลือง และเกินเส้นเหลืองติดกันถึงวันที่ ${w.streak} (วันแดงนับรวม)</li>
         ${hasElec?`<li><b>⚡ ไฟ</b> = เหลือง ${rule(e.yellow,utFmt(e.minDiff),'ที่ใช้')} · แดง ค่ากลาง × ${e.red} · ม่วง เหลืองติดกัน ${e.streak} วัน</li>`:''}
@@ -269,7 +269,6 @@ function utFlagText(b,x){
   const out=[];
   if(x.high) out.push({k:'high',t:`${who} บิล ${utMonthTh(x.bill_month)}: ${utFmt(x.units)} ${utU(x.type)} สูงกว่าค่ากลาง +${x.high.pct.toFixed(0)}% (ค่ากลาง ${utFmt(x.high.base)})`});
   if(x.dup) out.push({k:'q',t:`${who} บิล ${utMonthTh(x.bill_month)}: หน่วยและเงินซ้ำกับบิล ${utMonthTh(x.dup)} ทุกหลัก — อาจคัดลอกผิด`});
-  if(x.round) out.push({k:'q',t:`${who} บิล ${utMonthTh(x.bill_month)}: ${utFmt(x.units)} ${utU(x.type)} เป็นเลขกลมหลักพัน — อาจเป็นยอดประมาณ`});
   return out;
 }
 // ธงสูงผิดปกติใน n บิลล่าสุดของแต่ละมิเตอร์ (ของที่เพิ่งเกิด = ต้องดูตอนนี้)
@@ -322,7 +321,7 @@ const utFlagPlugin={id:'utFlag',afterDatasetsDraw(ch){
       ctx.fillStyle=m==='high'?sc('rgba(224,92,92,1)'):utInk().ink2;
       ctx.fillText(m==='high'?'⚠':'?',el.x,el.y-(ch.options.plugins.bmVals?.on?16:3)); }); });   // เปิดตัวเลข = ยกขึ้นเหนือตัวเลข
   ctx.restore(); }};
-function utMonthFlags(b,type,mo){ return (UT.cache[b].check||[]).filter(x=>x.type===type&&x.bill_month===mo&&(x.high||x.dup||x.round)); }
+function utMonthFlags(b,type,mo){ return (UT.cache[b].check||[]).filter(x=>x.type===type&&x.bill_month===mo&&(x.high||x.dup)); }
 
 function utCompareHtml(){
   const ok=utCmpReadable(), sel=new Set(utCmpBranches()), $=canSeeUtilMoney(), one=$?'':' one';

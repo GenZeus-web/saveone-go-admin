@@ -85,8 +85,8 @@ test('เปลี่ยนมิเตอร์ (meter_reset) → ช่วง�
 
 // ── วันตลาด: เปิด 14:00 ปิด 01:00 คร่อมเที่ยงคืน ──
 test('จดตี 1 ครึ่ง = ยอดของวันตลาดก่อนหน้า',()=>{
-  const rows=[at('M','2026-10-01T14:00:00+07:00',100),at('M','2026-10-02T01:30:00+07:00',130),
-              at('M','2026-10-02T14:00:00+07:00',132)];
+  const rows=[at('M','2026-10-01T16:00:00+07:00',100),at('M','2026-10-02T01:30:00+07:00',130),
+              at('M','2026-10-02T16:00:00+07:00',132)];
   const r=utilAnalyze(rows,{meter_id:'M',type:'water',branch_code:'BN'},{},NOW);
   assert.equal(r.days.length,1);
   assert.equal(r.days[0].date,'2026-10-01'); assert.equal(r.days[0].units,32);
@@ -120,9 +120,9 @@ test('ไฟ: ยังไม่ตั้งเกณฑ์ตอนปิด �
 });
 
 // ── ฐาน + ป้าย ──
-// สร้างจดก่อนเปิดทุกวัน · use(i) = หน่วยของวันที่ i (เริ่ม 2026-08-03 จันทร์)
+// สร้างจดทุกวันรอบ 16:00 · use(i) = หน่วยของวันที่ i (เริ่ม 2026-08-03 จันทร์)
 function daily(useOf,n,start='2026-08-03'){
-  const rows=[]; let v=1000; const s=Date.parse(start+'T14:00:00+07:00');
+  const rows=[]; let v=1000; const s=Date.parse(start+'T16:00:00+07:00');
   for(let i=0;i<=n;i++){ rows.push(at('W',s+i*864e5,v)); v+=useOf(i)||0; }
   return rows;
 }
@@ -144,10 +144,13 @@ test('ฐาน = วันเดียวกันในสัปดาห์ 4
   assert.equal(sat.base,70); assert.equal(sat.baseFrom,'median'); assert.equal(sat.level,'green');
 });
 
-test('ข้อมูลไม่พอ → ใช้ค่าเฉลี่ยบิล · ไม่มีบิล → nodata',()=>{
-  assert.equal(lv(utilAnalyze(daily(()=>37,5),W,{},NOW),2),'nodata');
+test('ข้อมูลไม่พอ → ใช้ค่าเฉลี่ยบิล · ไม่มีบิล → ค่าเฉลี่ยวันที่จดครบ (≥ 2 วัน) · ยังไม่ถึง 2 วัน → nodata',()=>{
   const r=utilAnalyze(daily(()=>37,5),W,{},NOW,bb(29));
   assert.equal(r.days[2].base,29); assert.equal(r.days[2].baseFrom,'bill');
+  const a=utilAnalyze(daily(i=>[30,40,80][i]??35,5),W,{},NOW).days;   // UTIL-47 มิเตอร์ย่อยไม่มีบิล
+  assert.deepEqual(a.slice(0,2).map(d=>d.level),['nodata','nodata']);
+  assert.equal(a[2].baseFrom,'avg'); near(a[2].base,35); assert.equal(a[2].avgN,2); assert.equal(a[2].level,'red');   // 80 > 35×2 และ ≥ 35+10
+  near(a[3].base,35);   // วันแดงไม่เข้าค่าเฉลี่ย
 });
 
 test('เส้นแดง = ค่าที่สูงกว่าระหว่าง ฐาน×2 กับ ฐาน+10',()=>{
@@ -242,39 +245,38 @@ test('ตรวจบิล: เพิ่มน้อยกว่าขั้น
   assert.deepEqual(highs(r),[]);                                          // +19 หน่วย < 50
 });
 
-test('ตรวจบิล: ข้อมูลต้องเช็ค (เปิด ask) — ซ้ำบิลก่อนทุกหลัก (ย้อนได้ 6 ใบ) · เลขกลมหลักพัน',()=>{
+test('ตรวจบิล: ข้อมูลต้องเช็ค (เปิด ask) — ซ้ำบิลก่อนทุกหลัก (ย้อนได้ 6 ใบ) · เลขกลมไม่ขึ้น ?',()=>{
   const ON={billCheck:{ask:true}};
   const rows=[...bill('BG','water','BG-W-MAIN',[['2026-06',645],['2026-07',607],['2026-08',646],['2026-09',607]]),
               ...bill('BN','elec','BN-E-MAIN',[['2026-08',40000],['2026-09',33000],['2026-10',33417]])];
   const r=utilBillCheck(rows,ON), at=(m,mo)=>r.find(x=>x.meter_id===m&&x.bill_month===mo);
   assert.equal(at('BG-W-MAIN','2026-09').dup,'2026-07');                  // ไม่ใช่เดือนติดกันก็จับได้
   assert.equal(at('BG-W-MAIN','2026-08').dup,null);
-  assert.equal(at('BN-E-MAIN','2026-09').round,true);
-  assert.equal(at('BN-E-MAIN','2026-10').round,false);
+  assert.equal(at('BN-E-MAIN','2026-09').dup,null);                       // UTIL-45: 33000 กลม (มิเตอร์ ×1000) ไม่ใช่ความผิดปกติ
+  assert.equal('round' in at('BN-E-MAIN','2026-09'),false);
   const diffAmt=[...bill('X','water','X',[['2026-01',100]]),{bill_month:'2026-02',branch_code:'X',type:'water',meter_id:'X',units:100,amount:1}];
   assert.equal(utilBillCheck(diffAmt,ON)[1].dup,null);                    // หน่วยเท่าแต่เงินต่าง = ไม่ใช่คัดลอก
   // UTIL-36: ค่าตั้งต้น = ปิด → ไม่มี ? เลย แต่ธงบิลสูง (high) ยังตรวจเหมือนเดิม
   const off=utilBillCheck(rows), atO=(m,mo)=>off.find(x=>x.meter_id===m&&x.bill_month===mo);
   assert.equal(atO('BG-W-MAIN','2026-09').dup,null);
-  assert.equal(atO('BN-E-MAIN','2026-09').round,false);
   assert.deepEqual(highs(utilBillCheck(BN_BILLS)),highs(utilBillCheck(BN_BILLS,ON)));
 });
 
 // ── UTIL-37 ไฟจดรายวันเหมือนน้ำ (ที่ประชุม 21 ต.ค. 69 · เดิม UTIL-13 จดทุกวันจันทร์ ดูรายสัปดาห์) ──
 const ELEC1={meter_id:'BG-E-1',type:'elec',branch_code:'BG'};
-const el=(iso,reading)=>at('BG-E-1',Date.parse(iso+'T14:00:00+07:00'),reading);
+const el=(iso,reading)=>at('BG-E-1',Date.parse(iso+'T16:00:00+07:00'),reading);
 const isoAdd=(iso,n)=>new Date(Date.parse(iso+'T00:00:00Z')+n*864e5).toISOString().slice(0,10);
-// จดทุกวัน 14:00 เริ่ม start · per(k) = หน่วยที่ใช้วันที่ k (นับจาก 0)
+// จดทุกวัน 16:00 เริ่ม start · per(k) = หน่วยที่ใช้วันที่ k (นับจาก 0)
 const elDaily=(start,n,per)=>{ const r=[el(start,0)]; let v=0; for(let k=0;k<n;k++){ v+=per(k); r.push(el(isoAdd(start,k+1),v)); } return r; };
 
 test('ไฟจดรายวัน: เลยไป 1 วันยังไม่เตือน · 3 วันเตือน (เหมือนน้ำ)',()=>{
-  const r=[el('2026-10-12',1000)], t=n=>Date.parse('2026-10-12T14:00:00+07:00')+n*864e5;
+  const r=[el('2026-10-12',1000)], t=n=>Date.parse('2026-10-12T16:00:00+07:00')+n*864e5;
   assert.equal(utilAnalyze(r,ELEC1,{},t(1)).stale,false);
   assert.equal(utilAnalyze(r,ELEC1,{},t(3)).stale,true);
   assert.equal(utilAnalyze(r,ELEC1,{},t(3)).staleDays,2);
 });
 
-test('ไฟรายวัน: จด 14:00 = วันละ 1 ช่อง จดครบ · ค่ากลางวันเดียวกัน 4 สัปดาห์ · พุ่ง = แดง ไม่เข้าฐาน',()=>{
+test('ไฟรายวัน: จด 16:00 = วันละ 1 ช่อง จดครบ · ค่ากลางวันเดียวกัน 4 สัปดาห์ · พุ่ง = แดง ไม่เข้าฐาน',()=>{
   const spike=27;   // วันที่ 28 พุ่ง 2,000 (ปกติ 900)
   const days=utilAnalyze(elDaily('2026-10-19',36,k=>k===spike?2000:900),ELEC1,{},NOW).days;
   assert.equal(days.length,36); assert.ok(days.every(d=>Math.abs(d.cover-1)<1e-9&&!d.est));
@@ -315,6 +317,32 @@ test('ค่าเฉลี่ยบิล: ไม่ใช้บิลเดื
   const oct=one('2026-10-10');   // ต.ค. → ใช้จริง ก.ย. 600/30 = 20 ต่อวัน
   assert.equal(oct.baseFrom,'bill'); near(oct.base,20); assert.deepEqual(oct.billMonths,['2026-09']);
   assert.equal(utilAnalyze(daily(()=>20,1,'2026-10-10'),W,{},NOW).days[0].level,'nodata');   // ไม่ส่งบิล (ไม่มีสิทธิ์ยอดเงิน)
+});
+
+// ── UTIL-47 ตัดวันที่รอบจด 16:00 (เดิม 14:00 = เวลาเปิด) · จดคลาดรอบ = เฉลี่ยเต็มวันไปก่อน ──
+// เลขจริง SG 22–23 ต.ค. 69 (แอป · มีรูป) · ห้องน้ำ A ใบกระดาษจดถึง 31 ส.ค. แล้วเว้นไป
+const SG_MAIN={meter_id:'SG-W-MAIN',type:'water',branch_code:'BG'}, SG_A={meter_id:'SG-W-TOILET-A',type:'water',branch_code:'BG'};
+const SG_NOW=Date.parse('2026-10-23T16:30:00+07:00');
+test('1 วัน = เลขครั้งนี้ − ครั้งก่อน: จด 16:03 → 15:58 วันถัดไป = 5 (เฉลี่ยเต็มวัน) ไม่ถูกหั่นเป็น 2 วัน',()=>{
+  const d=utilAnalyze([at('SG-W-MAIN','2026-10-22T16:03:00+07:00',9197),at('SG-W-MAIN','2026-10-23T15:58:00+07:00',9202)],SG_MAIN,{},SG_NOW).days;
+  assert.equal(d.length,1); assert.equal(d[0].date,'2026-10-22');
+  near(d[0].units,5,0.05); assert.equal(d[0].cover,1); assert.ok(d[0].fill>0.99&&d[0].fill<1);
+  assert.notEqual(d[0].level,'partial');
+});
+test('วันแรกที่กลับมาจด: คาบช่วงขาดจดแค่ไม่กี่นาที = ไม่ใช่ยอดเฉลี่ย · ยอด ≈ เลขที่จดได้',()=>{
+  const rows=[...paper('SG-W-TOILET-A',[['2026-08-31',6975]]),at('SG-W-TOILET-A','2026-10-22T16:01:00+07:00',7377),at('SG-W-TOILET-A','2026-10-23T16:09:00+07:00',7387)];
+  const r=utilAnalyze(rows,SG_A,{},SG_NOW), d22=day(r,'2026-10-22'), d21=day(r,'2026-10-21');
+  assert.equal(d22.est,false); near(d22.units,10,0.1);
+  assert.equal(d21.est,true);   // 31 ส.ค. → 22 ต.ค. = ยอดเฉลี่ย
+});
+test('จดคลาดรอบไม่เกิน ~2 ชม. = เฉลี่ยเต็มวัน · ขาดเกินนั้น = จดยังไม่ครบ · รอบหน้ามาแล้วได้ยอดจริง',()=>{
+  const M={meter_id:'M',type:'water',branch_code:'BG'};
+  const two=(a,b)=>utilAnalyze([at('M',a,100),at('M',b,124)],M,{},SG_NOW).days[0];
+  const early=two('2026-10-21T16:00:00+07:00','2026-10-22T15:00:00+07:00');   // จดเร็ว 1 ชม. (UTIL-43 ±1 ชม.)
+  near(early.units,24*24/23); assert.equal(early.cover,1);
+  assert.equal(two('2026-10-21T16:00:00+07:00','2026-10-22T10:00:00+07:00').level,'partial');   // 18 ชม. = 75%
+  const full=utilAnalyze([at('M','2026-10-21T16:00:00+07:00',100),at('M','2026-10-22T15:00:00+07:00',124),at('M','2026-10-23T16:00:00+07:00',149)],M,{},SG_NOW).days[0];
+  near(full.units,24+1); assert.equal(full.fill,undefined);   // 15:00–16:00 ได้จากรอบถัดไป (25 ÷ 25 ชม.)
 });
 
 // ── UTIL-16 หน้าตั้งค่าเกณฑ์ (settings/utility) ──

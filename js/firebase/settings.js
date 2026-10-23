@@ -604,7 +604,7 @@ const UF = {
   'billCheck.lookback':         ['บิล · ค่ากลางจากกี่บิลก่อน', 2, 24, true],
   'billCheck.minPrev':          ['บิล · ต้องมีบิลก่อนหน้าอย่างน้อย', 1, 24, true],
   'billCheck.warmup':           ['บิล · ไม่ตรวจกี่เดือนแรกของสาขา', 0, 36, true],
-  'billCheck.ask':              ['บิล · ป้าย ? (ซ้ำทุกหลัก · เลขกลม)'],   // UTIL-36 สวิตช์ (setUtilAsk) ไม่ใช่ช่องตัวเลข
+  'billCheck.ask':              ['บิล · ป้าย ? (ซ้ำทุกหลัก)'],   // UTIL-36 สวิตช์ (setUtilAsk) ไม่ใช่ช่องตัวเลข
 };
 const getP = (o,p) => p.split('.').reduce((x,k) => x?.[k], o);
 function setP(o,p,v){ const ks = p.split('.'), last = ks.pop(); ks.reduce((x,k) => x[k] ??= {}, o)[last] = v; }
@@ -683,7 +683,7 @@ function utilHtml(){
       <div class="set-muted">เช่น บิลน้ำ ค่ากลาง 200 → เกิน ${nf(line(200,B.ratio,B.minDiff.water))} = ⚠</div>
       <label class="set-frow" style="cursor:pointer"><span class="set-ficon">?</span>
         <input type="checkbox"${B.ask?' checked':''} onchange="setUtilAsk(this.checked)"${B.ask!==utilCur().billCheck.ask?' class="changed"':''}>
-        <span>แสดงป้าย ? ข้อมูลต้องเช็คกับบัญชี (บิลซ้ำเดือนก่อนทุกหลัก · หน่วยเป็นเลขกลมหลักพัน)</span></label>
+        <span>แสดงป้าย ? ข้อมูลต้องเช็คกับบัญชี (บิลซ้ำเดือนก่อนทุกหลัก)</span></label>
       <div class="set-muted">ปิดเป็นค่าตั้งต้น — เลขพวกนี้อาจเป็นของจริง · ไม่กระทบ ⚠ บิลสูงผิดปกติ</div>
     </div>
     ${errs.length?`<div class="set-warn">${errs.map(esc).join('<br>')}</div>`:''}

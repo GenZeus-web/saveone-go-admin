@@ -4,9 +4,12 @@
 // ============================================================
 // หลัก: เก็บเลขไมล์ ไม่เก็บ "ใช้งาน" · ไม่ผูกรอบจด — ดูจากเวลาจริง (ts) ว่าช่วงไหนตลาดเปิด/ปิด
 //   จะจดวันละกี่รอบ ตอนไหน ก็คำนวณได้ ต่างกันแค่ความแม่นของเกณฑ์ตอนปิด
-// "วันตลาด D" = เวลาเปิดของวัน D → เวลาเปิดของวัน D+1
-//   ตลาดเปิดคร่อมเที่ยงคืน (14:00–01:00) → เลขที่จดตี 1 ครึ่งของวันที่ 2 เป็นยอดของวันตลาดที่ 1
-// ใบจดกระดาษไม่มีเวลา → ถือว่าจดตอนเปิด = ปิดยอดของวันตลาดก่อนหน้า (ได้ผลเท่าการหารจำนวนวันตรงๆ)
+// "วันที่ D" = รอบจด (dayStart) ของวัน D → รอบจดของวัน D+1 (UTIL-47)
+//   เดิมตัดที่เวลาเปิดตลาด 14:00 · จดจริงย้ายไป 16:00 (UTIL-43) → ยอดจด 1 รอบถูกหั่นเป็น 2 วัน (22 ชม. + 2 ชม.)
+//   วันที่โชว์จึงไม่เท่าเลขที่จด และไม่มีวันไหนครบ · ตัดที่รอบจด = 1 วันเท่ากับเลขครั้งนี้ − ครั้งก่อน
+//   ตลาดเปิดคร่อมเที่ยงคืน (14:00–01:00) → เลขที่จดตี 1 ครึ่งของวันที่ 2 เป็นยอดของวันที่ 1
+// ใบจดกระดาษไม่มีเวลา → ถือว่าจดตอนรอบจด = ปิดยอดของวันก่อนหน้า (ได้ผลเท่าการหารจำนวนวันตรงๆ)
+// ช่วงตลาดปิด (utilClosed) ยังใช้เวลาเปิด/ปิดตลาดจริง ไม่เกี่ยวกับรอบจด
 
 const UTIL_TZ=7*3600e3;   // ไทย UTC+7 ไม่มีเวลาออมแสง → คิดเลขตรงได้ ไม่ต้องพึ่ง timezone ของเครื่อง
 const UTIL_DAY=864e5;
@@ -14,10 +17,13 @@ const UTIL_DAY=864e5;
 // ค่าตั้งต้น — ของจริงอยู่ Firestore settings/utility (แก้จากหน้าตั้งค่า) · ห้ามเก็บ localStorage
 const UTIL_DEFAULTS={
   hours:{default:{open:'14:00',close:'01:00'}},  // ต่อสาขาได้: hours.BN = {...}
-  edgeMin:15,        // จดคลาดจากเวลาเปิด/ปิดไม่เกินนี้ ยังนับเป็น "ช่วงปิดล้วน"
+  dayStart:'16:00',  // รอบจด = จุดตัดวัน (UTIL-43 จด 15:00–17:00 · UTIL-47)
+  fillMin:0.9,       // วันที่มีข้อมูล ≥ 90% (จดคลาดรอบไม่เกิน ~2 ชม.) → เฉลี่ยเต็มวันไปก่อน จนจดรอบหน้าแล้วได้ยอดจริง
+  avgDays:7,         // ไม่มีค่ากลาง ไม่มีบิล → ค่าเฉลี่ยวันที่จดครบล่าสุดกี่วัน (ต้องมี ≥ baseMinDays)
+  edgeMin:15,       // จดคลาดจากเวลาเปิด/ปิดไม่เกินนี้ ยังนับเป็น "ช่วงปิดล้วน"
   staleDays:2,       // ไม่มีการจดเกินนี้ = เตือนบนการ์ด (ชนิดไหนตั้ง thresholds.<ชนิด>.staleDays ไว้ ใช้ค่านั้นแทน)
   baseWeeks:4,       // ฐาน = วันเดียวกันในสัปดาห์ ย้อนกี่สัปดาห์
-  baseMinDays:2,     // วันปกติเหลือน้อยกว่านี้ → ใช้ค่าเฉลี่ยบิล (billBase) แทน
+  baseMinDays:2,     // วันปกติเหลือน้อยกว่านี้ → ใช้ค่าเฉลี่ยบิล (billBase) → ไม่มีบิล ใช้ค่าเฉลี่ยที่จด (avgDays)
   thresholds:{
     water:{yellow:1.5,red:2,minDiff:10,streak:3,closedRate:0.5},  // จดวันละรอบ 14:00 (เจ้าของเลือก 14 ต.ค. 69)
     // ไฟ: ยังไม่มีข้อมูลจริง minDiff/closedRate เป็นค่าเดา · จดวันละรอบเหมือนน้ำ (ที่ประชุม 21 ต.ค. 69 · เดิมทุกวันจันทร์ staleDays 8)
@@ -26,7 +32,7 @@ const UTIL_DEFAULTS={
   rates:[],          // [{meter_id, field:'multiplier'|'rate', value, effective_from}] — ห้ามแก้ย้อน (ADR 0001)
   billMonthOffset:-1, // บิลเดือน M = ใช้จริงเดือน M-1 (เทียบใบจดบางนา ก.ย.–ต.ค. 69) — รอบัญชียืนยัน
   // ตรวจบิลรายเดือน (UTIL-09) — เพิ่มหลังน้ำ BN บิล ก.ค.–ก.ย. 69 พุ่งแต่ตัวตรวจรายวันไม่เห็น (เริ่มจดรายวัน 4 ก.ย.)
-  // ask = ป้าย ? (บิลซ้ำทุกหลัก · เลขกลมหลักพัน) — ปิดเป็นค่าตั้งต้น (เจ้าของ 20 ต.ค.: อาจเป็นเลขจริง เปิดเองในหน้าตั้งค่า · UTIL-36)
+  // ask = ป้าย ? (บิลซ้ำทุกหลัก) — ปิดเป็นค่าตั้งต้น (เจ้าของ 20 ต.ค.: อาจเป็นเลขจริง เปิดเองในหน้าตั้งค่า · UTIL-36)
   billCheck:{ratio:1.3,lookback:6,minPrev:3,warmup:6,minDiff:{water:50,elec:3000},recent:3,ask:false},
   // ช่วงแรกที่ค่ากลางยังไม่พอ → ค่าเฉลี่ยต่อวันจาก n บิลล่าสุด (UTIL-21) · บิลล่าสุดเก่าเกิน maxAge เดือน = ไม่ใช้
   //   maxAge 4: บิลเดือน M ออกช้า (ต.ค. ยังไม่มีบิลไฟ BG ใช้จริง ก.ย.) → ต.ค. ยังได้ มิ.ย.–ส.ค. ครบ 3
@@ -47,7 +53,7 @@ function utilSettings(s,branch){
   const th={}; for(const k of Object.keys(D.thresholds)) th[k]={...D.thresholds[k],...((s.thresholds||{})[k]||{})};
   const hrs={...D.hours,...(s.hours||{})}, h=hrs[branch]||hrs.default;
   return {...D,...s,thresholds:th,rates:s.rates||[],billBase:{...D.billBase,...(s.billBase||{})},
-          openMs:utilHm(h.open),closeMs:utilHm(h.close)};
+          openMs:utilHm(h.open),closeMs:utilHm(h.close),dayMs:utilHm(s.dayStart||D.dayStart)};
 }
 
 // ค่าที่มีผลในวันนั้น (ตัวคูณ / บาทต่อหน่วย) — แถวล่าสุดที่ effective_from <= iso
@@ -82,22 +88,30 @@ function utilSegments(rows){
   return {segs,anomalies};
 }
 
-// ใช้ต่อวันตลาด — กระจายผลต่างตามเวลาที่คาบวันนั้น × ตัวคูณที่มีผล "วันนั้น"
-//   cover = สัดส่วนของวันที่มีข้อมูลครอบ (1 = ครบวัน) · est = มาจากช่วงห่างเกิน 1.5 วัน (เฉลี่ยวันขาดจด)
+// ใช้ต่อวัน — กระจายผลต่างตามเวลาที่คาบวันนั้น × ตัวคูณที่มีผล "วันนั้น"
+//   cover = สัดส่วนของวันที่มีข้อมูลครอบ (1 = ครบวัน) · est = เกินครึ่งวันมาจากช่วงห่างเกิน 1.5 วัน (เฉลี่ยวันขาดจด)
+//     (เดิม est ติดทั้งวันแม้คาบแค่ไม่กี่นาที → วันแรกที่กลับมาจดถูกนับเป็นยอดเฉลี่ย)
+//   fill = cover เดิม เมื่อ fillMin ≤ cover < 1 → ขยายเป็นเต็มวัน (units ÷ cover) · cover = 1 ให้ตัดสินได้เลย
 function utilDaily(segs,meterId,S){
-  const days=new Map();
+  const days=new Map(), D=S.dayMs;
   for(const {p,q,d} of segs){
     const span=q.t-p.t, est=span>1.5*UTIL_DAY;
-    for(let k=utilMarketIdx(p.t,S.openMs);utilMarketStart(k,S.openMs)<q.t;k++){
-      const s=Math.max(p.t,utilMarketStart(k,S.openMs)), e=Math.min(q.t,utilMarketStart(k+1,S.openMs));
+    for(let k=utilMarketIdx(p.t,D);utilMarketStart(k,D)<q.t;k++){
+      const s=Math.max(p.t,utilMarketStart(k,D)), e=Math.min(q.t,utilMarketStart(k+1,D));
       if(e<=s) continue;
-      const iso=utilIso(k), o=days.get(k)||{idx:k,date:iso,units:0,cover:0,est:false,span:0};
+      const iso=utilIso(k), o=days.get(k)||{idx:k,date:iso,units:0,cover:0,est:false,estCover:0,span:0};
       o.units+=d*(e-s)/span*utilValueAt(S.rates,meterId,'multiplier',iso,1);
-      o.cover+=(e-s)/UTIL_DAY; o.est=o.est||est; o.span=Math.max(o.span,span/UTIL_DAY);   // span = ช่วงจดยาวสุดที่คาบวันนี้ (วัน)
+      o.cover+=(e-s)/UTIL_DAY; if(est) o.estCover+=(e-s)/UTIL_DAY;
+      o.span=Math.max(o.span,span/UTIL_DAY);   // span = ช่วงจดยาวสุดที่คาบวันนี้ (วัน)
       days.set(k,o);
     }
   }
-  return [...days.values()].sort((a,b)=>a.idx-b.idx);
+  const out=[...days.values()].sort((a,b)=>a.idx-b.idx);
+  for(const o of out){
+    o.est=o.estCover>o.cover/2; delete o.estCover;
+    if(o.cover<0.999&&o.cover>=S.fillMin){ o.units/=o.cover; o.fill=o.cover; o.cover=1; }
+  }
+  return out;
 }
 
 // ช่วงที่อยู่ใน "ตลาดปิด" ล้วนๆ (ปิด → เปิดของวันตลาดเดียวกัน) → หน่วย/ชม.
@@ -135,13 +149,15 @@ function utilBillDaily(bills,meterId,iso,S){
   return {perDay:ks.reduce((s,k)=>s+per[k]/dim(k),0)/ks.length,months:ks};
 }
 
-// เลือกฐาน: ค่ากลาง (หลัก) → ค่าเฉลี่ยจากบิล (ช่วงแรก) → ไม่มี
+// เลือกฐาน: ค่ากลาง (หลัก) → ค่าเฉลี่ยจากบิล (ช่วงแรก) → ค่าเฉลี่ยวันที่จดครบ (มิเตอร์ย่อยไม่มีบิล · UTIL-47) → ไม่มี
 //   ฐานตั้งต้นแบบกรอกเอง (baseline) เอาออก 15 ต.ค. 69 — ไม่มีหน้าให้กรอก ค่าเฉลี่ยบิลทำหน้าที่แทน
-//   ตั้ง o.base / o.baseFrom ('median'|'bill'|null) / o.billMonths
-function utilPickBase(o,hist,meter,S,bills,iso){
-  let fb;
+//   prev = ยอดวันที่จดครบก่อนหน้า (ไม่รวมวันแดง/รั่ว) เรียงเก่า → ใหม่
+//   ตั้ง o.base / o.baseFrom ('median'|'bill'|'avg'|null) / o.billMonths / o.avgN
+function utilPickBase(o,hist,meter,S,bills,iso,prev){
+  let fb; const rec=(prev||[]).slice(-S.avgDays);
   if(hist.length>=S.baseMinDays){ o.base=utilMedian(hist); o.baseFrom='median'; }
   else if((fb=utilBillDaily(bills,meter.meter_id,iso,S))){ o.base=fb.perDay; o.baseFrom='bill'; o.billMonths=fb.months; }
+  else if(rec.length>=S.baseMinDays){ o.base=rec.reduce((s,v)=>s+v,0)/rec.length; o.baseFrom='avg'; o.avgN=rec.length; }
   else{ o.base=null; o.baseFrom=null; }
 }
 
@@ -151,20 +167,20 @@ function utilPickBase(o,hist,meter,S,bills,iso){
 //   ป้าย: ต้องเกินทั้ง "กี่เท่า" และ "เพิ่มขั้นต่ำ" = เส้นแดงคือค่าที่สูงกว่าระหว่าง ฐาน×red กับ ฐาน+minDiff
 function utilFlags(days,meter,S,bills){
   const th=S.thresholds[meter.type], byIdx=new Map(days.map(d=>[d.idx,d])), bad=new Set();
-  let streak=0,lastIdx=null,lastHot=false;
+  let streak=0,lastIdx=null,lastHot=false; const prev=[];
   for(const d of days){
     if(d.cover<0.999){ d.level='partial'; continue; }
     const hist=[];
     for(let w=1;w<=S.baseWeeks;w++){ const h=byIdx.get(d.idx-7*w); if(h&&h.cover>=0.999&&!bad.has(h.idx)) hist.push(h.units); }
-    utilPickBase(d,hist,meter,S,bills,d.date);
-    if(d.base==null){ d.level='nodata'; lastHot=false; lastIdx=d.idx; continue; }
+    utilPickBase(d,hist,meter,S,bills,d.date,prev);
+    if(d.base==null){ d.level='nodata'; lastHot=false; lastIdx=d.idx; prev.push(d.units); continue; }
     d.ratio=d.base>0?d.units/d.base:Infinity; d.diff=d.units-d.base;
     const over=x=>d.ratio>x&&d.diff>=th.minDiff;
     d.level=over(th.red)?'red':over(th.yellow)?'yellow':'green';
     const hot=d.level!=='green';
     streak=hot?(lastHot&&lastIdx===d.idx-1?streak+1:1):0;
     if(d.level==='yellow'&&streak>=th.streak) d.level='leak';
-    if(d.level==='red'||d.level==='leak') bad.add(d.idx);
+    if(d.level==='red'||d.level==='leak') bad.add(d.idx); else prev.push(d.units);
     lastHot=hot; lastIdx=d.idx;
   }
   return days;
@@ -182,7 +198,7 @@ function utilBands(day,th){
 // วิเคราะห์ 1 มิเตอร์ · meter = {meter_id, type:'water'|'elec', branch_code} · now = ms (ส่งเข้ามาเพื่อให้เทสต์ได้)
 //   bills = บิลของสาขา (ไม่ส่ง = ไม่มีฐานจากบิล · ผู้ไม่มีสิทธิ์ยอดเงินอ่านบิลไม่ได้)
 function utilAnalyze(readings,meter,settings,now,bills){
-  const S=utilSettings(settings,meter.branch_code), rows=utilPrep(readings,meter.meter_id,S.openMs);
+  const S=utilSettings(settings,meter.branch_code), rows=utilPrep(readings,meter.meter_id,S.dayMs);
   const {segs,anomalies}=utilSegments(rows), last=rows.length?rows[rows.length-1]:null;
   const ageDays=last?(now-last.t)/UTIL_DAY:null, staleDays=S.thresholds[meter.type]?.staleDays??S.staleDays;
   return {days:utilFlags(utilDaily(segs,meter.meter_id,S),meter,S,bills),closed:utilClosed(segs,meter,S),anomalies,
@@ -194,9 +210,10 @@ function utilAnalyze(readings,meter,settings,now,bills){
 //   ฐานเป็นค่ากลาง ไม่ใช่ค่าเฉลี่ย (เดือนพุ่งเดือนเดียวไม่ดึงฐานขึ้น) · ต้องมีบิลก่อนหน้า ≥ minPrev
 //   ไม่ตรวจ warmup เดือนแรกนับจากบิลใบแรกของ "สาขา" (ช่วงเปิดสาขายอดไต่ขึ้นเป็นปกติ)
 //     ไม่นับจากมิเตอร์ — BN เปิด ม.ค. 69 แต่บิลน้ำเริ่ม มี.ค. ถ้านับจากมิเตอร์จะพลาดเคส ก.ค.–ก.ย. ที่ต้องจับ
-// ชั้น 2 ข้อมูลต้องเช็ค: หน่วย+เงินซ้ำกับบิลใดบิลหนึ่งใน lookback บิลก่อน (คัดลอกผิด) · หน่วยเลขกลมหลักพัน (ยอดประมาณ)
+// ชั้น 2 ข้อมูลต้องเช็ค: หน่วย+เงินซ้ำกับบิลใดบิลหนึ่งใน lookback บิลก่อน (คัดลอกผิด)
+//   UTIL-45 เลิกตรวจเลขกลมหลักพัน — บิลกลม 25 ใบมีแค่ไฟ SB-E-MAIN/SR-E-TEMP ที่ กฟน. ออกบิลจากมิเตอร์ ×1000 = ธงหลอกทุกใบ
 // bills = [{bill_month, branch_code, type, meter_id, units, amount}] (ตัวเลขแล้ว · ไม่มีแถว void)
-// คืน [{bill_month, meter_id, branch_code, type, units, amount, high:{base,pct}|null, dup:'YYYY-MM'|null, round:bool}]
+// คืน [{bill_month, meter_id, branch_code, type, units, amount, high:{base,pct}|null, dup:'YYYY-MM'|null}]
 // เกณฑ์ตรวจบิล = ค่าตั้งต้น + ค่าจาก settings/utility (แก้แค่บางช่องได้) — ใช้ร่วมกับหน้าจอ (ค่ากลางบิล · กล่องวิธีคิด)
 function utilBillCfg(settings){
   const s=(settings||{}).billCheck||{}, D=UTIL_DEFAULTS.billCheck;
@@ -215,17 +232,16 @@ function utilBillCheck(bills,settings){
     rows.sort((a,b)=>a.bill_month<b.bill_month?-1:1);
     rows.forEach((b,i)=>{
       const prev=rows.slice(Math.max(0,i-C.lookback),i), u=Number(b.units)||0;
-      const r={bill_month:b.bill_month,meter_id:b.meter_id,branch_code:b.branch_code,type:b.type,units:u,amount:b.amount,high:null,dup:null,round:false};
+      const r={bill_month:b.bill_month,meter_id:b.meter_id,branch_code:b.branch_code,type:b.type,units:u,amount:b.amount,high:null,dup:null};
       const pu=prev.map(p=>Number(p.units)||0).filter(x=>x>0);
       if(u>0&&pu.length>=C.minPrev&&mIdx(b.bill_month)-mIdx(first[b.branch_code])>=C.warmup){
         const base=utilMedian(pu), min=C.minDiff[b.type]??0;
         if(u>base*C.ratio&&u-base>=min) r.high={base,pct:(u/base-1)*100};
       }
       // UTIL-23: บิลแบบหน่วยอย่างเดียว (ไม่มีสิทธิ์เงิน) ไม่มียอดเงิน → ไม่ตัดสินว่าซ้ำ (ไม่งั้น 0 = 0 ขึ้น ? ทุกเดือนที่หน่วยเท่ากัน)
-      if(C.ask){   // UTIL-36: ปิด = ไม่ตัดสิน ? เลย (ทุกจุดที่โชว์ ? อ่าน dup/round จากที่นี่)
+      if(C.ask){   // UTIL-36: ปิด = ไม่ตัดสิน ? เลย (ทุกจุดที่โชว์ ? อ่าน dup จากที่นี่)
         const d=Number(b.amount)>0?[...prev].reverse().find(p=>u>0&&Number(p.units)===u&&Number(p.amount)===Number(b.amount)):null;
         if(d) r.dup=d.bill_month;
-        r.round=u>=1000&&u%1000===0;
       }
       out.push(r);
     });
