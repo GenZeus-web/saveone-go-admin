@@ -18,6 +18,7 @@ const UTIL_DAY=864e5;
 const UTIL_DEFAULTS={
   hours:{default:{open:'14:00',close:'01:00'}},  // ต่อสาขาได้: hours.BN = {...}
   dayStart:'16:00',  // รอบจด = จุดตัดวัน (UTIL-43 จด 15:00–17:00 · UTIL-47)
+  roundMin:60,       // รอบจด ± กี่นาที (UTIL-43 แอปรับ 15:00–17:00) · ใช้นับ "จดรอบนี้แล้วกี่ตัว" (UTIL-48)
   fillMin:0.9,       // วันที่มีข้อมูล ≥ 90% (จดคลาดรอบไม่เกิน ~2 ชม.) → เฉลี่ยเต็มวันไปก่อน จนจดรอบหน้าแล้วได้ยอดจริง
   avgDays:7,         // ไม่มีค่ากลาง ไม่มีบิล → ค่าเฉลี่ยวันที่จดครบล่าสุดกี่วัน (ต้องมี ≥ baseMinDays)
   edgeMin:15,       // จดคลาดจากเวลาเปิด/ปิดไม่เกินนี้ ยังนับเป็น "ช่วงปิดล้วน"
@@ -54,6 +55,14 @@ function utilSettings(s,branch){
   const hrs={...D.hours,...(s.hours||{})}, h=hrs[branch]||hrs.default;
   return {...D,...s,thresholds:th,rates:s.rates||[],billBase:{...D.billBase,...(s.billBase||{})},
           openMs:utilHm(h.open),closeMs:utilHm(h.close),dayMs:utilHm(s.dayStart||D.dayStart)};
+}
+
+// รอบจดล่าสุดที่เปิดแล้ว (UTIL-48) · ก่อน 15:00 = รอบเมื่อวาน · 15:00 เป็นต้นไป = รอบวันนี้
+//   คืน {date, from, to, open} · from/to = ช่วงที่แอปรับ (ms) · open = ยังอยู่ในช่วงจด (ขาด = "รอจด" ไม่ใช่ "ขาด")
+//   จดรอบนี้แล้ว = เลขล่าสุด ≥ from (เดิมนับ "เคยจด" → ซักล้าง SG ไม่ได้จด 23 ต.ค. ก็ขึ้น 6/6)
+function utilRound(now,S){
+  const w=S.roundMin*60e3, k=utilMarketIdx(now+w,S.dayMs), cut=utilMarketStart(k,S.dayMs);
+  return {date:utilIso(k),from:cut-w,to:cut+w,open:now<cut+w};
 }
 
 // ค่าที่มีผลในวันนั้น (ตัวคูณ / บาทต่อหน่วย) — แถวล่าสุดที่ effective_from <= iso

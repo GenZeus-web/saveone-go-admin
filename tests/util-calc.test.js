@@ -6,7 +6,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('fs'),path=require('path'),vm=require('vm');
 vm.runInThisContext(fs.readFileSync(path.join(__dirname,'..','js','util-calc.js'),'utf8')+
-  '\n;Object.assign(globalThis,{utilAnalyze,utilValueAt,utilBillUsageMonth,utilMedian,utilBands,utilBillCheck,utilBillCfg,utilSettings,UTIL_DEFAULTS});');
+  '\n;Object.assign(globalThis,{utilAnalyze,utilValueAt,utilBillUsageMonth,utilMedian,utilBands,utilBillCheck,utilBillCfg,utilSettings,utilRound,UTIL_DEFAULTS});');
 
 const OFFICE={meter_id:'BN-W-OFFICE',type:'water',branch_code:'BN'};
 const TOILET={meter_id:'BN-W-TOILET',type:'water',branch_code:'BN'};
@@ -363,4 +363,16 @@ test('เกณฑ์รายวันจากหน้าตั้งค่�
   assert.deepEqual(utilBands({base:4},S.thresholds.water),{base:4,yellow:7,red:8});
   const a=utilAnalyze([],OFFICE,{thresholds:{water:{staleDays:5}}},NOW);
   assert.equal(a.staleDays,5);
+});
+
+// ── UTIL-48 จดรอบนี้แล้วกี่ตัว (เดิมนับ "เคยจด" → SG ขาดซักล้าง 23 ต.ค. ก็ขึ้น 6/6) ──
+test('รอบจด: ก่อน 15:00 = รอบเมื่อวาน (ปิดแล้ว) · 15:00–17:00 = รอบวันนี้ยังเปิด · หลัง 17:00 = ปิด',()=>{
+  const S=utilSettings({},'BG'), t=s=>Date.parse('2026-10-23T'+s+':00+07:00'), R=s=>utilRound(t(s),S);
+  assert.deepEqual([R('14:59').date,R('14:59').open],['2026-10-22',false]);
+  assert.deepEqual([R('15:00').date,R('15:00').open],['2026-10-23',true]);
+  assert.equal(R('16:30').from,t('15:00')); assert.equal(R('16:30').to,t('17:00'));
+  assert.deepEqual([R('17:00').date,R('17:00').open],['2026-10-23',false]);
+  // ซักล้างจดล่าสุด 22 ต.ค. 16:53 → ไม่นับเป็นรอบ 23 · เมน 23 ต.ค. 15:58 นับ
+  assert.ok(Date.parse('2026-10-22T16:53:00+07:00')<R('17:30').from);
+  assert.ok(Date.parse('2026-10-23T15:58:00+07:00')>=R('17:30').from);
 });

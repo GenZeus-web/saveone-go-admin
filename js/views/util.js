@@ -395,12 +395,17 @@ function utSummary(c){
   const billHi=new Set(utRecentHigh(UT.br||activeBranch).map(x=>x.meter_id));   // UTIL-09 · UTIL-23 ดูจากหน่วย ไม่ต้องมีสิทธิ์เงิน
   const zero=new Set(c.meters.filter(m=>umZero(m).length).map(m=>m.meter_id));   // ใช้ 0 = มิเตอร์ค้าง/ลอกเลข (views/util-meter.js)
   const watch=c.meters.filter(m=>(utilTrue(m.active)&&(['red','leak'].includes(m._full?.level)||(m._res.stale&&m._res.last)))||billHi.has(m.meter_id)||zero.has(m.meter_id));
-  const name=m=>(UT_TYPE[m.type]||'').split(' ')[0]+' '+utEsc(m.location||m.meter_id)+(billHi.has(m.meter_id)?' (บิลสูง)':'')+(zero.has(m.meter_id)?' (ใช้ 0)':'');
+  const nm=m=>(UT_TYPE[m.type]||'').split(' ')[0]+' '+utEsc(m.location||m.meter_id);
+  const name=m=>nm(m)+(billHi.has(m.meter_id)?' (บิลสูง)':'')+(zero.has(m.meter_id)?' (ใช้ 0)':'');
+  // UTIL-48 นับเฉพาะรอบจดล่าสุด (16:00 ±1 ชม.) · ยังอยู่ในช่วงจด = รอจด · พ้นช่วงแล้ว = ขาด (ส้ม)
+  const R=utilRound(Date.now(),utilSettings(utSet(),UT.br||activeBranch)), miss=read.length?act.filter(m=>!(m._res.last>=R.from)):[];
+  const late=miss.length&&!R.open, rnd=`จดรอบ ${utDM(R.date)} แล้ว ${act.length-miss.length}/${act.length}${miss.length?` · ${late?'ขาด':'รอจด'}: ${miss.map(nm).join(' · ')}`:''}`;
   // ยังไม่มีอะไรให้ตัดสิน ≠ ปกติ — สาขาปิด / ยังไม่เริ่มจด บอกตรงๆ ไม่ขึ้น ✅
   const [cls,val,sub]=!act.length?['','ปิดใช้แล้ว','ทุกมิเตอร์ปิดใช้ · ดูข้อมูลย้อนหลังได้']
-    :watch.length?['red',watch.length+' มิเตอร์',watch.map(name).join(' · ')]
+    :watch.length?['red',watch.length+' มิเตอร์',watch.map(name).join(' · ')+(read.length?`<br>${rnd}`:'')]
     :!read.length?['','ยังไม่เริ่มจด',`ยังไม่มีการจด (0/${act.length} มิเตอร์)`]
-    :['green','✅ ปกติ',`มีการจดแล้ว ${read.length}/${act.length} มิเตอร์`];
+    :late?['orange',`ขาดจด ${miss.length}`,rnd]
+    :['green','✅ ปกติ',rnd];
   let h=`<div class="kpi ${cls}"><div class="kpi-lbl">ต้องดูตอนนี้</div><div class="kpi-val">${val}</div><div class="kpi-sub">${sub}</div></div>`;
   return `<div class="kpi-row ut-kpis">${h}</div>`;
 }
