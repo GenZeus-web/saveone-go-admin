@@ -11,7 +11,7 @@ global.localStorage={getItem:()=>null,setItem:()=>{}};
 global.document={getElementById:()=>null};
 const src=['config.js','utils.js'].map(f=>fs.readFileSync(path.join(__dirname,'..','js',f),'utf8')).join('\n');
 vm.runInThisContext(src+'\n;globalThis.__setBranch=b=>{activeBranch=b};'+
-  'Object.assign(globalThis,{revST,revNon,calcDiscount,getNonPrice,lockPrices,rainHalvesWalkIn,'+
+  'Object.assign(globalThis,{revST,revNon,revSTNormal,revNonNormal,calcDiscount,isRainDay,getNonPrice,lockPrices,rainHalvesWalkIn,'+
   'priceCellFor,setPricing,seasonAt,pricingVersionAt,DEFAULT_PRICING});');
 
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -133,4 +133,24 @@ test('ไม่ส่งสาขา = ใช้สาขาที่เปิ�
   __setBranch('BN');
   assert.equal(revST(row())+revNon(row()),70200);
   assert.equal(getNonPrice(D(2026,9,19)),250);
+});
+
+test('RAIN-01 ฝนเฉพาะ Car: ส่วนลด = ก่อนหัก − สุทธิ (เดิม 0) · ST ไม่ลด',()=>{
+  for(const br of ['BG','BN','SS']){
+    const r=row({freeDay:false,nonFree:true});
+    const normal=revSTNormal(r,'all',br)+revNonNormal(r,'all',br), net=rev(r,br);
+    assert.ok(isRainDay(r));
+    assert.ok(normal-net>0,br);
+    assert.equal(calcDiscount(r,'all',br),normal-net,br);
+    assert.equal(revST(r,'all',br),revSTNormal(r,'all',br),br+' ST เต็มราคา');
+  }
+});
+
+test('RAIN-01 ส่วนลด = ก่อนหัก − สุทธิ ทุกกลุ่ม × ทุกสาขา × ฝนทั้งตลาด/ไม่ฝน',()=>{
+  for(const br of ['BG','BN','SS']) for(const g of ['all','online','walkin','extra']) for(const fd of [[true,true],[false,false],[false,true]]){
+    const r=row({freeDay:fd[0],nonFree:fd[1],extraLock:5,nonExtraLock:3});
+    const normal=revSTNormal(r,g,br)+revNonNormal(r,g,br), net=revST(r,g,br)+revNon(r,g,br);
+    assert.equal(calcDiscount(r,g,br),normal-net,`${br} ${g} ${fd}`);
+  }
+  assert.equal(isRainDay(row()),false);
 });

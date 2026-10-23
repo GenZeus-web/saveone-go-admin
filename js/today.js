@@ -32,7 +32,7 @@ function _todayBranchHtml(br, r){
   const rl=(k,rai,lock)=>row(k,`${fmtN(rai||0)}<span class="u">ราย</span> / ${fmtN(lock||0)}`,'ล็อก'); // ราย / ล็อก
   const l1=(r.l1||0)+(r.l1n||0), l2=(r.l2||0)+(r.l2n||0);
   const rvSt=revST(r,'all',br), rvCar=revNon(r,'all',br);
-  const chip = r.freeDay ? '<span class="day-chip fd">🌧 วันฝน</span>'
+  const chip = isRainDay(r) ? '<span class="day-chip fd">🌧 วันฝน</span>'
              : isWknd(r.date) ? '<span class="day-chip wk">วันหยุด ศ–อา</span>'
                               : '<span class="day-chip nm">วันธรรมดา</span>';
 

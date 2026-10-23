@@ -5,7 +5,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('fs'),path=require('path'),vm=require('vm');
 vm.runInThisContext(fs.readFileSync(path.join(__dirname,'..','js','trend.js'),'utf8')+
-  '\n;Object.assign(globalThis,{trendOf});');
+  '\n;Object.assign(globalThis,{trendOf,isOpenDay});');
 
 const D=(y,m,d)=>new Date(y,m-1,d);
 // สร้างแถวย้อนหลัง n วันจาก end · val(i) i=0 คือวันล่าสุด
@@ -46,4 +46,13 @@ test('วันขาดในหน้าต่าง: เฉลี่ยเฉ
 test('ก่อนหน้าเป็น 0: ไม่หารศูนย์ ใช้จำนวนแทน',()=>{
   const t=trendOf(days(END,14,i=>i<7?3:0),END,pick);
   assert.equal(t.pct,null); assert.equal(t.dir,'up'); assert.equal(t.small,true);
+});
+
+test('TGT-02 วันนี้ก่อน 22:00 = ยังไม่ปิด · หลัง 22:00 / เมื่อวาน = ปิดแล้ว',()=>{
+  const r={date:D(2026,10,23)};
+  assert.equal(isOpenDay(r,new Date(2026,9,23,17,36)),true);
+  assert.equal(isOpenDay(r,new Date(2026,9,23,21,59)),true);
+  assert.equal(isOpenDay(r,new Date(2026,9,23,22,0)),false);
+  assert.equal(isOpenDay(r,new Date(2026,9,24,9,0)),false);
+  assert.equal(isOpenDay({date:D(2026,10,22)},new Date(2026,9,23,15,0)),false);
 });

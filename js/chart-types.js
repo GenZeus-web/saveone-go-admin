@@ -257,7 +257,7 @@ const CT_ALT={
     const n=pts.length,mx=pts.reduce((a,p)=>a+p.x,0)/n,my=pts.reduce((a,p)=>a+p.y,0)/n;
     let sxy=0,sxx=0;pts.forEach(p=>{sxy+=(p.x-mx)*(p.y-my);sxx+=(p.x-mx)**2;});
     const b=sxx?sxy/sxx:0,a=my-b*mx,x0=Math.min(...pts.map(p=>p.x)),x1=Math.max(...pts.map(p=>p.x));
-    const rain=p=>!!rows[p.i]?.freeDay;
+    const rain=p=>isRainDay(rows[p.i]);
     const sets=[
       {label:'วันปกติ',data:pts.filter(p=>!rain(p)),backgroundColor:'rgba(61,214,140,.75)',borderColor:ctSurf(),borderWidth:1,pointRadius:4.5,pointHoverRadius:7},
       {label:'วันฝน',data:pts.filter(rain),backgroundColor:'rgba(240,165,0,.85)',borderColor:ctSurf(),borderWidth:1,pointRadius:5.5,pointHoverRadius:8,pointStyle:'triangle'},

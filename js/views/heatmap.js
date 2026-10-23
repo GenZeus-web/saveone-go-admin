@@ -6,8 +6,8 @@ function renderHeatmap(){
   const wrap=document.getElementById('hmWrap');
   if(!wrap) return;
   
-  // ใช้ข้อมูลทั้งหมดของสาขาที่เลือก ไม่ filter ช่วงเวลา
-  const allData=getActiveMerged();
+  // ใช้ข้อมูลทั้งหมดของสาขาที่เลือก ไม่ filter ช่วงเวลา · แต่ตามโซน (HM-01: เดิมโซน ST เอายอดทุกโซนเทียบเป้า ST → เขียวหมด)
+  const allData=applyZone(getActiveMerged());
   if(!allData||!allData.length){
     wrap.innerHTML='<div style="color:var(--ink3);padding:20px;text-align:center">ไม่มีข้อมูล</div>';
     return;
@@ -33,7 +33,7 @@ function renderHeatmap(){
     
     const dayMap={};
     allData.filter(r=>mKey(r.date)===mk).forEach(r=>{
-      dayMap[r.date.getDate()]={lock:getLock(r,group),free:r.freeDay};
+      dayMap[r.date.getDate()]={lock:getLock(r,group),free:isRainDay(r)};
     });
     
     html+=`<div class="hm-month"><div class="hm-month-lbl">${label}</div><div class="hm-grid">`;

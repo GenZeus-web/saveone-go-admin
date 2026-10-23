@@ -13,6 +13,13 @@ const TREND_SMALL_FLAT=0.5;// ...และเปลี่ยนไม่ถึ�
 // เลขวันแบบไม่สนเวลา/โซนเวลา — ใช้หาว่าแถวไหนอยู่ในหน้าต่าง
 function trendDayIdx(d){ return Math.round(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e5); }
 
+// TGT-02: ยอดวันนี้เข้ารอบ 15/18/22 (เหมือน today.js) → ก่อน 22:00 ยังไม่ปิด
+//   ป้ายเป้า/เป้าเดือน/ทิศทาง ไม่นับวันนี้ ไม่งั้นบ่ายวันธรรมดาขึ้น "หลุดเป้า" ทั้งที่ 22:00 ถึงเป้า
+const DAY_CLOSE_HOUR=22;
+function isOpenDay(r,now=new Date()){
+  return !!(r&&r.date)&&trendDayIdx(r.date)===trendDayIdx(now)&&now.getHours()<DAY_CLOSE_HOUR;
+}
+
 // rows = แถวทั้งหมดของสาขา+โซนที่เลือก (ไม่ตัดตามช่วงเวลา — หน้าต่างก่อนหน้าอาจอยู่นอกช่วงที่เลือก)
 // anchor = วันล่าสุดของช่วงที่ดูอยู่ · pick(r) = ค่าของแถวนั้น
 // คืน null ถ้าข้อมูลไม่พอ · dir = 'up' | 'down' | 'flat'

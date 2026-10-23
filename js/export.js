@@ -17,7 +17,7 @@ function exportCSV(){
       net,r.walkInLock,r.extraLock,r.nonLock,
       r.cancelLock,r.absentLock,totalLock,totalRai,rev,
       ...(canSeeElec()?[r.l1+(r.l1n||0),r.l2+(r.l2n||0)]:['','']),   // PERM-07: ไม่มีสิทธิ์ค่าไฟ = เว้นว่าง
-      r.freeDay?'ใช่':'ไม่',targetLock,hitTarget
+      isRainDay(r)?'ใช่':'ไม่',targetLock,hitTarget
     ];
   });
   const csvContent='﻿'+[header,...rows].map(row=>row.map(v=>`"${v}"`).join(',')).join('\n');

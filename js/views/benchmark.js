@@ -184,7 +184,7 @@ function renderBenchmark(){
       const totalLock=d.reduce((s,r)=>s+getLock(r,'all'),0);
       const avgLock=(totalLock/days).toFixed(1);
       const totalRev=d.reduce((s,r)=>s+revST(r,'all',b)+revNon(r,'all',b),0); // PRICE-01: ใช้ราคาของสาขา b ไม่ใช่สาขาที่เปิดดูอยู่
-      const fds=d.filter(r=>r.freeDay).length;
+      const fds=d.filter(isRainDay).length;
       const _canRev=canSeeRev(); // SET-01 + PERM-06: ด่านกลางใน utils.js
       return `<div class="mom-card" style="border-color:${sc(BM_COLORS[b])}">
         <div class="mom-month" style="color:${sc(BM_COLORS[b])};font-weight:700">${BM_NAMES[b]}</div>

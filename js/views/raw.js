@@ -5,7 +5,7 @@
 function renderRaw(d){
   document.getElementById('rawCount').textContent=`แสดง ${Math.min(d.length,200)} จาก ${d.length} แถว`;
   document.getElementById('rawTbl').innerHTML=d.slice(0,200).map(r=>{
-    const wk=isWknd(r.date),fd=r.freeDay;
+    const wk=isWknd(r.date),fd=isRainDay(r),pfd=zone==='non'?fd:!!r.freeDay; // RAIN-01: ราคาที่โชว์เป็นของ ST (ยกเว้นโซน Car) → ลดครึ่งเมื่อ ST ฝนเท่านั้น
     const net=Math.max(0,r.onlineLock-r.absentLock-r.cancelLock);
     const ce=canSeeElec(); // PERM-07: ค่าไฟตามสิทธิ์ showElec · ช่องว่างแต่คงช่องไว้
     const cr=canSeeRev(); // PERM-06: ไม่มีสิทธิ์ = ช่องเงินว่าง (คงช่องไว้ให้ตรงหัวตาราง) ไม่ใส่ราคา/รายรับลง DOM
@@ -22,7 +22,7 @@ function renderRaw(d){
       <td class="num" style="color:var(--purple)">${r.nonLock||'—'}</td>
       <td class="num" style="color:var(--red)">${cancelShow||'—'}</td>
       <td class="num" style="color:var(--red)">${absentShow||'—'}</td>
-      <td class="num col-rev" style="color:var(--ink3);font-size:10px">${!cr?'':fd?`${po/2}/${rainHalvesWalkIn()?pw/2:pw}`:`${po}/${pw}`}</td>
+      <td class="num col-rev" style="color:var(--ink3);font-size:10px">${!cr?'':pfd?`${po/2}/${rainHalvesWalkIn()?pw/2:pw}`:`${po}/${pw}`}</td>
       <td class="num col-rev" style="font-weight:700;color:var(--green)">${cr?fmtN(rv):''}</td>
       <td class="num col-elec">${!ce?'':r.l1+r.l1n>0?fmtN(r.l1+r.l1n):'—'}</td>
       <td class="num col-elec">${!ce?'':r.l2+r.l2n>0?fmtN(r.l2+r.l2n):'—'}</td>

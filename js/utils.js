@@ -170,10 +170,15 @@ function revNonNormal(r,g='all',br=activeBranch){
   return online*p + (walkin+extra)*pw;
 }
 
+// วันฝน = ST หรือ Car ลดครึ่ง · Car ลดตาม nonFree||freeDay (เหมือน revNon)
+//   RAIN-01: เดิมดูแค่ freeDay → วันที่ฝนเฉพาะ Car (BG 19 วัน ปี 68) รายรับหักครึ่งแล้วแต่ส่วนลด = 0
+//   หลัง applyZone('st') nonFree = false → เหลือแค่ ST เอง
+const isRainDay=r=>!!(r&&(r.freeDay||r.nonFree));
 function calcDiscount(r,g='all',br=activeBranch){
-  if(!r.freeDay) return 0;
+  if(!isRainDay(r)) return 0;
   const{po,pw}=getBranchPrice(r.date,br);
   const np=getNonPrice(r.date,br);
+  const stFd=!!r.freeDay;
   const nonFd=r.nonFree||r.freeDay||false;
   // FD-03: รองรับ filter ตาม "กลุ่มข้อมูล" (online/walkin/extra/cancel/all) เหมือน revST/revNon/getLock
   const online=(g==='all'||g==='online')?1:0;
@@ -183,12 +188,12 @@ function calcDiscount(r,g='all',br=activeBranch){
 
   if(br==='SS'){
     // SS ST: เฉพาะ Online ที่ลด
-    stDisc=online*(r.onlineLock||0)*po*0.5;
+    if(stFd) stDisc=online*(r.onlineLock||0)*po*0.5;
     // SS Non: WalkIn ไม่ลด
-    nonDisc=online*(r.nonOnlineLock||0)*np*0.5;
+    if(nonFd) nonDisc=online*(r.nonOnlineLock||0)*np*0.5;
   } else {
     // BG/BN ST: ทุกประเภทลด (Online ใช้ po, WalkIn/Extra ใช้ pw)
-    stDisc=online*(r.onlineLock||0)*po*0.5 + (walkin*(r.walkInLock||0)+extra*(r.extraLock||0))*pw*0.5;
+    if(stFd) stDisc=online*(r.onlineLock||0)*po*0.5 + (walkin*(r.walkInLock||0)+extra*(r.extraLock||0))*pw*0.5;
     // BG/BN Car: ทุกประเภทลด
     if(nonFd){
       const npw=getNonWalkPrice(r.date,br); // วอล์กอิน/ล็อกเสริม รถ

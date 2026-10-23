@@ -14,8 +14,10 @@ function renderTargetStatus(d){
   if(group!=='all'||tgt<=0||!d.length){panelEl.style.display='none';boxEl.style.display='none';return;}
   panelEl.style.display='block';
 
-  // 1) หลุดเป้ากี่วันติด (นับจากวันล่าสุดถอยหลัง)
-  const asc=[...d].sort((a,b)=>a.date-b.date);
+  // 1) หลุดเป้ากี่วันติด (นับจากวันล่าสุดถอยหลัง) · TGT-02: ไม่นับวันนี้ที่ยังไม่ปิด
+  const ascAll=[...d].sort((a,b)=>a.date-b.date);
+  const asc=ascAll.filter(r=>!isOpenDay(r));
+  if(!asc.length){panelEl.style.display='none';boxEl.style.display='none';return;}
   let streak=0,streakSum=0;
   for(let i=asc.length-1;i>=0;i--){
     const lk=getLock(asc[i],group);
@@ -55,7 +57,7 @@ function renderTargetStatus(d){
   txtEl.innerHTML=`<strong style="font-weight:700">${sumHead}</strong> <span style="opacity:.8;font-weight:400">${sumDetail}</span>`;
 
   // 2) เป้าเดือนนี้ — ใช้เดือนล่าสุดที่มีข้อมูล (ไม่สนช่วงเวลาที่ filter)
-  const all=applyZone(getActiveMerged());
+  const all=applyZone(getActiveMerged()).filter(r=>!isOpenDay(r));   // TGT-02
   if(!all.length){boxEl.style.display='none';return;}
   const latest=all.reduce((a,b)=>a.date>b.date?a:b).date;
   const mk=mKey(latest);
@@ -96,13 +98,13 @@ function renderTargetStatus(d){
   // 3) รายการ 5 วันล่าสุดเทียบเป้า
   const listEl=document.getElementById('tmDayList');
   if(listEl){
-    listEl.innerHTML=asc.slice(-5).reverse().map(r=>{
+    listEl.innerHTML=ascAll.slice(-5).reverse().map(r=>{
       const lk=getLock(r,group);
       const diff=tgt?((lk-tgt)/tgt*100):0;
-      const hit=lk>=tgt;
+      const hit=lk>=tgt, open=isOpenDay(r);   // TGT-02: วันนี้ยังไม่ปิด = สีเทา
       return `<div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)">`+
-        `<span style="color:var(--ink2)">${fmtD(r.date)} (${DAYS[r.date.getDay()]})</span>`+
-        `<span style="color:${hit?'var(--green)':'var(--red)'};font-weight:700">${fmtN(lk)} / ${fmtN(tgt)} · ${diff>=0?'+':''}${diff.toFixed(0)}%</span></div>`;
+        `<span style="color:var(--ink2)">${fmtD(r.date)} (${DAYS[r.date.getDay()]})${open?' ⏳ ระหว่างวัน':''}</span>`+
+        `<span style="color:${open?'var(--ink3)':hit?'var(--green)':'var(--red)'};font-weight:700">${fmtN(lk)} / ${fmtN(tgt)} · ${diff>=0?'+':''}${diff.toFixed(0)}%</span></div>`;
     }).join('');
   }
 }
@@ -121,8 +123,9 @@ function trendChip(t,dec=1){
     `<span class="trend-raw" title="เฉลี่ยต่อวัน 7 วันล่าสุด เทียบ 7 วันก่อนหน้านั้น">7 วันล่าสุด ${fmtN(t.cur,dec)} · ก่อนหน้า ${fmtN(t.prev,dec)}</span>`;
 }
 function renderTrends(d){
-  const all=applyZone(getActiveMerged());           // หน้าต่าง "7 วันก่อน" อาจอยู่นอกช่วงที่เลือก
-  const anchor=d.length?d.reduce((a,b)=>a.date>b.date?a:b).date:null;  // วันล่าสุดของช่วงที่ดู ไม่ใช่วันนี้
+  const all=applyZone(getActiveMerged()).filter(r=>!isOpenDay(r));   // หน้าต่าง "7 วันก่อน" อาจอยู่นอกช่วงที่เลือก · TGT-02 ไม่นับวันนี้ที่ยังไม่ปิด
+  const dc=d.filter(r=>!isOpenDay(r));
+  const anchor=dc.length?dc.reduce((a,b)=>a.date>b.date?a:b).date:null;  // วันล่าสุดของช่วงที่ดู ไม่ใช่วันนี้
   const set=(id,t,dec)=>{const el=document.getElementById(id); if(el) el.innerHTML=trendChip(t,dec);};
   if(canSeeRev()) set('t-rev',trendOf(all,anchor,r=>revST(r,group)+revNon(r,group)),0);   // PERM-06
   else { const el=document.getElementById('t-rev'); if(el) el.innerHTML=''; }
@@ -138,8 +141,8 @@ function renderOverview(d){
   d.forEach(r=>{
     revSTsum+=revST(r,group);revNonSum+=revNon(r,group);
     revNormal+=revSTNormal(r,group)+revNonNormal(r,group);
-    disc+=calcDiscount(r);l1+=r.l1+(r.l1n||0);l2+=r.l2+(r.l2n||0);
-    if(r.freeDay)fdays++;
+    disc+=calcDiscount(r,group);l1+=r.l1+(r.l1n||0);l2+=r.l2+(r.l2n||0);
+    if(isRainDay(r))fdays++;
     rai+=getRai(r,group);lock+=getLock(r,group);
   });
   const days=d.length||1;
@@ -220,7 +223,7 @@ function renderOverview(d){
     data:{
       labels:daily.map(r=>fmtD(r.date)),
       datasets:[
-        {type:'bar',label:'จำนวนราย',data:daily.map(r=>getRai(r,group)),backgroundColor:daily.map(r=>r.freeDay?'rgba(240,165,0,.7)':'rgba(61,214,140,.6)'),yAxisID:'y',order:3},
+        {type:'bar',label:'จำนวนราย',data:daily.map(r=>getRai(r,group)),backgroundColor:daily.map(r=>isRainDay(r)?'rgba(240,165,0,.7)':'rgba(61,214,140,.6)'),yAxisID:'y',order:3},
         {type:'line',label:'จำนวนล็อก',data:daily.map(r=>getLock(r,group)),borderColor:'rgba(240,122,53,1)',backgroundColor:'rgba(240,122,53,.05)',borderWidth:2,pointRadius:1.5,fill:false,tension:.3,yAxisID:'y',order:1},
         ...(isAllGroup?[{type:'line',label:`เป้าหมาย (${fmtN(targetLock)} ล็อก)`,data:daily.map(()=>targetLock),borderColor:'rgba(167,139,250,.9)',borderWidth:2,borderDash:[6,3],pointRadius:0,fill:false,yAxisID:'y',order:2}]:[]),
       ]
@@ -277,7 +280,7 @@ function renderOverview(d){
   const wa=ws.map((s,i)=>wc[i]?+(s/wc[i]).toFixed(1):0);
   dChart('cWeekday');
   // CHT-04: แบบจุดทุกวัน/Box plot ต้องใช้ยอดรายวัน ไม่ใช่แค่ค่าเฉลี่ย
-  const _wkRows=d.map(r=>({dow:r.date.getDay(),v:getLock(r,group),date:r.date,rain:!!r.freeDay}));
+  const _wkRows=d.map(r=>({dow:r.date.getDay(),v:getLock(r,group),date:r.date,rain:isRainDay(r)}));
   charts.cWeekday=makeChart('cWeekday',{_ct:{rows:_wkRows},type:'bar',data:{labels:DAYS,datasets:[{data:wa,backgroundColor:wa.map((_,i)=>[0,5,6].includes(i)?'rgba(240,165,0,.8)':'rgba(74,158,255,.7)'),borderRadius:4}]},options:{...cOpts(),plugins:{legend:{display:false}}}});
 
   // Pie
@@ -305,7 +308,7 @@ function renderOverview(d){
 
 // ── FREEDAY ──
 function renderFreeday(d){
-  const fds=d.filter(r=>r.freeDay);
+  const fds=d.filter(isRainDay);
   const g=group; // FD-03: ใช้ตัวกรอง "กลุ่มข้อมูล" (all/online/walkin/extra/cancel) ปัจจุบัน — เดิมค้างที่ online เสมอ
   const grpLbl={all:'ล็อก',online:'ออนไลน์ล็อก',walkin:'วอคอินล็อก',extra:'ล็อกเสริม',cancel:'ยกเลิก/ลา'};
   const rv=canSeeRev(); // PERM-06: ไม่มีสิทธิ์ = ไม่สร้างการ์ด/คอลัมน์/กราฟเงินเลย (เดิมซ่อนด้วย .col-rev แต่เลขยังอยู่ใน DOM)
@@ -322,7 +325,7 @@ function renderFreeday(d){
   const fdColLock=document.getElementById('fdColLock');
   if(fdColLock) fdColLock.textContent=grpLbl[g]||'ล็อก';
   const fdm={};
-  [...d].sort((a,b)=>a.date-b.date).forEach(r=>{const k=mLbl(r.date);if(!fdm[k])fdm[k]={d:0,c:0};if(r.freeDay){if(rv)fdm[k].d+=calcDiscount(r,g);fdm[k].c++;}});
+  [...d].sort((a,b)=>a.date-b.date).forEach(r=>{const k=mLbl(r.date);if(!fdm[k])fdm[k]={d:0,c:0};if(isRainDay(r)){if(rv)fdm[k].d+=calcDiscount(r,g);fdm[k].c++;}});
   const fmks=Object.keys(fdm);
   dChart('cFDMonth');if(rv)charts.cFDMonth=makeChart('cFDMonth',{type:'bar',data:{labels:fmks,datasets:[{label:'ส่วนลดวันฝน (฿)',data:fmks.map(k=>fdm[k].d),backgroundColor:'rgba(240,165,0,.7)',borderRadius:3}]},options:cOpts()});
   dChart('cFDCount');charts.cFDCount=makeChart('cFDCount',{type:'bar',data:{labels:fmks,datasets:[{label:'จำนวนวันฝน',data:fmks.map(k=>fdm[k].c),backgroundColor:'rgba(61,214,140,.7)',borderRadius:3}]},options:cOpts()});
@@ -331,7 +334,7 @@ function renderFreeday(d){
     const lockTot=getLock(r,g),absentTot=(r.absentLock||0)+(r.nonAbsentLock||0),cancelTot=(r.cancelLock||0)+(r.nonCancelLock||0);
     const base=`<tr><td style="color:var(--gold)">${fmtD(r.date)}</td><td>${DAYS[r.date.getDay()]}</td><td class="num">${fmtN(lockTot)}</td><td class="num">${fmtN(absentTot)}</td><td class="num">${fmtN(cancelTot)}</td>`;
     if(!rv) return base+'<td class="num col-rev"></td>'.repeat(4)+'</tr>';   // คงช่องไว้ให้ตรงหัวตาราง
-    const{po,pw}=lockPrices(r.date,zone);
+    const{po,pw}=lockPrices(r.date,(zone!=='non'&&!r.freeDay)?'non':zone); // RAIN-01: ฝนเฉพาะ Car → โชว์ราคา Car
     const isWalkGroup=(g==='walkin'||g==='extra');
     const walkDiscounted=rainHalvesWalkIn(); // SS ไม่ลดราคาวันฝนให้ WalkIn/ล็อกเสริม
     const priceFrom=isWalkGroup?pw:po;
@@ -360,7 +363,7 @@ let _dayRows=[];                       // แถวที่กราฟหล�
 function openDayModal(i){
   const r=_dayRows[i];
   if(!r) return;
-  const wk=isWknd(r.date), fd=r.freeDay;
+  const wk=isWknd(r.date), fd=isRainDay(r), pfd=zone==='non'?fd:!!r.freeDay; // RAIN-01 เหมือน renderRaw
 
   // ── สูตรเดียวกับ renderRaw() ──
   const net=Math.max(0,r.onlineLock-r.absentLock-r.cancelLock);
@@ -415,7 +418,7 @@ function openDayModal(i){
     h+='</div>';
   }
   if(canSeeRev()) h+=`<div class="col-rev">${sec('💰','รายรับ','var(--green)')}<div class="day-grp rev">`   // PERM-06
-    +row('ราคา/ล็อก', fd?`${po/2} / ${rainHalvesWalkIn()?pw/2:pw}`:`${po} / ${pw}`,'฿ ออนไลน์/วอล์กอิน')
+    +row('ราคา/ล็อก', pfd?`${po/2} / ${rainHalvesWalkIn()?pw/2:pw}`:`${po} / ${pw}`,'฿ ออนไลน์/วอล์กอิน')
     +row('รายรับรวม',fmtN(rv),'฿','hi')
     +'</div></div>';
   if(l1+l2>0&&canSeeElec()){   // PERM-07

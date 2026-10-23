@@ -3,17 +3,22 @@
 // ============================================================
 // ── FORECAST ──
 function renderForecast(){
-  const sorted=[...getFiltered()].sort((a,b)=>a.date-b.date);
+  // FCST-05: การ์ดคิดจากประวัติทั้งหมดของสาขา+โซน ไม่ตามปุ่มช่วงเวลา
+  //   เดิมใช้ getFiltered() → ปุ่ม 30 วัน ฐานเหลือ 7 วันท้าย ก.ย. (พ.ย. คาด 30,433 · ปุ่ม 3 เดือน 51,925)
+  //   และ "เดือนนี้" ปุ่ม 7 วัน นับสะสมแค่ 7 วัน · กราฟยังโชว์เฉพาะเดือนในช่วงที่เลือก แต่ยอดเต็มเดือน
+  const sorted=[...applyZone(getActiveMerged())].sort((a,b)=>a.date-b.date);
   const mon={};
   sorted.forEach(r=>{const k=mKey(r.date);if(!mon[k])mon[k]={lock:0,rev:0,days:0};mon[k].lock+=getLock(r,'all');mon[k].rev+=revST(r)+revNon(r);mon[k].days++;});
   const mks=Object.keys(mon).sort();
+  const _firstPart=sorted.length&&sorted[0].date.getDate()>1?mKey(sorted[0].date):null; // เดือนแรกของประวัติ เริ่มกลางเดือน = ไม่ครบ
+  const _showMks=(function(){const s=[...new Set(getFiltered().map(r=>mKey(r.date)))].filter(k=>mon[k]).sort();return s.length?s:mks;})();
   // v2.5.6: แยกเดือนปัจจุบันที่ยังไม่จบออกจากฐานค่าเฉลี่ย + การ์ด Month-to-Date
   const _now=new Date();
   const _curMK=mKey(_now);
   const _daysInCur=new Date(_now.getFullYear(),_now.getMonth()+1,0).getDate();
   const _daysElapsed=_now.getDate();
   const _curIncomplete=!!mon[_curMK] && _daysElapsed<_daysInCur;
-  const _baseMks=(function(){const c=mks.filter(k=>!(k===_curMK&&_curIncomplete));return c.length?c:mks;})();
+  const _baseMks=(function(){const c=mks.filter(k=>!(k===_curMK&&_curIncomplete)&&k!==_firstPart);return c.length?c:mks;})();
   const last3=_baseMks.slice(-3);
   const avgLock=last3.reduce((s,k)=>s+mon[k].lock/mon[k].days,0)/last3.length;
   const avgRev=last3.reduce((s,k)=>s+mon[k].rev/mon[k].days,0)/last3.length;
@@ -79,11 +84,11 @@ function renderForecast(){
   if(wiInput&&!wiInput.value) wiInput.value=Math.round(avgLock);
   calcWhatIf();
   dChart('cFC');
-  charts.cFC=makeChart('cFC',{type:'line',data:{labels:[...mks.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));}),_nextLbl+' (คาด)'],datasets:[
-    {label:'ล็อกจริง',data:[...mks.map(k=>mon[k].lock)],borderColor:'rgba(74,158,255,.9)',backgroundColor:'rgba(74,158,255,.05)',borderWidth:2,pointRadius:2.5,fill:true,tension:.3},
-    {label:'ล็อกพยากรณ์',data:[...mks.map(()=>null),fcLock],borderColor:'rgba(240,165,0,.9)',borderWidth:2,borderDash:[5,3],pointRadius:5,pointStyle:'star',fill:false},
+  charts.cFC=makeChart('cFC',{type:'line',data:{labels:[..._showMks.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));}),_nextLbl+' (คาด)'],datasets:[
+    {label:'ล็อกจริง',data:[..._showMks.map(k=>mon[k].lock)],borderColor:'rgba(74,158,255,.9)',backgroundColor:'rgba(74,158,255,.05)',borderWidth:2,pointRadius:2.5,fill:true,tension:.3},
+    {label:'ล็อกพยากรณ์',data:[..._showMks.map(()=>null),fcLock],borderColor:'rgba(240,165,0,.9)',borderWidth:2,borderDash:[5,3],pointRadius:5,pointStyle:'star',fill:false},
   ]},options:cOpts()});
   dChart('cAvg');
-  charts.cAvg=makeChart('cAvg',{type:'bar',data:{labels:mks.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));}),datasets:[{label:'ล็อกเฉลี่ย/วัน',data:mks.map(k=>+(mon[k].lock/mon[k].days).toFixed(1)),backgroundColor:'rgba(61,214,140,.7)',borderRadius:3}]},options:cOpts()});
+  charts.cAvg=makeChart('cAvg',{type:'bar',data:{labels:_showMks.map(k=>{const[y,m]=k.split('-');return mLbl(new Date(y,m-1,1));}),datasets:[{label:'ล็อกเฉลี่ย/วัน',data:_showMks.map(k=>+(mon[k].lock/mon[k].days).toFixed(1)),backgroundColor:'rgba(61,214,140,.7)',borderRadius:3}]},options:cOpts()});
 }
 
