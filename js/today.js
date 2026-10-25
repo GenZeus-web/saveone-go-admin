@@ -74,7 +74,7 @@ function _todayBranchHtml(br, r){
 }
 
 // ── TODAY-02 (แบบ A ที่เจ้าของเลือก 25 ต.ค.): ตารางกราฟบนสุด แถวหัว = สาขา (สีประจำสาขา) · คอลัมน์ = โซน
-//   ในช่อง = ล็อกแยกช่องทาง ออนไลน์ | วอล์กอิน | เสริม | รวม (แท่งซ้อนสีเดียวกัน) · % เทียบวันที่ล็อกมากสุดของโซน (ปัดเต็ม)
+//   ในช่อง = ล็อกแยกช่องทาง ออนไลน์ | วอล์กอิน | เสริม | รวม (น้ำตาลเข้ม · เจ้าของเลือก) · % เทียบวันที่ล็อกมากสุดของโซน (ปัดเต็ม)
 //   เส้นระดับ 100/75/50/25/0 (ผอ.: 100 กับ 0 ทึบ · ที่เหลือจาง) · ราย = สรุปตัวเลขเดียว ไม่มีแท่ง
 //   เปิดท้ายมีช่องเสริมเสมอ (ตอนนี้ 0 · อ่านจาก nonExtraLock อยู่แล้ว ไม่ต้องแก้ชีต)
 //   เพดาน 100% = วันที่ล็อกมากสุดของโซนนั้นในข้อมูลทั้งหมดของสาขา (เจ้าของ 25 ต.ค.) · นับแบบ "5 วันที่ล็อกมากสุด"
@@ -106,7 +106,7 @@ function _tgCell(z,br){
   const grid=[1,.75,.5,.25,0].map(p=>{ const f=p%1?' f':'', y=TG_BASE-TG_H*p;
     return `<div class="tgA-gl${f}" style="top:${y}px"></div><div class="tgA-tk${f}" style="top:${y}px">${p*100}</div>`; }).join('');
   const bars=z.lock.map((v,i)=>`<div class="a-b"><span>${fmtN(v)}</span><small>${pI(v)}</small><i class="c${i}" style="height:${hOf(v)}px"></i></div>`).join('')
-    +`<div class="a-b a-t"><span>${fmtN(t)}</span><small>${pI(t)}</small><div class="a-st" style="height:${hOf(t)}px">${z.lock.map((v,i)=>v?`<i class="c${i}" style="flex:${v}"></i>`:'').join('')}</div></div>`;
+    +`<div class="a-b a-t"><span>${fmtN(t)}</span><small>${pI(t)}</small><i class="c3" style="height:${hOf(t)}px"></i></div>`;
   return `<div class="tgA"><span class="tg-brc">${brCode(br)}</span><div class="tgA-capt">สูงสุด ${z.cap?`${fmtN(z.cap)} <small>(${_tgShortD(z.capDate)})</small>`:'–'}</div>${grid}<div class="a-bars">${bars}</div></div>`
     +'<div class="a-x"><span>ออนไลน์</span><span>วอล์กอิน</span><span>เสริม</span><b>รวม</b></div>'
     +`<div class="a-sum"><b>จองรวม ${fmtN(t)} ล็อก · ${pI(t)}</b><span>ผู้ค้า ${fmtN(z.rai)} ราย</span></div>`;

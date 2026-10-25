@@ -274,10 +274,11 @@ body.light-mode .tg{--br-BG:#2563eb;--br-BN:#0f8f84;--br-on:#fff;}
 .a-x{display:flex;justify-content:space-around;margin-top:2px;padding-left:18px;}
 .a-x span,.a-x b{width:30px;text-align:center;font-size:8px;color:var(--ink3);white-space:nowrap;}
 .a-x b{color:var(--ink);}
-/* แท่งรวม = ซ้อน ออนไลน์/วอล์กอิน/เสริม สีเดียวกับแท่งเดี่ยว · เลขหนากว่า */
-.a-st{display:flex;flex-direction:column-reverse;width:18px;border-radius:3px 3px 0 0;overflow:hidden;}
-.a-st i{min-height:0;}
-.a-t span{color:var(--gold);}
+/* แท่งรวม = น้ำตาลเข้ม (เจ้าของ 25 ต.ค.) แยกจากแท่งช่องทางสีทอง · กลางคืนใช้น้ำตาลอ่อนลงให้เห็นบนพื้นมืด */
+.tg{--tg-total:#b07a4a;}
+body.light-mode .tg{--tg-total:#5b3a1e;}
+.tg .c3{background:var(--tg-total);}
+.a-t span{color:var(--tg-total);}
 .a-sum{margin-top:6px;padding-top:5px;border-top:1px solid var(--border);text-align:center;line-height:1.45;white-space:nowrap;}
 .a-sum b{display:block;font-size:10px;color:var(--ink);}
 .a-sum span{font-size:9px;color:var(--ink2);}
