@@ -25,8 +25,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0e0c0b"><!-- APP-ICON v3.0.2: สีพื้นธีมตลาดกลางคืน (night.css --bg) · iPhone ใช้ black-translucent ไม่อ่านค่านี้ -->
-<link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=3.4.0.4">
-<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png?v=3.4.0.4">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=3.4.0.5">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png?v=3.4.0.5">
 <link rel="manifest" href="manifest.webmanifest">
 
 <!-- ไลบรารีภายนอก -->
@@ -39,12 +39,12 @@
      │ การสลับลำดับ = สลับ cascade = สไตล์บางอย่างจะถูกทับผิดตัว        │
      │ responsive.css ต้องอยู่ท้ายสุดเสมอ (media query ทับของเดิม)      │
      └────────────────────────────────────────────────────────────────┘ -->
-<link rel="stylesheet" href="css/base.css?v=3.4.0.4">
-<link rel="stylesheet" href="css/layout.css?v=3.4.0.4">
-<link rel="stylesheet" href="css/components.css?v=3.4.0.4">
-<link rel="stylesheet" href="css/screens.css?v=3.4.0.4">
-<link rel="stylesheet" href="css/night.css?v=3.4.0.4"><!-- UI-NIGHT คอนเซปต์: ลบบรรทัดนี้ = หน้าตาเดิม -->
-<link rel="stylesheet" href="css/responsive.css?v=3.4.0.4">
+<link rel="stylesheet" href="css/base.css?v=3.4.0.5">
+<link rel="stylesheet" href="css/layout.css?v=3.4.0.5">
+<link rel="stylesheet" href="css/components.css?v=3.4.0.5">
+<link rel="stylesheet" href="css/screens.css?v=3.4.0.5">
+<link rel="stylesheet" href="css/night.css?v=3.4.0.5"><!-- UI-NIGHT คอนเซปต์: ลบบรรทัดนี้ = หน้าตาเดิม -->
+<link rel="stylesheet" href="css/responsive.css?v=3.4.0.5">
 
 <!-- ┌── Firebase (ES module) ────────────────────────────────────────┐
      │ type="module" ถูก defer โดยอัตโนมัติ → ทำงานหลัง DOM พร้อม      │
@@ -52,8 +52,8 @@
      │ จึงเรียก showSplash() / loadAll() / setBranch() ได้อย่างปลอดภัย  │
      │ init.js ถูก import จากทั้งสองไฟล์ แต่รันครั้งเดียว (ES module)   │
      └────────────────────────────────────────────────────────────────┘ -->
-<script type="module" src="js/firebase/auth.js?v=3.4.0.4"></script>
-<script type="module" src="js/firebase/user-admin.js?v=3.4.0.4"></script>
+<script type="module" src="js/firebase/auth.js?v=3.4.0.5"></script>
+<script type="module" src="js/firebase/user-admin.js?v=3.4.0.5"></script>
 </head>
 <body>
 
@@ -846,27 +846,27 @@
      │     ui.js      → startAutoRefresh(5)                           │
      │   ซึ่ง hoisting ใช้ได้ "ภายในไฟล์เดียวกัน" เท่านั้น              │
      └────────────────────────────────────────────────────────────────┘ -->
-<script src="js/config.js?v=3.4.0.4"></script>
-<script src="js/utils.js?v=3.4.0.4"></script>
-<script src="js/data-cache.js?v=3.4.0.4"></script>
-<script src="js/data-load.js?v=3.4.0.4"></script>
-<script src="js/filters.js?v=3.4.0.4"></script>
-<script src="js/trend.js?v=3.4.0.4"></script><!-- TREND-01: ต้องอยู่ก่อน overview.js -->
-<script src="js/views/overview.js?v=3.4.0.4"></script>
-<script src="js/views/forecast.js?v=3.4.0.4"></script>
-<script src="js/views/raw.js?v=3.4.0.4"></script>
-<script src="js/charts.js?v=3.4.0.4"></script>
-<script src="js/chart-types.js?v=3.4.0.4"></script><!-- CHT-04: ต้องหลัง charts.js (ใช้ chartClr/charts) · makeChart เรียก ctResolve/ctMount ตอนวาด -->
-<script src="js/views/compare.js?v=3.4.0.4"></script>
-<script src="js/views/heatmap.js?v=3.4.0.4"></script>
-<script src="js/views/benchmark.js?v=3.4.0.4"></script>
-<script src="js/util-calc.js?v=3.4.0.4"></script><!-- UTIL-01: ฟังก์ชันล้วน · ต้องอยู่ก่อน views/util.js -->
-<script src="js/views/util.js?v=3.4.0.4"></script>
-<script src="js/views/util-meter.js?v=3.4.0.4"></script>
-<script src="js/export.js?v=3.4.0.4"></script>
-<script src="js/ui.js?v=3.4.0.4"></script>
-<script src="js/login-fx.js?v=3.4.0.4"></script>
-<script src="js/today.js?v=3.4.0.4"></script><!-- TODAY-01: ใช้ของจาก utils/data-load ตอนเรียกเท่านั้น -->
+<script src="js/config.js?v=3.4.0.5"></script>
+<script src="js/utils.js?v=3.4.0.5"></script>
+<script src="js/data-cache.js?v=3.4.0.5"></script>
+<script src="js/data-load.js?v=3.4.0.5"></script>
+<script src="js/filters.js?v=3.4.0.5"></script>
+<script src="js/trend.js?v=3.4.0.5"></script><!-- TREND-01: ต้องอยู่ก่อน overview.js -->
+<script src="js/views/overview.js?v=3.4.0.5"></script>
+<script src="js/views/forecast.js?v=3.4.0.5"></script>
+<script src="js/views/raw.js?v=3.4.0.5"></script>
+<script src="js/charts.js?v=3.4.0.5"></script>
+<script src="js/chart-types.js?v=3.4.0.5"></script><!-- CHT-04: ต้องหลัง charts.js (ใช้ chartClr/charts) · makeChart เรียก ctResolve/ctMount ตอนวาด -->
+<script src="js/views/compare.js?v=3.4.0.5"></script>
+<script src="js/views/heatmap.js?v=3.4.0.5"></script>
+<script src="js/views/benchmark.js?v=3.4.0.5"></script>
+<script src="js/util-calc.js?v=3.4.0.5"></script><!-- UTIL-01: ฟังก์ชันล้วน · ต้องอยู่ก่อน views/util.js -->
+<script src="js/views/util.js?v=3.4.0.5"></script>
+<script src="js/views/util-meter.js?v=3.4.0.5"></script>
+<script src="js/export.js?v=3.4.0.5"></script>
+<script src="js/ui.js?v=3.4.0.5"></script>
+<script src="js/login-fx.js?v=3.4.0.5"></script>
+<script src="js/today.js?v=3.4.0.5"></script><!-- TODAY-01: ใช้ของจาก utils/data-load ตอนเรียกเท่านั้น -->
 
 </body>
 </html>
