@@ -142,11 +142,12 @@ function _tdyChart(){
   if(rows){ rows.innerHTML=_tgHtml(); rows.scrollTop=0; }
 }
 
-// ป้ายปฏิทิน (TODAY-02 หัวแบบ B) = ปุ่มเลือกวันที่ · เปิดตัวเลือกวันที่ของเครื่อง (input ซ่อนอยู่ข้างป้าย)
-function _tdyOpenPicker(){
-  const i=document.getElementById('todayDate');
-  if(!i) return;
-  try{ i.showPicker(); }catch(e){ i.focus(); i.click(); }   // showPicker ไม่มีในเบราว์เซอร์เก่า
+// ป้ายปฏิทิน (TODAY-02 หัวแบบ B) = ปุ่มเลือกวันที่ · input type=date ใส จางทับทั้งป้าย
+//   มือถือ: นิ้วแตะโดน input ตรงๆ → ตัวเลือกวันที่ของเครื่องขึ้นเอง (iPhone ไม่เปิดให้ถ้าเรียกผ่านโค้ดจาก input ที่ซ่อน)
+//   จอคอม: คลิก input ไม่เปิดปฏิทินเอง (Chrome เปิดแค่ที่ไอคอน) → เรียก showPicker เฉพาะเมาส์
+function _tdyOpenPicker(i){
+  if(!i || !matchMedia('(pointer:fine)').matches) return;
+  try{ i.showPicker(); }catch(e){}   // เบราว์เซอร์เก่าไม่มี showPicker → ใช้ปุ่มในช่องวันที่แทน
 }
 function _tdyGo(key){ if(key) openTodayModal(key); }
 
