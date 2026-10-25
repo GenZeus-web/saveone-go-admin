@@ -150,9 +150,13 @@ function openTodayModal(){
   const picks=brs.map(br=>({br, ..._pickDay(_todayRows(br)||[], todayKey)}));
   const allToday=picks.length>0 && picks.every(p=>p.isToday);
 
-  // TODAY-02: หัวบอกวันที่ชัดๆ "ยอดจองวันนี้ 25/10/2569" · ยังไม่มียอดวันนี้ = ยอดจองล่าสุด (วันที่อยู่ที่แถบสาขา)
-  document.getElementById('todayTitle').textContent=allToday?`ยอดจองวันนี้ ${fmtD(now)}`:'ยอดจองล่าสุด';
-  document.getElementById('todaySub').textContent=allToday?`วัน${TODAY_DAY_FULL[now.getDay()]}`:`วันนี้ ${DAYS[now.getDay()]} ${fmtD(now)} · ยอดวันนี้ยังไม่เข้า`;
+  // TODAY-02 หัวแบบ B (เจ้าของเลือก): ป้ายปฏิทินวันนี้ + "ยอดจองวันนี้" + วัน + ป้ายสถานะ (ก่อน 22:00 = ระหว่างวัน · หลัง = ปิดยอดแล้ว)
+  //   ยังไม่มียอดวันนี้ = "ยอดจองล่าสุด" (วันที่ของยอดอยู่ที่แถบสาขา)
+  document.getElementById('todayCal').innerHTML=`<i>${MONTHS[now.getMonth()]} ${String(now.getFullYear()+543).slice(-2)}</i><b>${now.getDate()}</b>`;
+  document.getElementById('todayTitle').textContent=allToday?'ยอดจองวันนี้':'ยอดจองล่าสุด';
+  document.getElementById('todaySub').innerHTML=allToday
+    ? `วัน${TODAY_DAY_FULL[now.getDay()]} `+(now.getHours()<22?'<span class="tdy-live">ยอดระหว่างวัน · ปิดยอด 22:00</span>':'<span class="tdy-live done">ปิดยอดแล้ว</span>')
+    : `วันนี้ ${DAYS[now.getDay()]} ${fmtD(now)} · ยอดวันนี้ยังไม่เข้า`;
 
   let h='';
   if(!picks.length){
