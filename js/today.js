@@ -1,13 +1,13 @@
 // ============================================================
 // today.js — TODAY-01: ป๊อปอัป "ยอดวันนี้" สำหรับ ผอ. ที่เข้ามาดูแค่ยอดวันเดียว
 // ============================================================
-// เด้งเองครั้งแรกของวัน (ต่อเครื่อง) + ปุ่ม 📅 บนหัวเว็บเปิดซ้ำได้
+// เด้งเองทุกครั้งที่เปิดเว็บ (TODAY-02 · เดิมวันละครั้ง) + ปุ่ม 📅 บนหัวเว็บเปิดซ้ำได้ · แตะป้ายปฏิทิน = เลือกวันอื่น
 // ยอดวันนี้เข้าระบบรอบแรก 15:00 (Fetch.gs 15/18/22) · 22:00 = ยอดปิดจริง
 //   → ก่อนมียอดวันนี้ โชว์ยอดวันล่าสุดที่มี + บอกให้กลับมาดู 15:00–16:00
 // ไม่ทำให้ SS (ปิดสิ้น ก.ย. 69) — ฟีเจอร์ใหม่ไม่ต้องทำให้ SS
 // ⚠️ สูตรล็อก/ราย/รายรับ ใช้ของเดิม (getLock/getRai/revST/revNon) ห้ามคิดใหม่
 //    เงิน/ค่าไฟ ใส่ col-rev / col-elec — body.no-rev / no-elec ซ่อนตามสิทธิ์ให้เอง
-const TODAY_SEEN_KEY='sg_today_seen';
+let _tdyShown=false;   // เด้งแล้วในการเปิดหน้านี้ — loadAll ซ้ำ (สลับสาขา/ลองใหม่) ไม่เด้งซ้ำ
 const TODAY_BR_NAME={BG:'ประตูกรุงเทพ',BN:'บางนา'};
 const TODAY_DAY_FULL=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
 
@@ -117,7 +117,7 @@ function _tgHtml(){
   let h=`<div class="tg"><div class="tg-grid" style="grid-template-rows:${rows}"><div class="tg-ch st">🍜 สตรีทฟู้ด</div><div class="tg-ch car">🚗 เปิดท้าย</div>`;
   _tgPicks.forEach((p,i)=>{
     const z=_tgZones(p.br,p.r), go=p.r?` role="button" tabindex="0" onclick="_tdyDetail(${i})" onkeydown="if(event.key==='Enter')_tdyDetail(${i})"`:'';
-    h+=`<div class="tg-rh tg-${p.br}"${go}><b>${brCode(p.br)}</b><span>${TODAY_BR_NAME[p.br]}</span>${p.r&&!p.isToday?`<em>ยอดวันที่ ${fmtD(p.r.date)}</em>`:''}${p.r?'':'<em>ยังไม่มีข้อมูล</em>'}</div>`;
+    h+=`<div class="tg-rh tg-${p.br}"${go}><b>${brCode(p.br)}</b><span>${TODAY_BR_NAME[p.br]}</span>${p.r&&!p.isToday&&!p.exact?`<em>ยอดวันที่ ${fmtD(p.r.date)}</em>`:''}${p.r?'':`<em>${p.exact?'ไม่มียอดวันนี้':'ยังไม่มีข้อมูล'}</em>`}</div>`;
     ['st','car'].forEach(k=>{
       const c=z&&z[k];
       h+= c ? `<div class="tg-cell tg-${p.br}"${go}>${_tgCell(c,p.br)}</div>` : `<div class="tg-cell tg-${p.br} tg-na">—</div>`;
@@ -142,19 +142,39 @@ function _tdyChart(){
   if(rows){ rows.innerHTML=_tgHtml(); rows.scrollTop=0; }
 }
 
-function openTodayModal(){
+// ป้ายปฏิทิน (TODAY-02 หัวแบบ B) = ปุ่มเลือกวันที่ · เปิดตัวเลือกวันที่ของเครื่อง (input ซ่อนอยู่ข้างป้าย)
+function _tdyOpenPicker(){
+  const i=document.getElementById('todayDate');
+  if(!i) return;
+  try{ i.showPicker(); }catch(e){ i.focus(); i.click(); }   // showPicker ไม่มีในเบราว์เซอร์เก่า
+}
+function _tdyGo(key){ if(key) openTodayModal(key); }
+
+// dateKey ว่าง/เป็นวันนี้ = ยอดวันนี้ (ยังไม่เข้า → วันล่าสุดที่มียอด) · วันอื่น = ยอดของวันนั้นตรงๆ (สาขาไหนไม่มี = ช่องว่าง)
+function openTodayModal(dateKey){
   const m=document.getElementById('todayModal');
   if(!m) return;
   const now=new Date(), todayKey=getDateKey(now);
+  const key=(typeof dateKey==='string' && dateKey && dateKey!==todayKey) ? dateKey : '';
   const brs=myBranches().filter(b=>b!=='SS');
-  const picks=brs.map(br=>({br, ..._pickDay(_todayRows(br)||[], todayKey)}));
-  const allToday=picks.length>0 && picks.every(p=>p.isToday);
+  const picks=key
+    ? brs.map(br=>{ const r=(_todayRows(br)||[]).find(x=>getDateKey(x.date)===key); return {br, r:_hasSales(r)?r:null, isToday:false, exact:true}; })
+    : brs.map(br=>({br, ..._pickDay(_todayRows(br)||[], todayKey)}));
+  const allToday=!key && picks.length>0 && picks.every(p=>p.isToday);
+  const day=key ? new Date(key+'T00:00:00') : now;
 
-  // TODAY-02 หัวแบบ B (เจ้าของเลือก): ป้ายปฏิทินวันนี้ + "ยอดจองวันนี้" + วัน + ป้ายสถานะ (ก่อน 22:00 = ระหว่างวัน · หลัง = ปิดยอดแล้ว)
-  //   ยังไม่มียอดวันนี้ = "ยอดจองล่าสุด" (วันที่ของยอดอยู่ที่แถบสาขา)
-  document.getElementById('todayCal').innerHTML=`<i>${MONTHS[now.getMonth()]} ${String(now.getFullYear()+543).slice(-2)}</i><b>${now.getDate()}</b>`;
-  document.getElementById('todayTitle').textContent=allToday?'ยอดจองวันนี้':'ยอดจองล่าสุด';
-  document.getElementById('todaySub').innerHTML=allToday
+  // TODAY-02 หัวแบบ B (เจ้าของเลือก): ป้ายปฏิทิน + "ยอดจองวันนี้" + วัน + ป้ายสถานะ (ก่อน 22:00 = ระหว่างวัน · หลัง = ปิดยอดแล้ว)
+  //   ยังไม่มียอดวันนี้ = "ยอดจองล่าสุด" (วันที่ของยอดอยู่ที่แถบสาขา) · วันอื่น = "ยอดจองย้อนหลัง" + ปุ่มกลับวันนี้
+  document.getElementById('todayCal').innerHTML=`<i>${MONTHS[day.getMonth()]} ${String(day.getFullYear()+543).slice(-2)}</i><b>${day.getDate()}</b><svg class="tdy-cal-ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 7h12M5 1.5v3M11 1.5v3"/></svg>`;
+  const din=document.getElementById('todayDate');
+  if(din){
+    const keys=brs.flatMap(br=>(_todayRows(br)||[]).filter(_hasSales).map(r=>getDateKey(r.date))).sort();
+    din.min=keys[0]||''; din.max=todayKey; din.value=key||todayKey;
+  }
+  document.getElementById('todayTitle').textContent=key?'ยอดจองย้อนหลัง':allToday?'ยอดจองวันนี้':'ยอดจองล่าสุด';
+  document.getElementById('todaySub').innerHTML=key
+    ? `วัน${TODAY_DAY_FULL[day.getDay()]} ${fmtD(day)} <button class="tdy-live done tdy-today" onclick="openTodayModal()">↺ วันนี้</button>`
+    : allToday
     ? `วัน${TODAY_DAY_FULL[now.getDay()]} `+(now.getHours()<22?'<span class="tdy-live">ยอดระหว่างวัน · ปิดยอด 22:00</span>':'<span class="tdy-live done">ปิดยอดแล้ว</span>')
     : `วันนี้ ${DAYS[now.getDay()]} ${fmtD(now)} · ยอดวันนี้ยังไม่เข้า`;
 
@@ -163,13 +183,13 @@ function openTodayModal(){
     h='<div class="tdy-old"><div class="tdy-note">บัญชีนี้ไม่มีสาขาที่เปิดอยู่ (SG/SB)</div></div>';
   }else{
     _tgPicks=picks;
-    _tgNote=allToday?'':'<div class="tdy-note">🕒 ยอดวันนี้ยังไม่เข้าระบบ — กลับมาดูใหม่ช่วง <b>15:00–16:00</b></div>';
+    _tgNote=(allToday||key)?'':'<div class="tdy-note">🕒 ยอดวันนี้ยังไม่เข้าระบบ — กลับมาดูใหม่ช่วง <b>15:00–16:00</b></div>';
     h=_tgHtml();   // TODAY-02: เปิดมาเป็นกราฟเต็มจอ · รายงานเดิมอยู่ใน _tdyDetail()
   }
   document.getElementById('todayRows').innerHTML=h;
   m.style.display='flex';
   document.body.classList.add('modal-open');   // ล็อกข้างหลัง + ยกเหนือหัวเว็บ (components.css)
-  try{ localStorage.setItem(TODAY_SEEN_KEY, todayKey); }catch(e){}
+  document.getElementById('todayRows').scrollTop=0;
 }
 
 function closeTodayModal(){
@@ -178,11 +198,12 @@ function closeTodayModal(){
   document.body.classList.remove('modal-open');
 }
 
-// เรียกหลัง loadAll ได้ข้อมูลแล้ว — เด้งครั้งแรกของวัน (รอ splash/เอฟเฟกต์ login จางก่อน)
+// เรียกหลัง loadAll ได้ข้อมูลแล้ว — เด้งทุกครั้งที่เปิดเว็บ (เจ้าของ 25 ต.ค. · เดิมวันละครั้งต่อเครื่อง)
+//   รอ splash/เอฟเฟกต์ login จางก่อน · loadAll รอบถัดไปในหน้าเดิมไม่เด้งซ้ำ
 function maybeShowTodayPopup(){
-  let seen=''; try{ seen=localStorage.getItem(TODAY_SEEN_KEY)||''; }catch(e){}
-  if(seen===getDateKey(new Date())) return;
+  if(_tdyShown) return;
   if(!myBranches().some(b=>b!=='SS')) return;
-  setTimeout(openTodayModal, 900);
+  _tdyShown=true;
+  setTimeout(()=>openTodayModal(), 900);
 }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeTodayModal(); });
