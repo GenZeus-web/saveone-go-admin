@@ -235,64 +235,66 @@ body.fs-2 .day-card{max-height:calc(var(--mh) / 1.3);}
 
 /* TODAY-02 (แบบ A): ตารางกราฟ สาขา × โซน บนสุดของยอดวันนี้
    ทอง = ล็อก (ภาษาสีเดิม) · ออนไลน์ เต็ม / วอล์กอิน จาง (ผสมพื้น ไม่ใช้ opacity) / เสริม ลายทาง
-   สีประจำสาขา (แถบหัว + ขอบซ้ายช่อง + ป้ายรหัส) — น้ำเงิน/เขียวอมฟ้า ไม่ชน ทอง=ล็อก ม่วง=Car เขียว=ราย */
+   สีประจำสาขา (ป้ายรหัสบนหัว + แถบบนการ์ด) — น้ำเงิน/เขียวอมฟ้า ไม่ชน ทอง=ล็อก ม่วง=Car เขียว=ราย
+   หน้าตา = แบบ 1 "การ์ดนุ่ม" (เจ้าของเลือก 25 ต.ค.): พื้นเทา การ์ดขาวมีเงา แท่งไล่สีมุมมน · ต้นแบบ .scratch/today-grid/full.html */
 .tg{--br-BG:#4a9eff;--br-BN:#2dd4bf;--br-on:#0e1220;}
 body.light-mode .tg{--br-BG:#2563eb;--br-BN:#0f8f84;--br-on:#fff;}
 /* เต็มจอ: ป๊อปอัปยอดวันนี้คลุมทั้งจอ · หัว (ชื่อ+✕) คงที่ · เนื้อเลื่อนในตัวเอง (กราฟพอดีจอ · รายละเอียดเลื่อนได้)
    ขอบบน/ล่างพ้นแถบสถานะ iPhone อยู่ท้าย responsive.css */
-#todayModal{padding:0!important;background:var(--surface)!important;}
+#todayModal{padding:0!important;background:var(--bg)!important;}
 #todayModal .day-card{width:100%;height:100%;max-width:none;max-height:none;border:0;border-radius:0;box-shadow:none;
-  display:flex;flex-direction:column;overflow:hidden;}
-#todayModal .day-head{flex:none;}
+  display:flex;flex-direction:column;overflow:hidden;background:var(--bg);}
+/* จอคอม: เนื้อหากว้างไม่เกิน 920px กลางจอ (เต็มจอแล้วยาวเกิน · เจ้าของ) · หัวเรียงแนวเดียวกับกราฟ */
+#todayModal .day-head{flex:none;border-bottom:0;padding-left:max(17px,calc((100% - 920px) / 2 + 12px));padding-right:max(17px,calc((100% - 920px) / 2 + 12px));}
 #todayModal .day-rows{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0;}
 /* ขนาดตัวอักษรกราฟตามจอ (มือถือ 9px ≈ เดิม · จอคอม ~15px) · --lr = ที่เหนือเส้น 100 ให้เลข+% ของแท่งที่เต็ม */
-.tg{height:100%;min-height:460px;box-sizing:border-box;padding:10px 12px 8px;display:flex;flex-direction:column;
+.tg{height:100%;min-height:460px;max-width:920px;margin:0 auto;box-sizing:border-box;padding:10px 12px 8px;display:flex;flex-direction:column;
   --fs:clamp(9px,calc(.55vw + .8vh),15px);--lr:calc(var(--fs) * 2.6 + 4px);}
 .tg-BG{--brc:var(--br-BG);}
 .tg-BN{--brc:var(--br-BN);}
-.tg-grid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;}
-.tg-ch{font-size:calc(var(--fs) * 1.25);font-weight:700;text-align:center;padding-bottom:2px;border-bottom:2px solid;}
+.tg-grid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;}
+.tg-ch{font-size:calc(var(--fs) * 1.25);font-weight:700;text-align:center;padding:5px 0;border-radius:999px;background:color-mix(in srgb,currentColor 13%,transparent);}
 .tg-ch.st{color:var(--gold);}
 .tg-ch.car{color:var(--purple);}
-.tg-rh{grid-column:1/-1;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin-top:6px;
-  padding:4px 10px;border-radius:8px;background:var(--brc);color:var(--br-on);cursor:pointer;}
-.tg-rh b{font-size:calc(var(--fs) * 1.6);font-family:'JetBrains Mono',monospace;}
+.tg-rh{grid-column:1/-1;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin-top:10px;
+  padding:2px 2px 0;color:var(--ink);cursor:pointer;}
+.tg-rh b{font-size:calc(var(--fs) * 1.6);font-family:'JetBrains Mono',monospace;background:var(--brc);color:var(--br-on);padding:2px 9px;border-radius:7px;}
 .tg-rh span{font-size:calc(var(--fs) * 1.25);opacity:.9;}
 .tg-rh em{font-style:normal;font-size:calc(var(--fs) * 1.1);font-weight:700;margin-left:auto;}
-.tg-cell{background:var(--surface2);border:1px solid var(--border);border-left:4px solid var(--brc);border-radius:10px;padding:8px 6px 7px;
+.tg-cell{background:var(--surface);border-top:4px solid var(--brc);border-radius:14px;padding:10px 10px 8px;
+  box-shadow:0 1px 2px rgba(0,0,0,.06),0 6px 18px rgba(0,0,0,.07);
   min-width:0;min-height:0;display:flex;flex-direction:column;cursor:pointer;}
-.tg-cell:hover,.tg-cell:focus-visible{border-color:var(--ink3);border-left-color:var(--brc);}
+.tg-cell:hover,.tg-cell:focus-visible{box-shadow:0 1px 2px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.14);outline:none;}
 .tg-na{align-items:center;justify-content:center;color:var(--ink3);font-size:12px;cursor:default;}
 .tg i{display:block;}
-.tg .c0{background:var(--gold);}
+.tg .c0{background:linear-gradient(180deg,color-mix(in srgb,var(--gold) 60%,#fff),var(--gold));}
 .tg .c1{background:color-mix(in srgb,var(--gold) 42%,var(--surface));}
 .tg .c2{background:repeating-linear-gradient(45deg,var(--gold) 0 2px,color-mix(in srgb,var(--gold) 25%,var(--surface)) 2px 5px);}
-/* กล่องกราฟยืดตามช่อง: บรรทัดหัว (รหัส/สูงสุด) · พื้นที่แท่ง .a-plot ยืดเต็ม · เลขระดับอยู่ซ้ายนอกพื้นที่แท่ง
+/* กล่องกราฟยืดตามช่อง: บรรทัดหัว (ล็อกทั้งหมด) · พื้นที่แท่ง .a-plot ยืดเต็ม · เลขระดับอยู่ซ้ายนอกพื้นที่แท่ง
    เส้นระดับ/แท่ง วัดเป็น % ของ (ความสูงกล่อง − --lr) → เส้น 100 กับยอดแท่งที่เต็มตรงกันเสมอไม่ว่าจอสูงเท่าไร */
 .tgA{flex:1;min-height:0;position:relative;display:flex;flex-direction:column;padding:calc(var(--fs) * 1.7) 0 0 calc(var(--fs) * 2);}
-.tg-brc{position:absolute;left:0;top:0;font:700 var(--fs)/1 'JetBrains Mono',monospace;color:var(--br-on);background:var(--brc);border-radius:4px;padding:2px 5px;}
-.tgA-capt{position:absolute;right:0;top:0;font:700 var(--fs)/1.2 'JetBrains Mono',monospace;color:var(--ink2);white-space:nowrap;}
+.tgA-capt{position:absolute;left:0;top:0;font:600 var(--fs)/1.2 'JetBrains Mono',monospace;color:var(--ink3);white-space:nowrap;}
 .a-plot{flex:1;min-height:70px;position:relative;}
 .tgA-gl,.tgA-tk{position:absolute;top:calc(var(--lr) + (1 - var(--p)) * (100% - var(--lr)));}
-.tgA-gl{left:0;right:0;border-top:1px solid var(--ink3);}
-.tgA-gl.f{opacity:.5;}
+.tgA-gl{left:0;right:0;border-top:1px solid color-mix(in srgb,var(--ink3) 60%,transparent);}
+.tgA-gl.f{opacity:.5;border-top-style:dashed;}
 .tgA-tk{right:100%;margin-right:3px;text-align:right;font:600 calc(var(--fs) * .85)/1 'JetBrains Mono',monospace;color:var(--ink3);transform:translateY(-50%);}
 .tgA-tk.f{opacity:.7;}
 .a-bars{position:absolute;inset:0;display:flex;z-index:1;}
 .a-b{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;}
-.a-b span,.a-b small{position:relative;z-index:1;background:var(--surface2);padding:0 2px;line-height:1.15;}   /* เส้นระดับลอดหลังตัวเลข */
+.a-b span,.a-b small{position:relative;z-index:1;background:var(--surface);padding:0 2px;line-height:1.15;}   /* เส้นระดับลอดหลังตัวเลข */
 .a-b span{font:700 var(--fs) 'JetBrains Mono',monospace;color:var(--ink);}
 .a-b small{font:600 calc(var(--fs) * .9) 'JetBrains Mono',monospace;color:var(--ink3);margin-bottom:2px;}
-.a-b i{width:clamp(14px,45%,64px);height:max(2px,calc(var(--f) * (100% - var(--lr))));border-radius:3px 3px 0 0;}
+.a-b i{width:clamp(14px,45%,64px);height:max(2px,calc(var(--f) * (100% - var(--lr))));border-radius:7px 7px 2px 2px;}
 .a-x{display:flex;margin-top:3px;padding-left:calc(var(--fs) * 2);}
 .a-x span,.a-x b{flex:1;min-width:0;text-align:center;font-size:calc(var(--fs) * .9);color:var(--ink3);white-space:nowrap;}
 .a-x b{color:var(--ink);}
 /* แท่งรวม = น้ำตาลเข้ม (เจ้าของ 25 ต.ค.) แยกจากแท่งช่องทางสีทอง · กลางคืนใช้น้ำตาลอ่อนลงให้เห็นบนพื้นมืด */
 .tg{--tg-total:#b07a4a;}
 body.light-mode .tg{--tg-total:#5b3a1e;}
-.tg .c3{background:var(--tg-total);}
+.tg .c3{background:linear-gradient(180deg,color-mix(in srgb,var(--tg-total) 72%,#fff),var(--tg-total));}
 .a-t span{color:var(--tg-total);}
-.a-sum{margin-top:6px;padding-top:5px;border-top:1px solid var(--border);text-align:center;line-height:1.45;white-space:nowrap;}
+.a-sum{margin-top:6px;padding-top:5px;border-top:1px dashed var(--border);text-align:center;line-height:1.45;white-space:nowrap;}
 .a-sum b{display:block;font-size:calc(var(--fs) * 1.15);color:var(--ink);}
 .a-sum span{font-size:var(--fs);color:var(--ink2);}
 .tg-foot{flex:none;margin-top:6px;text-align:center;font-size:calc(var(--fs) * 1.05);color:var(--ink3);}

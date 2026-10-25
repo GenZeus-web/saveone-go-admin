@@ -106,7 +106,7 @@ function _tgCell(z,br){
     return `<div class="tgA-gl${f}" style="--p:${p}"></div><div class="tgA-tk${f}" style="--p:${p}">${p*100}</div>`; }).join('');
   const bars=z.lock.map((v,i)=>`<div class="a-b"><span>${fmtN(v)}</span><small>${pI(v)}</small>${bar(v,'c'+i)}</div>`).join('')
     +`<div class="a-b a-t"><span>${fmtN(t)}</span><small>${pI(t)}</small>${bar(t,'c3')}</div>`;
-  return `<div class="tgA"><span class="tg-brc">${brCode(br)}</span><div class="tgA-capt">ล็อกทั้งหมด ${z.cap?fmtN(z.cap):'–'}</div><div class="a-plot">${grid}<div class="a-bars">${bars}</div></div></div>`
+  return `<div class="tgA"><div class="tgA-capt">ล็อกทั้งหมด ${z.cap?fmtN(z.cap):'–'}</div><div class="a-plot">${grid}<div class="a-bars">${bars}</div></div></div>`
     +'<div class="a-x"><span>ออนไลน์</span><span>วอล์กอิน</span><span>เสริม</span><b>รวม</b></div>'
     +`<div class="a-sum"><b>จองรวม ${fmtN(t)} ล็อก · ${pI(t)}</b><span>ผู้ค้า ${fmtN(z.rai)} ราย</span></div>`;
 }
