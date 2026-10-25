@@ -9,6 +9,7 @@
 //    เงิน/ค่าไฟ ใส่ col-rev / col-elec — body.no-rev / no-elec ซ่อนตามสิทธิ์ให้เอง
 const TODAY_SEEN_KEY='sg_today_seen';
 const TODAY_BR_NAME={BG:'ประตูกรุงเทพ',BN:'บางนา'};
+const TODAY_DAY_FULL=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
 
 function _todayRows(br){ return br==='BG'?bgMerged:br==='BN'?bnMerged:[]; }
 const _hasSales=r=>r && (getLock(r,'all')>0);
@@ -72,6 +73,58 @@ function _todayBranchHtml(br, r){
   return h+'</div>';
 }
 
+// ── TODAY-02 (แบบ A ที่เจ้าของเลือก 25 ต.ค.): ตารางกราฟบนสุด แถวหัว = สาขา (สีประจำสาขา) · คอลัมน์ = โซน
+//   ในช่อง = ล็อกแยกช่องทาง ออนไลน์ | วอล์กอิน | เสริม | รวม (แท่งซ้อนสีเดียวกัน) · % เทียบวันที่ล็อกมากสุดของโซน (ปัดเต็ม)
+//   เส้นระดับ 100/75/50/25/0 (ผอ.: 100 กับ 0 ทึบ · ที่เหลือจาง) · ราย = สรุปตัวเลขเดียว ไม่มีแท่ง
+//   เปิดท้ายมีช่องเสริมเสมอ (ตอนนี้ 0 · อ่านจาก nonExtraLock อยู่แล้ว ไม่ต้องแก้ชีต)
+//   เพดาน 100% = วันที่ล็อกมากสุดของโซนนั้นในข้อมูลทั้งหมดของสาขา (เจ้าของ 25 ต.ค.) · นับแบบ "5 วันที่ล็อกมากสุด"
+//   (ออนไลน์+วอล์กอิน+เสริม) แต่ไม่ขึ้นกับช่วงเวลาที่เลือกบนหน้า · รวมวันนี้ด้วย → เกินสถิติ = 100% พอดี
+const _tgZoneLock={st:r=>(r.onlineLock||0)+(r.walkInLock||0)+(r.extraLock||0), car:r=>(r.nonOnlineLock||0)+(r.nonWalkInLock||0)+(r.nonExtraLock||0)};
+function _tgMax(br){
+  const o={};
+  ['st','car'].forEach(k=>{ let best=null; (_todayRows(br)||[]).forEach(r=>{ const v=_tgZoneLock[k](r); if(v>0&&(!best||v>best.v)) best={v,date:r.date}; }); o[k]=best; });
+  return o;
+}
+const _tgShortD=d=>{ const s=fmtD(d); return s.slice(0,6)+s.slice(-2); };   // 05/10/2568 → 05/10/68
+const TG_H=70, TG_BASE=112;   // ความสูงแท่งที่ 100% · ฐานแท่ง (px จากบนกล่อง) — ต้องตรงกับ .tgA/.a-bars ใน components.css
+                              // 70 = เหลือ 26px เหนือเส้น 100 ให้เลข+% ของแท่งที่เต็ม ไม่ทับป้ายล็อกทั้งหมด
+let _tgPicks=[];
+
+function _tgZones(br,r){
+  if(!r) return null;
+  const n=v=>v||0, mx=_tgMax(br), cap=k=>mx[k]?mx[k].v:0, capD=k=>mx[k]?mx[k].date:null;
+  return {
+    st:{cap:cap('st'), capDate:capD('st'), lock:[n(r.onlineLock),n(r.walkInLock),n(r.extraLock)], rai:n(r.onlineRai)+n(r.walkInRai)},
+    car:r.nonLock?{cap:cap('car'), capDate:capD('car'), lock:[n(r.nonOnlineLock),n(r.nonWalkInLock),n(r.nonExtraLock)], rai:n(r.nonOnlineRai)+n(r.nonWalkInRai)}:null
+  };
+}
+
+function _tgCell(z,br){
+  const pI=v=>z.cap?Math.round(v/z.cap*100)+'%':'–';
+  const hOf=v=>z.cap&&v?Math.max(2,Math.min(v/z.cap,1)*TG_H):0;   // เกินล็อกทั้งหมด = เต็มเส้น 100
+  const t=z.lock.reduce((s,v)=>s+v,0);
+  const grid=[1,.75,.5,.25,0].map(p=>{ const f=p%1?' f':'', y=TG_BASE-TG_H*p;
+    return `<div class="tgA-gl${f}" style="top:${y}px"></div><div class="tgA-tk${f}" style="top:${y}px">${p*100}</div>`; }).join('');
+  const bars=z.lock.map((v,i)=>`<div class="a-b"><span>${fmtN(v)}</span><small>${pI(v)}</small><i class="c${i}" style="height:${hOf(v)}px"></i></div>`).join('')
+    +`<div class="a-b a-t"><span>${fmtN(t)}</span><small>${pI(t)}</small><div class="a-st" style="height:${hOf(t)}px">${z.lock.map((v,i)=>v?`<i class="c${i}" style="flex:${v}"></i>`:'').join('')}</div></div>`;
+  return `<div class="tgA"><span class="tg-brc">${brCode(br)}</span><div class="tgA-capt">สูงสุด ${z.cap?`${fmtN(z.cap)} <small>(${_tgShortD(z.capDate)})</small>`:'–'}</div>${grid}<div class="a-bars">${bars}</div></div>`
+    +'<div class="a-x"><span>ออนไลน์</span><span>วอล์กอิน</span><span>เสริม</span><b>รวม</b></div>'
+    +`<div class="a-sum"><b>จองรวม ${fmtN(t)} ล็อก · ${pI(t)}</b><span>ผู้ค้า ${fmtN(z.rai)} ราย</span></div>`;
+}
+
+function _tgHtml(){
+  let h='<div class="tg"><div class="tg-grid"><div class="tg-ch st">🍜 สตรีทฟู้ด</div><div class="tg-ch car">🚗 เปิดท้าย</div>';
+  _tgPicks.forEach(p=>{
+    const z=_tgZones(p.br,p.r);
+    h+=`<div class="tg-rh tg-${p.br}"><b>${brCode(p.br)}</b><span>${TODAY_BR_NAME[p.br]}</span>${p.r&&!p.isToday?`<em>ยอดวันที่ ${fmtD(p.r.date)}</em>`:''}</div>`;
+    ['st','car'].forEach(k=>{
+      const c=z&&z[k];
+      h+= c ? `<div class="tg-cell tg-${p.br}">${_tgCell(c,p.br)}</div>` : `<div class="tg-cell tg-${p.br} tg-na">—</div>`;
+    });
+  });
+  return h+'</div></div>';
+}
+
 function openTodayModal(){
   const m=document.getElementById('todayModal');
   if(!m) return;
@@ -80,8 +133,9 @@ function openTodayModal(){
   const picks=brs.map(br=>({br, ..._pickDay(_todayRows(br)||[], todayKey)}));
   const allToday=picks.length>0 && picks.every(p=>p.isToday);
 
-  document.getElementById('todayTitle').textContent=allToday?'ยอดวันนี้':'ยอดล่าสุด';
-  document.getElementById('todaySub').textContent=`${DAYS[now.getDay()]} ${fmtD(now)}`;
+  // TODAY-02: หัวบอกวันที่ชัดๆ "ยอดจองวันนี้ 25/10/2569" · ยังไม่มียอดวันนี้ = ยอดจองล่าสุด (วันที่อยู่ที่แถบสาขา)
+  document.getElementById('todayTitle').textContent=allToday?`ยอดจองวันนี้ ${fmtD(now)}`:'ยอดจองล่าสุด';
+  document.getElementById('todaySub').textContent=allToday?`วัน${TODAY_DAY_FULL[now.getDay()]}`:`วันนี้ ${DAYS[now.getDay()]} ${fmtD(now)} · ยอดวันนี้ยังไม่เข้า`;
 
   let h='';
   if(!picks.length){
@@ -95,6 +149,8 @@ function openTodayModal(){
       h+=`<div class="tdy-tag">${tag}</div>`+_todayBranchHtml(p.br,p.r);
     });
     if(!allToday) h+='<div class="tdy-note">🕒 ยอดวันนี้ยังไม่เข้าระบบ — กลับมาดูใหม่ช่วง <b>15:00–16:00</b></div>';
+    _tgPicks=picks;
+    if(picks.some(p=>p.r)) h=_tgHtml()+'<div class="tg-sep">รายละเอียด</div>'+h;   // TODAY-02: กราฟบนสุด รายงานเดิมต่อข้างล่าง
   }
   document.getElementById('todayRows').innerHTML=h;
   m.style.display='flex';
