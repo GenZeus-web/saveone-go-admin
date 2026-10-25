@@ -272,10 +272,6 @@ body.light-mode .tg{--br-BG:#2563eb;--br-BN:#0f8f84;--br-on:#fff;}
 .tgA{flex:1;min-height:0;position:relative;display:flex;flex-direction:column;padding:calc(var(--fs) * 1.7) 0 0 calc(var(--fs) * 2);}
 .tg-brc{position:absolute;left:0;top:0;font:700 var(--fs)/1 'JetBrains Mono',monospace;color:var(--br-on);background:var(--brc);border-radius:4px;padding:2px 5px;}
 .tgA-capt{position:absolute;right:0;top:0;font:700 var(--fs)/1.2 'JetBrains Mono',monospace;color:var(--ink2);white-space:nowrap;}
-.tgA-capt small{font-weight:400;color:var(--ink3);}
-/* ช่องแคบ (มือถือ + ตัวอักษรใหญ่) → ซ่อนวันที่ของวันสูงสุด ไม่งั้นทับป้ายรหัสสาขา */
-.tg-cell{container-type:inline-size;}
-@container (max-width:150px){.tgA-capt small{display:none;}}
 .a-plot{flex:1;min-height:70px;position:relative;}
 .tgA-gl,.tgA-tk{position:absolute;top:calc(var(--lr) + (1 - var(--p)) * (100% - var(--lr)));}
 .tgA-gl{left:0;right:0;border-top:1px solid var(--ink3);}

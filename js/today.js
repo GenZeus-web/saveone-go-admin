@@ -86,15 +86,14 @@ function _tgMax(br){
   ['st','car'].forEach(k=>{ let best=null; (_todayRows(br)||[]).forEach(r=>{ const v=_tgZoneLock[k](r); if(v>0&&(!best||v>best.v)) best={v,date:r.date}; }); o[k]=best; });
   return o;
 }
-const _tgShortD=d=>{ const s=fmtD(d); return s.slice(0,6)+s.slice(-2); };   // 05/10/2568 → 05/10/68
 let _tgPicks=[], _tgNote='';
 
 function _tgZones(br,r){
   if(!r) return null;
-  const n=v=>v||0, mx=_tgMax(br), cap=k=>mx[k]?mx[k].v:0, capD=k=>mx[k]?mx[k].date:null;
+  const n=v=>v||0, mx=_tgMax(br), cap=k=>mx[k]?mx[k].v:0;
   return {
-    st:{cap:cap('st'), capDate:capD('st'), lock:[n(r.onlineLock),n(r.walkInLock),n(r.extraLock)], rai:n(r.onlineRai)+n(r.walkInRai)},
-    car:r.nonLock?{cap:cap('car'), capDate:capD('car'), lock:[n(r.nonOnlineLock),n(r.nonWalkInLock),n(r.nonExtraLock)], rai:n(r.nonOnlineRai)+n(r.nonWalkInRai)}:null
+    st:{cap:cap('st'), lock:[n(r.onlineLock),n(r.walkInLock),n(r.extraLock)], rai:n(r.onlineRai)+n(r.walkInRai)},
+    car:r.nonLock?{cap:cap('car'), lock:[n(r.nonOnlineLock),n(r.nonWalkInLock),n(r.nonExtraLock)], rai:n(r.nonOnlineRai)+n(r.nonWalkInRai)}:null
   };
 }
 
@@ -107,7 +106,7 @@ function _tgCell(z,br){
     return `<div class="tgA-gl${f}" style="--p:${p}"></div><div class="tgA-tk${f}" style="--p:${p}">${p*100}</div>`; }).join('');
   const bars=z.lock.map((v,i)=>`<div class="a-b"><span>${fmtN(v)}</span><small>${pI(v)}</small>${bar(v,'c'+i)}</div>`).join('')
     +`<div class="a-b a-t"><span>${fmtN(t)}</span><small>${pI(t)}</small>${bar(t,'c3')}</div>`;
-  return `<div class="tgA"><span class="tg-brc">${brCode(br)}</span><div class="tgA-capt">สูงสุด ${z.cap?`${fmtN(z.cap)} <small>(${_tgShortD(z.capDate)})</small>`:'–'}</div><div class="a-plot">${grid}<div class="a-bars">${bars}</div></div></div>`
+  return `<div class="tgA"><span class="tg-brc">${brCode(br)}</span><div class="tgA-capt">สูงสุด ${z.cap?fmtN(z.cap):'–'}</div><div class="a-plot">${grid}<div class="a-bars">${bars}</div></div></div>`
     +'<div class="a-x"><span>ออนไลน์</span><span>วอล์กอิน</span><span>เสริม</span><b>รวม</b></div>'
     +`<div class="a-sum"><b>จองรวม ${fmtN(t)} ล็อก · ${pI(t)}</b><span>ผู้ค้า ${fmtN(z.rai)} ราย</span></div>`;
 }
