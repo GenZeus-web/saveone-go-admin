@@ -249,7 +249,19 @@ body.light-mode .tg{--br-BG:#2563eb;--br-BN:#0f8f84;--br-on:#fff;}
 #todayModal .day-rows{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0;}
 /* ขนาดตัวอักษรกราฟตามจอ (มือถือ 9px ≈ เดิม · จอคอม ~15px) · --lr = ที่เหนือเส้น 100 ให้เลข+% ของแท่งที่เต็ม */
 .tg{height:100%;min-height:460px;max-width:920px;margin:0 auto;box-sizing:border-box;padding:10px 12px 8px;display:flex;flex-direction:column;
-  --fs:clamp(9px,calc(.55vw + .8vh),15px);--lr:calc(var(--fs) * 2.6 + 4px);}
+  --fs:clamp(11px,calc(.55vw + .8vh),15px);--lr:calc(var(--fs) * 2.6 + 4px);}
+/* มือถือ: เดิม 9px เล็กไป (เจ้าของ) → 11px · ช่องแคบ จึงลดขอบการ์ด/ช่องไฟแทนการลดตัวอักษร */
+@media(max-width:640px){.tg{padding:8px 8px 6px;}.tg-grid{gap:8px;}.tg-cell{padding:9px 6px 7px;}}
+/* ตัวอักษรใหญ่ (FONT-01): ไม่ซูมทั้งการ์ด — กราฟ 2 คอลัมน์บนมือถือซูมแล้ว "วอล์กอิน"/ตัวเลขล้นช่อง
+   ซูมเฉพาะหัว + หน้ารายละเอียด · กราฟขยายตัวอักษรเองตาม --fs (มือถือเพดาน 12px = กว้างสุดที่ "1,335" ยังพอดีช่อง) */
+body.fs-1 #todayModal .day-card,body.fs-2 #todayModal .day-card{zoom:1;}
+body.fs-1 #todayModal .day-head,body.fs-1 .tdy-old{zoom:1.15;}
+body.fs-2 #todayModal .day-head,body.fs-2 .tdy-old{zoom:1.3;}
+body.fs-1 .tg{--fs:clamp(12px,calc(.62vw + .9vh),17px);}
+body.fs-2 .tg{--fs:clamp(12px,calc(.7vw + 1vh),19px);}
+/* ป้ายแกนบนมือถือคงขนาด ("วอล์กอิน" ยาวสุด) · .tg นำหน้าให้ชนะกฎ .a-x ข้างล่าง */
+@media(max-width:640px){.tg .a-x span,.tg .a-x b{font-size:9.5px;}}
+@media(max-width:370px){.tg .a-x span,.tg .a-x b{font-size:9px;}}
 .tg-BG{--brc:var(--br-BG);}
 .tg-BN{--brc:var(--br-BN);}
 .tg-grid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;}
@@ -273,7 +285,7 @@ body.light-mode .tg{--br-BG:#2563eb;--br-BN:#0f8f84;--br-on:#fff;}
 /* กล่องกราฟยืดตามช่อง: บรรทัดหัว (ล็อกทั้งหมด) · พื้นที่แท่ง .a-plot ยืดเต็ม · เลขระดับอยู่ซ้ายนอกพื้นที่แท่ง
    เส้นระดับ/แท่ง วัดเป็น % ของ (ความสูงกล่อง − --lr) → เส้น 100 กับยอดแท่งที่เต็มตรงกันเสมอไม่ว่าจอสูงเท่าไร */
 .tgA{flex:1;min-height:0;position:relative;display:flex;flex-direction:column;padding:calc(var(--fs) * 1.7) 0 0 calc(var(--fs) * 2);}
-.tgA-capt{position:absolute;left:0;top:0;font:600 var(--fs)/1.2 'JetBrains Mono',monospace;color:var(--ink3);white-space:nowrap;}
+.tgA-capt{position:absolute;left:0;top:0;font:700 var(--fs)/1.2 'JetBrains Mono',monospace;color:var(--ink);white-space:nowrap;}   /* เข้ม ให้คนอื่นเห็นว่าคือเพดาน (เจ้าของ) */
 .a-plot{flex:1;min-height:70px;position:relative;}
 .tgA-gl,.tgA-tk{position:absolute;top:calc(var(--lr) + (1 - var(--p)) * (100% - var(--lr)));}
 .tgA-gl{left:0;right:0;border-top:1px solid color-mix(in srgb,var(--ink3) 60%,transparent);}
