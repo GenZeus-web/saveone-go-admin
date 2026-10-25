@@ -236,43 +236,60 @@ body.fs-2 .day-card{max-height:calc(var(--mh) / 1.3);}
 /* TODAY-02 (แบบ A): ตารางกราฟ สาขา × โซน บนสุดของยอดวันนี้
    ทอง = ล็อก (ภาษาสีเดิม) · ออนไลน์ เต็ม / วอล์กอิน จาง (ผสมพื้น ไม่ใช้ opacity) / เสริม ลายทาง
    สีประจำสาขา (แถบหัว + ขอบซ้ายช่อง + ป้ายรหัส) — น้ำเงิน/เขียวอมฟ้า ไม่ชน ทอง=ล็อก ม่วง=Car เขียว=ราย */
-.tg{margin-top:12px;--br-BG:#4a9eff;--br-BN:#2dd4bf;--br-on:#0e1220;}
+.tg{--br-BG:#4a9eff;--br-BN:#2dd4bf;--br-on:#0e1220;}
 body.light-mode .tg{--br-BG:#2563eb;--br-BN:#0f8f84;--br-on:#fff;}
+/* เต็มจอ: ป๊อปอัปยอดวันนี้คลุมทั้งจอ · หัว (ชื่อ+✕) คงที่ · เนื้อเลื่อนในตัวเอง (กราฟพอดีจอ · รายละเอียดเลื่อนได้)
+   ขอบบน/ล่างพ้นแถบสถานะ iPhone อยู่ท้าย responsive.css */
+#todayModal{padding:0!important;background:var(--surface)!important;}
+#todayModal .day-card{width:100%;height:100%;max-width:none;max-height:none;border:0;border-radius:0;box-shadow:none;
+  display:flex;flex-direction:column;overflow:hidden;}
+#todayModal .day-head{flex:none;}
+#todayModal .day-rows{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0;}
+/* ขนาดตัวอักษรกราฟตามจอ (มือถือ 9px ≈ เดิม · จอคอม ~15px) · --lr = ที่เหนือเส้น 100 ให้เลข+% ของแท่งที่เต็ม */
+.tg{height:100%;min-height:460px;box-sizing:border-box;padding:10px 12px 8px;display:flex;flex-direction:column;
+  --fs:clamp(9px,calc(.55vw + .8vh),15px);--lr:calc(var(--fs) * 2.6 + 4px);}
 .tg-BG{--brc:var(--br-BG);}
 .tg-BN{--brc:var(--br-BN);}
-.tg-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;}
-.tg-ch{font-size:11px;font-weight:700;text-align:center;padding-bottom:2px;border-bottom:2px solid;}
+.tg-grid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;}
+.tg-ch{font-size:calc(var(--fs) * 1.25);font-weight:700;text-align:center;padding-bottom:2px;border-bottom:2px solid;}
 .tg-ch.st{color:var(--gold);}
 .tg-ch.car{color:var(--purple);}
-.tg-rh{grid-column:1/-1;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin-top:8px;
-  padding:4px 10px;border-radius:8px;background:var(--brc);color:var(--br-on);}
-.tg-rh b{font-size:14px;font-family:'JetBrains Mono',monospace;}
-.tg-rh span{font-size:11px;opacity:.9;}
-.tg-rh em{font-style:normal;font-size:10px;font-weight:700;margin-left:auto;}
-.tg-cell{background:var(--surface2);border:1px solid var(--border);border-left:4px solid var(--brc);border-radius:10px;padding:8px 6px 7px;min-width:0;}
-.tg-na{display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:12px;min-height:80px;}
+.tg-rh{grid-column:1/-1;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin-top:6px;
+  padding:4px 10px;border-radius:8px;background:var(--brc);color:var(--br-on);cursor:pointer;}
+.tg-rh b{font-size:calc(var(--fs) * 1.6);font-family:'JetBrains Mono',monospace;}
+.tg-rh span{font-size:calc(var(--fs) * 1.25);opacity:.9;}
+.tg-rh em{font-style:normal;font-size:calc(var(--fs) * 1.1);font-weight:700;margin-left:auto;}
+.tg-cell{background:var(--surface2);border:1px solid var(--border);border-left:4px solid var(--brc);border-radius:10px;padding:8px 6px 7px;
+  min-width:0;min-height:0;display:flex;flex-direction:column;cursor:pointer;}
+.tg-cell:hover,.tg-cell:focus-visible{border-color:var(--ink3);border-left-color:var(--brc);}
+.tg-na{align-items:center;justify-content:center;color:var(--ink3);font-size:12px;cursor:default;}
 .tg i{display:block;}
 .tg .c0{background:var(--gold);}
 .tg .c1{background:color-mix(in srgb,var(--gold) 42%,var(--surface));}
 .tg .c2{background:repeating-linear-gradient(45deg,var(--gold) 0 2px,color-mix(in srgb,var(--gold) 25%,var(--surface)) 2px 5px);}
-/* กล่องกราฟ: หัว 16 + พื้นที่แท่ง 96 → ฐาน 112 (TG_BASE) · 100% สูง 70 (TG_H · เหลือที่ให้เลขแท่งเต็ม) · เลขระดับซ้าย 18px
-   4 แท่ง × 30px + 18 = 138 ≈ ความกว้างในช่องที่ป๊อปอัป 360px — ขยายแท่ง/ตัวอักษรต้องเช็คล้นใหม่ */
-.tgA{position:relative;padding:16px 0 0 18px;}
-.tg-brc{position:absolute;left:0;top:0;font:700 9px/1 'JetBrains Mono',monospace;color:var(--br-on);background:var(--brc);border-radius:4px;padding:2px 5px;}
-.tgA-capt{position:absolute;right:0;top:0;font:700 9px 'JetBrains Mono',monospace;color:var(--ink2);white-space:nowrap;}
+/* กล่องกราฟยืดตามช่อง: บรรทัดหัว (รหัส/สูงสุด) · พื้นที่แท่ง .a-plot ยืดเต็ม · เลขระดับอยู่ซ้ายนอกพื้นที่แท่ง
+   เส้นระดับ/แท่ง วัดเป็น % ของ (ความสูงกล่อง − --lr) → เส้น 100 กับยอดแท่งที่เต็มตรงกันเสมอไม่ว่าจอสูงเท่าไร */
+.tgA{flex:1;min-height:0;position:relative;display:flex;flex-direction:column;padding:calc(var(--fs) * 1.7) 0 0 calc(var(--fs) * 2);}
+.tg-brc{position:absolute;left:0;top:0;font:700 var(--fs)/1 'JetBrains Mono',monospace;color:var(--br-on);background:var(--brc);border-radius:4px;padding:2px 5px;}
+.tgA-capt{position:absolute;right:0;top:0;font:700 var(--fs)/1.2 'JetBrains Mono',monospace;color:var(--ink2);white-space:nowrap;}
 .tgA-capt small{font-weight:400;color:var(--ink3);}
-.tgA-gl{position:absolute;left:18px;right:0;border-top:1px solid var(--ink3);}
+/* ช่องแคบ (มือถือ + ตัวอักษรใหญ่) → ซ่อนวันที่ของวันสูงสุด ไม่งั้นทับป้ายรหัสสาขา */
+.tg-cell{container-type:inline-size;}
+@container (max-width:150px){.tgA-capt small{display:none;}}
+.a-plot{flex:1;min-height:70px;position:relative;}
+.tgA-gl,.tgA-tk{position:absolute;top:calc(var(--lr) + (1 - var(--p)) * (100% - var(--lr)));}
+.tgA-gl{left:0;right:0;border-top:1px solid var(--ink3);}
 .tgA-gl.f{opacity:.5;}
-.tgA-tk{position:absolute;left:0;width:15px;text-align:right;font:600 8px/1 'JetBrains Mono',monospace;color:var(--ink3);transform:translateY(-50%);}
+.tgA-tk{right:100%;margin-right:3px;text-align:right;font:600 calc(var(--fs) * .85)/1 'JetBrains Mono',monospace;color:var(--ink3);transform:translateY(-50%);}
 .tgA-tk.f{opacity:.7;}
-.a-bars{display:flex;justify-content:space-around;align-items:flex-end;height:96px;position:relative;z-index:1;}
-.a-b{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;width:30px;}
-.a-b span,.a-b small{position:relative;z-index:1;background:var(--surface2);padding:0 2px;}   /* เส้นระดับลอดหลังตัวเลข */
-.a-b span{font:700 9px 'JetBrains Mono',monospace;color:var(--ink);}
-.a-b small{font:600 9px 'JetBrains Mono',monospace;color:var(--ink3);margin-bottom:2px;}
-.a-b i{width:18px;border-radius:3px 3px 0 0;}
-.a-x{display:flex;justify-content:space-around;margin-top:2px;padding-left:18px;}
-.a-x span,.a-x b{width:30px;text-align:center;font-size:8px;color:var(--ink3);white-space:nowrap;}
+.a-bars{position:absolute;inset:0;display:flex;z-index:1;}
+.a-b{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;}
+.a-b span,.a-b small{position:relative;z-index:1;background:var(--surface2);padding:0 2px;line-height:1.15;}   /* เส้นระดับลอดหลังตัวเลข */
+.a-b span{font:700 var(--fs) 'JetBrains Mono',monospace;color:var(--ink);}
+.a-b small{font:600 calc(var(--fs) * .9) 'JetBrains Mono',monospace;color:var(--ink3);margin-bottom:2px;}
+.a-b i{width:clamp(14px,45%,64px);height:max(2px,calc(var(--f) * (100% - var(--lr))));border-radius:3px 3px 0 0;}
+.a-x{display:flex;margin-top:3px;padding-left:calc(var(--fs) * 2);}
+.a-x span,.a-x b{flex:1;min-width:0;text-align:center;font-size:calc(var(--fs) * .9);color:var(--ink3);white-space:nowrap;}
 .a-x b{color:var(--ink);}
 /* แท่งรวม = น้ำตาลเข้ม (เจ้าของ 25 ต.ค.) แยกจากแท่งช่องทางสีทอง · กลางคืนใช้น้ำตาลอ่อนลงให้เห็นบนพื้นมืด */
 .tg{--tg-total:#b07a4a;}
@@ -280,10 +297,15 @@ body.light-mode .tg{--tg-total:#5b3a1e;}
 .tg .c3{background:var(--tg-total);}
 .a-t span{color:var(--tg-total);}
 .a-sum{margin-top:6px;padding-top:5px;border-top:1px solid var(--border);text-align:center;line-height:1.45;white-space:nowrap;}
-.a-sum b{display:block;font-size:10px;color:var(--ink);}
-.a-sum span{font-size:9px;color:var(--ink2);}
-.tg-sep{display:flex;align-items:center;gap:8px;margin-top:16px;font-size:10px;color:var(--ink3);}
-.tg-sep::after{content:'';flex:1;height:1px;background:var(--border);}
+.a-sum b{display:block;font-size:calc(var(--fs) * 1.15);color:var(--ink);}
+.a-sum span{font-size:var(--fs);color:var(--ink2);}
+.tg-foot{flex:none;margin-top:6px;text-align:center;font-size:calc(var(--fs) * 1.05);color:var(--ink3);}
+.tg .tdy-note{flex:none;margin-top:8px;}
+/* หน้ารายละเอียด (รายงานเดิม) — กว้างเท่าป๊อปอัปเดิม กลางจอ */
+.tdy-old{max-width:420px;margin:0 auto;padding:4px 17px 20px;}
+.tdy-back{margin-top:10px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);border-radius:8px;
+  padding:6px 12px;font:600 12px 'Noto Sans Thai',sans-serif;cursor:pointer;}
+.tdy-back:hover{border-color:var(--ink3);}
 
 /* ── SET-01: หน้าตั้งค่า ราคา · ฤดูกาล · เป้ายอด (js/firebase/settings.js) ── */
 #settingsModal>*{min-width:0;} /* flex item: ไม่ให้ตารางกว้างดันหน้าต่างล้นจอมือถือ */

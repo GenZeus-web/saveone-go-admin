@@ -79,6 +79,7 @@ function _todayBranchHtml(br, r){
 //   เปิดท้ายมีช่องเสริมเสมอ (ตอนนี้ 0 · อ่านจาก nonExtraLock อยู่แล้ว ไม่ต้องแก้ชีต)
 //   เพดาน 100% = วันที่ล็อกมากสุดของโซนนั้นในข้อมูลทั้งหมดของสาขา (เจ้าของ 25 ต.ค.) · นับแบบ "5 วันที่ล็อกมากสุด"
 //   (ออนไลน์+วอล์กอิน+เสริม) แต่ไม่ขึ้นกับช่วงเวลาที่เลือกบนหน้า · รวมวันนี้ด้วย → เกินสถิติ = 100% พอดี
+//   ป๊อปอัปเต็มจอ · กราฟยืดเต็มจอแรก (ความสูงแท่งเป็น % ของกล่อง ไม่ใช่ px) · แตะช่อง = รายงานเดิมของสาขานั้น + ปุ่มกลับ
 const _tgZoneLock={st:r=>(r.onlineLock||0)+(r.walkInLock||0)+(r.extraLock||0), car:r=>(r.nonOnlineLock||0)+(r.nonWalkInLock||0)+(r.nonExtraLock||0)};
 function _tgMax(br){
   const o={};
@@ -86,9 +87,7 @@ function _tgMax(br){
   return o;
 }
 const _tgShortD=d=>{ const s=fmtD(d); return s.slice(0,6)+s.slice(-2); };   // 05/10/2568 → 05/10/68
-const TG_H=70, TG_BASE=112;   // ความสูงแท่งที่ 100% · ฐานแท่ง (px จากบนกล่อง) — ต้องตรงกับ .tgA/.a-bars ใน components.css
-                              // 70 = เหลือ 26px เหนือเส้น 100 ให้เลข+% ของแท่งที่เต็ม ไม่ทับป้ายล็อกทั้งหมด
-let _tgPicks=[];
+let _tgPicks=[], _tgNote='';
 
 function _tgZones(br,r){
   if(!r) return null;
@@ -101,28 +100,47 @@ function _tgZones(br,r){
 
 function _tgCell(z,br){
   const pI=v=>z.cap?Math.round(v/z.cap*100)+'%':'–';
-  const hOf=v=>z.cap&&v?Math.max(2,Math.min(v/z.cap,1)*TG_H):0;   // เกินล็อกทั้งหมด = เต็มเส้น 100
+  const fOf=v=>z.cap?Math.min(v/z.cap,1):0;   // เกินสถิติ = เต็มเส้น 100
+  const bar=(v,c)=>v&&z.cap?`<i class="${c}" style="--f:${fOf(v).toFixed(4)}"></i>`:'';
   const t=z.lock.reduce((s,v)=>s+v,0);
-  const grid=[1,.75,.5,.25,0].map(p=>{ const f=p%1?' f':'', y=TG_BASE-TG_H*p;
-    return `<div class="tgA-gl${f}" style="top:${y}px"></div><div class="tgA-tk${f}" style="top:${y}px">${p*100}</div>`; }).join('');
-  const bars=z.lock.map((v,i)=>`<div class="a-b"><span>${fmtN(v)}</span><small>${pI(v)}</small><i class="c${i}" style="height:${hOf(v)}px"></i></div>`).join('')
-    +`<div class="a-b a-t"><span>${fmtN(t)}</span><small>${pI(t)}</small><i class="c3" style="height:${hOf(t)}px"></i></div>`;
-  return `<div class="tgA"><span class="tg-brc">${brCode(br)}</span><div class="tgA-capt">สูงสุด ${z.cap?`${fmtN(z.cap)} <small>(${_tgShortD(z.capDate)})</small>`:'–'}</div>${grid}<div class="a-bars">${bars}</div></div>`
+  const grid=[1,.75,.5,.25,0].map(p=>{ const f=p%1?' f':'';
+    return `<div class="tgA-gl${f}" style="--p:${p}"></div><div class="tgA-tk${f}" style="--p:${p}">${p*100}</div>`; }).join('');
+  const bars=z.lock.map((v,i)=>`<div class="a-b"><span>${fmtN(v)}</span><small>${pI(v)}</small>${bar(v,'c'+i)}</div>`).join('')
+    +`<div class="a-b a-t"><span>${fmtN(t)}</span><small>${pI(t)}</small>${bar(t,'c3')}</div>`;
+  return `<div class="tgA"><span class="tg-brc">${brCode(br)}</span><div class="tgA-capt">สูงสุด ${z.cap?`${fmtN(z.cap)} <small>(${_tgShortD(z.capDate)})</small>`:'–'}</div><div class="a-plot">${grid}<div class="a-bars">${bars}</div></div></div>`
     +'<div class="a-x"><span>ออนไลน์</span><span>วอล์กอิน</span><span>เสริม</span><b>รวม</b></div>'
     +`<div class="a-sum"><b>จองรวม ${fmtN(t)} ล็อก · ${pI(t)}</b><span>ผู้ค้า ${fmtN(z.rai)} ราย</span></div>`;
 }
 
 function _tgHtml(){
-  let h='<div class="tg"><div class="tg-grid"><div class="tg-ch st">🍜 สตรีทฟู้ด</div><div class="tg-ch car">🚗 เปิดท้าย</div>';
-  _tgPicks.forEach(p=>{
-    const z=_tgZones(p.br,p.r);
-    h+=`<div class="tg-rh tg-${p.br}"><b>${brCode(p.br)}</b><span>${TODAY_BR_NAME[p.br]}</span>${p.r&&!p.isToday?`<em>ยอดวันที่ ${fmtD(p.r.date)}</em>`:''}</div>`;
+  // แถว grid: หัวโซน + (แถบสาขา + ช่องกราฟที่ยืดได้) ต่อสาขา → กราฟแบ่งความสูงจอเท่าๆ กัน
+  const rows='auto'+' auto minmax(0,1fr)'.repeat(_tgPicks.length);
+  let h=`<div class="tg"><div class="tg-grid" style="grid-template-rows:${rows}"><div class="tg-ch st">🍜 สตรีทฟู้ด</div><div class="tg-ch car">🚗 เปิดท้าย</div>`;
+  _tgPicks.forEach((p,i)=>{
+    const z=_tgZones(p.br,p.r), go=p.r?` role="button" tabindex="0" onclick="_tdyDetail(${i})" onkeydown="if(event.key==='Enter')_tdyDetail(${i})"`:'';
+    h+=`<div class="tg-rh tg-${p.br}"${go}><b>${brCode(p.br)}</b><span>${TODAY_BR_NAME[p.br]}</span>${p.r&&!p.isToday?`<em>ยอดวันที่ ${fmtD(p.r.date)}</em>`:''}${p.r?'':'<em>ยังไม่มีข้อมูล</em>'}</div>`;
     ['st','car'].forEach(k=>{
       const c=z&&z[k];
-      h+= c ? `<div class="tg-cell tg-${p.br}">${_tgCell(c,p.br)}</div>` : `<div class="tg-cell tg-${p.br} tg-na">—</div>`;
+      h+= c ? `<div class="tg-cell tg-${p.br}"${go}>${_tgCell(c,p.br)}</div>` : `<div class="tg-cell tg-${p.br} tg-na">—</div>`;
     });
   });
-  return h+'</div></div>';
+  return h+`</div>${_tgNote}<div class="tg-foot">แตะช่องเพื่อดูรายละเอียด</div></div>`;
+}
+
+// รายงานเดิม (TODAY-01) ของสาขาเดียว — เปิดจากการแตะช่อง/แถบสาขา
+function _tdyDetail(i){
+  const p=_tgPicks[i], rows=document.getElementById('todayRows');
+  if(!p||!p.r||!rows) return;
+  const tag=p.isToday
+    ? (new Date().getHours()<22?'ยอดระหว่างวัน · ยอดปิดจริงหลัง 22:00':'ยอดปิดวัน')
+    : `ยอดวันที่ ${fmtD(p.r.date)} (ยอดปิดวัน)`;
+  rows.innerHTML=`<div class="tdy-old"><button class="tdy-back" onclick="_tdyChart()">← กลับกราฟ</button>`
+    +`<div class="tdy-tag">${tag}</div>${_todayBranchHtml(p.br,p.r)}</div>`;
+  rows.scrollTop=0;
+}
+function _tdyChart(){
+  const rows=document.getElementById('todayRows');
+  if(rows){ rows.innerHTML=_tgHtml(); rows.scrollTop=0; }
 }
 
 function openTodayModal(){
@@ -139,18 +157,11 @@ function openTodayModal(){
 
   let h='';
   if(!picks.length){
-    h='<div class="tdy-note">บัญชีนี้ไม่มีสาขาที่เปิดอยู่ (SG/SB)</div>';
+    h='<div class="tdy-old"><div class="tdy-note">บัญชีนี้ไม่มีสาขาที่เปิดอยู่ (SG/SB)</div></div>';
   }else{
-    picks.forEach(p=>{
-      if(!p.r){ h+=`<div class="tdy-br"><div class="tdy-brh"><span>${TODAY_BR_NAME[p.br]}</span></div><div class="tdy-note">ยังไม่มีข้อมูล</div></div>`; return; }
-      const tag=p.isToday
-        ? (now.getHours()<22?'ยอดระหว่างวัน · ยอดปิดจริงหลัง 22:00':'ยอดปิดวัน')
-        : `ยอดวันที่ ${fmtD(p.r.date)} (ยอดปิดวัน)`;
-      h+=`<div class="tdy-tag">${tag}</div>`+_todayBranchHtml(p.br,p.r);
-    });
-    if(!allToday) h+='<div class="tdy-note">🕒 ยอดวันนี้ยังไม่เข้าระบบ — กลับมาดูใหม่ช่วง <b>15:00–16:00</b></div>';
     _tgPicks=picks;
-    if(picks.some(p=>p.r)) h=_tgHtml()+'<div class="tg-sep">รายละเอียด</div>'+h;   // TODAY-02: กราฟบนสุด รายงานเดิมต่อข้างล่าง
+    _tgNote=allToday?'':'<div class="tdy-note">🕒 ยอดวันนี้ยังไม่เข้าระบบ — กลับมาดูใหม่ช่วง <b>15:00–16:00</b></div>';
+    h=_tgHtml();   // TODAY-02: เปิดมาเป็นกราฟเต็มจอ · รายงานเดิมอยู่ใน _tdyDetail()
   }
   document.getElementById('todayRows').innerHTML=h;
   m.style.display='flex';
