@@ -171,7 +171,9 @@ function utToolbar(sub){
     .map(([k,t])=>`<button class="mc-pill${sub===k?' sel':''}" role="tab" aria-selected="${sub===k}" onclick="setUtSub('${k}')">${t}</button>`).join('');
   // ปุ่มตัวเลขบนกราฟ: เฉพาะเทียบสาขา (แท็บมิเตอร์ UTIL-15 ไม่มีป้ายตัวเลขบนกราฟ)
   const vals=sub==='cmp'?`<button class="mc-pill" onclick="toggleUtVals()" aria-pressed="${utVals()}">🔢 ${utVals()?'ซ่อนตัวเลข':'แสดงตัวเลข'}</button>`:'';
-  return `<div class="ut-subtabs"><div class="ut-subtabs-l" role="tablist">${tabs}</div>${vals}</div>`;
+  // UTIL-50 ตรวจรูปมิเตอร์รายวัน (views/util-meter.js) · admin เท่านั้น
+  const photo=canSeeUtilPhoto()?`<button class="mc-pill" onclick="utPhotoOpen()">📷 ตรวจรูป</button>`:'';
+  return `<div class="ut-subtabs"><div class="ut-subtabs-l" role="tablist">${tabs}</div>${vals||photo?`<div class="ut-subtabs-l">${vals}${photo}</div>`:''}</div>`;
 }
 // สีแกน/เส้นตาราง/ป้ายในกราฟน้ำ-ไฟ ตามธีมที่ใช้อยู่ (night.css) — chartClr() ยังเป็นสีธีมเดิม
 //   วัดจริง 14 ต.ค.: ตัวเลขแกนบนการ์ดโหมดมืด contrast 3.1 (ต้อง ≥ 4.5) · เส้นตาราง rgba ขาว 4% แทบไม่เห็น

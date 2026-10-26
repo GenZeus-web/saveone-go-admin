@@ -408,6 +408,65 @@ function umMeterDetail(i){
   if(pts.length||bp.length) makeChart('cUmFull',umFullCfg(m,i));   // ไม่เข้า UT.chartIds — แท็บวาดใหม่ (รีเฟรช 5 นาที) ต้องไม่ลบกราฟในกล่อง
 }
 
+// ── 📷 ตรวจรูปมิเตอร์รายวัน (UTIL-50 · เจ้าของ 26 ต.ค.: อยากตรวจ แต่ต้องไล่เปิดรูปใน Drive เอง) ──
+//   วันละหน้า: ทุกมิเตอร์เรียงแบบแอปจด · รูป + เลขที่พิมพ์ + เลขครั้งก่อน + คนจด/เวลา → ไล่ดูเทียบได้ในจอเดียว
+//   photo_id มากับ data/{BR}_UTIL อยู่แล้ว (แอปกรอกใส่ตั้งแต่ UTIL-0x) · ไม่ต้องแก้แอปกรอก/กฎ
+//   รูปอยู่ Drive เจ้าของ ไม่แชร์โฟลเดอร์ (แบบ ก.) → <img> จาก drive.google.com ขึ้นได้เมื่อเบราว์เซอร์ล็อกอิน Google บัญชีที่มีสิทธิ์
+//   และส่งคุกกี้ข้ามเว็บ (Chrome คอม) · Safari/iPhone บล็อกคุกกี้ข้ามเว็บ → รูปไม่ขึ้น เหลือปุ่มเปิดใน Drive (เปิดเป็นหน้าหลัก ได้)
+//   เปิดให้ admin เท่านั้น — คนอื่นไม่มีสิทธิ์โฟลเดอร์ กดแล้วเจอหน้าขอสิทธิ์ · แชร์โฟลเดอร์ให้ ผจก. เมื่อไหร่ แก้เงื่อนไขนี้
+function canSeeUtilPhoto(){ return window.userRole==='admin'; }
+const UP_ID=/^[\w-]{10,}$/;   // ID ไฟล์ Drive · กันค่าแปลกเข้า URL
+const upT=r=>r.ts?Date.parse(r.ts):NaN;
+const upToday=()=>{ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+// เลขตามที่พิมพ์ (ทศนิยมเท่าที่จดมา)
+function upNum(v){ const s=String(v).trim(), dp=(s.split('.')[1]||'').length; return utFmt(Number(s),dp); }
+function upLive(c){ return c.readings.filter(r=>r.status!=='void'&&r.reading!==''&&Number.isFinite(+r.reading)&&/^\d{4}-\d{2}-\d{2}$/.test(r.read_date)); }
+function upDates(c){ return [...new Set(upLive(c).map(r=>r.read_date))].sort(); }
+function upCard(m,r,prev){
+  const id=UP_ID.test(r.photo_id||'')?r.photo_id:'', t=upT(r), unit=utU(m);
+  const when=Number.isFinite(t)?new Date(t).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}):'ใบจดกระดาษ';
+  const img=id?`<a class="up-img" href="https://drive.google.com/file/d/${id}/view" target="_blank" rel="noopener">
+      <img src="https://drive.google.com/thumbnail?id=${id}&sz=w1000" loading="lazy" referrerpolicy="no-referrer" alt="รูปหน้ามิเตอร์ ${umName(m)}" onerror="this.parentNode.classList.add('err')">
+      <span class="up-fb">รูปไม่ขึ้น · แตะเปิดใน Drive ↗</span></a>`
+    :`<div class="up-img none"><span class="up-fb">ไม่มีรูป</span></div>`;
+  let d='';
+  if(utilTrue(r.meter_reset)) d='เปลี่ยนมิเตอร์ · เลขใหม่เป็นจุดตั้งต้น';
+  else if(prev){ const x=+r.reading-+prev.reading, pt=upT(prev);
+    d=`ครั้งก่อน ${upNum(prev.reading)} (${utDM(prev.read_date)}${Number.isFinite(pt)?' '+new Date(pt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}):''})
+      · <b${x<0?' class="bad"':''}>${x<0?'⚠ ถอยหลัง ':'+'}${utFmt(Math.abs(x),2).replace(/\.?0+$/,'')}</b>`; }
+  else d='ครั้งแรกของมิเตอร์นี้';
+  return `<div class="up-card">${img}
+    <div class="up-h"><b>${umName(m)}</b><span>${when} · ${utEsc(r.recorder||'—')}</span></div>
+    <div class="up-num">${upNum(r.reading)}<small>${unit} · เลขที่จด</small></div>
+    <div class="up-sub">${d}</div>${r.note?`<div class="up-sub">📝 ${utEsc(r.note)}</div>`:''}</div>`;
+}
+function utPhotoOpen(iso){
+  const c=UT.cache[UT.br]; if(!c||c.err||!c.readings) return;
+  const dates=upDates(c), today=upToday();
+  if(!iso) iso=dates.includes(today)?today:(dates[dates.length-1]||today);
+  const live=upLive(c), byM={};
+  live.forEach(r=>{ (byM[r.meter_id]=byM[r.meter_id]||[]).push(r); });
+  // เรียงตามเวลาจด · ใบจดกระดาษ (ไม่มี ts) อยู่ต้นวันของมัน
+  Object.values(byM).forEach(rs=>rs.sort((a,b)=>a.read_date<b.read_date?-1:a.read_date>b.read_date?1:(upT(a)||0)-(upT(b)||0)));
+  // มิเตอร์ที่เปิดอยู่ทุกตัว (ไม่ได้จด = ช่องว่างให้เห็น) + ตัวที่ปิดแล้วแต่มีจดวันนั้น
+  const ms=c.meters.map((m,i)=>({m,i})).filter(({m})=>utilTrue(m.active)||(byM[m.meter_id]||[]).some(r=>r.read_date===iso))
+    .sort((a,b)=>((UM_TYPE_RANK[a.m.type]??9)-(UM_TYPE_RANK[b.m.type]??9))||a.i-b.i);
+  let got=0, pics=0;
+  const cards=ms.map(({m})=>{
+    const rs=byM[m.meter_id]||[], day=rs.filter(r=>r.read_date===iso);
+    if(!day.length) return `<div class="up-card miss"><div class="up-img none"><span class="up-fb">ไม่มีการจด</span></div>
+      <div class="up-h"><b>${umName(m)}</b></div></div>`;
+    got++;
+    return day.map(r=>{ if(UP_ID.test(r.photo_id||'')) pics++; return upCard(m,r,rs[rs.indexOf(r)-1]); }).join('');
+  }).join('');
+  const k=dates.indexOf(iso), prevD=k>0?dates[k-1]:k<0?dates.filter(d=>d<iso).pop():null, nextD=k>=0?dates[k+1]:dates.find(d=>d>iso);
+  const nav=(d,t)=>`<button class="mc-pill" ${d?`onclick="utPhotoOpen('${d}')"`:'disabled'} aria-label="${t}">${t==='วันก่อน'?'‹':'›'}</button>`;
+  umModal(`📷 ตรวจรูปมิเตอร์ · ${utEsc(BM_NAMES[UT.br]||UT.br)}`,
+    `<span class="up-nav">${nav(prevD,'วันก่อน')}<input type="date" value="${iso}" min="${dates[0]||iso}" max="${today}" onchange="if(this.value)utPhotoOpen(this.value)">${nav(nextD,'วันถัดไป')}</span>
+     จด ${got}/${ms.length} มิเตอร์ · มีรูป ${pics}`,
+    ms.length?`<div class="up-grid">${cards}</div>`:`<div class="ut-empty">${dates.length?`ไม่มีการจดวันที่ ${utDM(iso)}`:'สาขานี้ยังไม่มีการจดมิเตอร์'}</div>`,'up-full');
+}
+
 // ── จุดเชื่อมกับ utDraw(): การ์ด (บน) + ตารางความร้อน (ล่าง) ──
 function utMeterHtml(c){
   const heat=umHeatHtml(c);
