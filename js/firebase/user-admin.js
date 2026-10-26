@@ -59,16 +59,17 @@ window.closeUsersPanel = function(){
   if(m) m.style.display = 'none';
 };
 
-const PERM_KEYS = ['showRevenue','showElec','showExport','showPriceNote','showFreeday','showWhatIf','showCompare','showForecast','showRawData','showHeatmap','showBenchmark','showMap3D','showUtil','showUtilMoney'];
+const PERM_KEYS = ['showRevenue','showElec','showExport','showPriceNote','showFreeday','showWhatIf','showCompare','showForecast','showRawData','showHeatmap','showBenchmark','showUtil','showUtilMoney'];
+// MAP3D-OFF: เอา showMap3D ออก (ผัง 3D-Market-SR ไม่ทำต่อ) · ค่าเดิมในเอกสาร users ทิ้งไว้ได้ ไม่มีที่อ่านแล้ว
 // WI-01: ป้าย What If บอกด้วยว่ามันอยู่ในแท็บพยากรณ์ — คนตั้งสิทธิ์จะได้เห็นความสัมพันธ์
-const PERM_LABEL = {showRevenue:'รายรับ',showElec:'ค่าไฟ',showExport:'Export',showPriceNote:'หมายเหตุราคา',showFreeday:'วันฝน',showWhatIf:'What If (อยู่ในแท็บพยากรณ์)',showCompare:'เปรียบเทียบเดือน',showForecast:'พยากรณ์',showRawData:'ข้อมูลดิบ',showHeatmap:'ปฏิทินล็อก',showBenchmark:'Benchmark',showMap3D:'ผัง 3D',showUtil:'น้ำ-ไฟ',showUtilMoney:'น้ำ-ไฟ: ยอดเงินบิล (รวมแท็บเทียบสาขา)'};
+const PERM_LABEL = {showRevenue:'รายรับ',showElec:'ค่าไฟ',showExport:'Export',showPriceNote:'หมายเหตุราคา',showFreeday:'วันฝน',showWhatIf:'What If (อยู่ในแท็บพยากรณ์)',showCompare:'เปรียบเทียบเดือน',showForecast:'พยากรณ์',showRawData:'ข้อมูลดิบ',showHeatmap:'ปฏิทินล็อก',showBenchmark:'Benchmark',showUtil:'น้ำ-ไฟ',showUtilMoney:'น้ำ-ไฟ: ยอดเงินบิล (รวมแท็บเทียบสาขา)'};
 /* PERM-06 (v2.10.0): คีย์ที่ตั้งต้นเป็น "เปิด" ตอนสร้าง manager ใหม่
    + showFreeday  — ปลอดภัย ตัวเลขเงินในแท็บถูกซ่อนด้วย .col-rev อยู่แล้ว (FD-01) เห็นแค่จำนวนล็อก/วัน
    + showWhatIf   — คู่กับ showForecast ที่เปิดอยู่แล้ว (WI-01)
    − showRawData  — อันตรายกว่า: ให้ล็อกรายวันแยกออนไลน์/วอล์กอิน/โซนครบทุกวัน
                     ถึงซ่อนคอลัมน์เงิน แต่เอาไปคูณราคาเองก็ได้รายรับกลับมาเกือบเป๊ะ
                     ซ่อนผลลัพธ์แต่ไม่ซ่อนตัวตั้ง = ไม่ได้ซ่อนจริง · สอดคล้องกับ showPriceNote ที่ปิด default */
-const PERM_DEFAULT_ON = ['showFreeday','showWhatIf','showCompare','showForecast','showHeatmap','showBenchmark','showMap3D'];
+const PERM_DEFAULT_ON = ['showFreeday','showWhatIf','showCompare','showForecast','showHeatmap','showBenchmark'];
 const ALL_BRANCHES = ['SS','BG','BN'];
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 

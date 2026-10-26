@@ -44,7 +44,6 @@ onAuthStateChanged(auth, async (user) => {
       showRawData: true,
       showHeatmap: true,
       showBenchmark: true,
-      showMap3D: true,
       // UTIL-03: น้ำ-ไฟ · ข้อมูลใหม่ ไม่มีใครเห็นมาก่อน → ตั้งต้น "ปิด" (=== true)
       //   showUtilMoney = สิทธิ์ย่อย ยอดเงินในบิล · มีผลเฉพาะเมื่อเปิด showUtil ด้วย · ด่านจริง = กฎ utilbill/
       showUtil: false,
@@ -73,7 +72,6 @@ onAuthStateChanged(auth, async (user) => {
             showRawData: true,
             showHeatmap: true,
             showBenchmark: true,
-            showMap3D: true,
             showUtil: true,
             showUtilMoney: true
           };
@@ -93,7 +91,6 @@ onAuthStateChanged(auth, async (user) => {
           perms.showRawData = d.showRawData !== false;
           perms.showHeatmap = d.showHeatmap !== false;
           perms.showBenchmark = d.showBenchmark !== false;
-          perms.showMap3D = d.showMap3D !== false;
           perms.showUtil = d.showUtil === true;
           perms.showUtilMoney = perms.showUtil && d.showUtilMoney === true;
         }
@@ -218,16 +215,6 @@ onAuthStateChanged(auth, async (user) => {
         setView('overview', firstTab);
       }
     } catch(e){ console.warn('PERM-04:', e); }
-
-    // PERM-05: ลิงก์ผัง 3D — คุมด้วย showMap3D ตัวเดียว
-    // v2.10.0 LAY-03: อ้างด้วย id แทน `[data-branch]` เพราะถอด data-branch ออกแล้ว
-    //   (ไม่งั้นลูป "ซ่อนสาขาที่ไม่มีสิทธิ์" ข้างบนจะซ่อนปุ่มนี้จาก manager BG/BN
-    //    ทั้งที่ผัง 3D เปิดให้ดูข้ามสาขาได้แล้ว)
-    // v2.10.4 LAY-04-link: คุมลิงก์ผัง 3D ทุกตัว (SS + BN พรีวิว) ด้วย showMap3D ตัวเดียว
-    //   ใช้ querySelectorAll เผื่อเพิ่มสาขาใหม่ในอนาคต ไม่ต้องกลับมาแก้ตรงนี้อีก
-    document.querySelectorAll('[id^="link-map3d"]').forEach(el => {
-      el.style.display = perms.showMap3D ? '' : 'none';
-    });
 
     // ซ่อนคอลัมน์รายรับ/ค่าไฟ ในตาราง (ข้อมูลดิบ ฯลฯ) ตามสิทธิ์
     document.body.classList.toggle('no-rev', !perms.showRevenue);
