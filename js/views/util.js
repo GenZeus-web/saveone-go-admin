@@ -173,7 +173,10 @@ function utToolbar(sub){
   const vals=sub==='cmp'?`<button class="mc-pill" onclick="toggleUtVals()" aria-pressed="${utVals()}">🔢 ${utVals()?'ซ่อนตัวเลข':'แสดงตัวเลข'}</button>`:'';
   // UTIL-50 ตรวจรูปมิเตอร์รายวัน (views/util-meter.js) · admin เท่านั้น
   const photo=canSeeUtilPhoto()?`<button class="mc-pill" onclick="utPhotoOpen()">📷 ตรวจรูป</button>`:'';
-  return `<div class="ut-subtabs"><div class="ut-subtabs-l" role="tablist">${tabs}</div>${vals||photo?`<div class="ut-subtabs-l">${vals}${photo}</div>`:''}</div>`;
+  // UTIL-51 ส่งออก CSV (แท็บมิเตอร์) · ประวัติการดึง = admin เท่านั้น
+  const csv=sub==='meter'?`<button class="mc-pill" onclick="utExportOpen()">⬇️ CSV</button>`
+    +(window.userRole==='admin'?`<button class="mc-pill" onclick="utExpLog()">🗂 ประวัติการดึง</button>`:''):'';
+  return `<div class="ut-subtabs"><div class="ut-subtabs-l" role="tablist">${tabs}</div>${vals||photo||csv?`<div class="ut-subtabs-l">${vals}${photo}${csv}</div>`:''}</div>`;
 }
 // สีแกน/เส้นตาราง/ป้ายในกราฟน้ำ-ไฟ ตามธีมที่ใช้อยู่ (night.css) — chartClr() ยังเป็นสีธีมเดิม
 //   วัดจริง 14 ต.ค.: ตัวเลขแกนบนการ์ดโหมดมืด contrast 3.1 (ต้อง ≥ 4.5) · เส้นตาราง rgba ขาว 4% แทบไม่เห็น
@@ -424,6 +427,76 @@ function utPrep(m,c,S,now){
   m._anoms=res.anomalies.filter(a=>!days.length||a.t>=Date.parse(days[0].date)).slice(-3).map(a=>
     a.kind==='backward'?`เลขถอยหลัง ${utFmt(a.from)} → ${utFmt(a.to)} (${utWhen(a.t)}) · ไม่นับแถวนี้`
                        :`เปลี่ยนมิเตอร์ (${utWhen(a.t)}) · เลขใหม่เป็นจุดตั้งต้น`);
+}
+
+// ── UTIL-51 ส่งออก CSV ใช้ต่อวันรายมิเตอร์ (แท็บ 📟) ──
+//   กล่องเลือก: ช่วงวันที่ (ตั้งต้น = ช่วงเวลาเมนูข้าง) · มิเตอร์ (ตั้งต้น = ทุกตัวตามลำดับการ์ด) · ดึงให้ใคร/ใช้ทำอะไร
+//   1 แถว = 1 มิเตอร์ × 1 วัน · ตัวเลขชุดเดียวกับกราฟ (m._res.days ไม่ตัดช่วง) · ไม่มีเงิน → ทุกคนที่เห็นแท็บมิเตอร์ดึงได้
+//   ทุกครั้งที่ดึงเขียน exportLog ก่อน · เขียนไม่ได้ = ไม่ปล่อยไฟล์ (ดึงต้องมีประวัติ) · admin ดูประวัติท้ายกล่อง
+function utExpMeters(){
+  const br=UT.br||activeBranch, c=UT.cache[br];
+  if(!c||c.err||!c.meters?.length) return [];
+  const S=utilSettings(utSet(),br), now=Date.now();
+  return umOrder(c).map(({m})=>{ if(!m._res) utPrep(m,c,S,now); return m; }).filter(m=>m._res.days.length);
+}
+function utExportOpen(){
+  const br=UT.br||activeBranch, list=utExpMeters();
+  if(!list.length){ umModal('⬇️ ส่งออก CSV',utEsc(BM_NAMES[br]||br),'<div class="ut-empty">สาขานี้ยังไม่มีการจดมิเตอร์</div>'); return; }
+  const all=list.flatMap(m=>m._res.days.map(p=>p.date)).sort(), lo=all[0], hi=all[all.length-1];
+  const cut=list.flatMap(m=>m._days.map(p=>p.date)).sort();   // ช่วงเวลาเมนูข้าง
+  const from=cut[0]||lo, to=cut[cut.length-1]||hi;
+  const box=list.map((m,k)=>`<label class="ux-m"><input type="checkbox" data-k="${k}" checked> ${umName(m)}</label>`).join('');
+  umModal(`⬇️ ส่งออก CSV · ${utEsc(BM_NAMES[br]||br)}`,`ใช้ต่อวันรายมิเตอร์ · มีข้อมูล ${utDM(lo)}/${+lo.slice(0,4)+543} – ${utDM(hi)}/${+hi.slice(0,4)+543}`,
+    `<div class="ux-form">
+      <div class="ux-row"><b>ช่วงวันที่</b>
+        <input type="date" id="uxFrom" value="${from}" min="${lo}" max="${hi}"> ถึง <input type="date" id="uxTo" value="${to}" min="${lo}" max="${hi}"></div>
+      <div class="ux-row"><b>มิเตอร์</b> <button type="button" class="mc-pill" onclick="utExpAll(true)">เลือกทั้งหมด</button><button type="button" class="mc-pill" onclick="utExpAll(false)">ไม่เลือก</button></div>
+      <div class="ux-ms">${box}</div>
+      <div class="ux-row"><b>ดึงให้ใคร / ใช้ทำอะไร</b></div>
+      <input type="text" id="uxNote" maxlength="200" placeholder="ไม่บังคับ" class="ux-note">
+      <div class="ux-row"><button type="button" class="mc-pill sel" id="uxGo" onclick="utExportRun()">⬇️ ดาวน์โหลด</button><span id="uxMsg" class="ux-msg"></span></div>
+    </div>`);
+}
+function utExpAll(on){ document.querySelectorAll('.ux-m input').forEach(x=>{ x.checked=on; }); }
+async function utExportRun(){
+  const br=UT.br||activeBranch, list=utExpMeters(), msg=document.getElementById('uxMsg'), go=document.getElementById('uxGo');
+  let from=document.getElementById('uxFrom').value, to=document.getElementById('uxTo').value;
+  if(from&&to&&from>to) [from,to]=[to,from];
+  const pick=[...document.querySelectorAll('.ux-m input:checked')].map(x=>list[+x.dataset.k]).filter(Boolean);
+  const say=t=>{ msg.textContent=t; };
+  if(!from||!to) return say('เลือกวันที่ให้ครบ');
+  if(!pick.length) return say('เลือกมิเตอร์อย่างน้อย 1 ตัว');
+  const n2=v=>v==null||!Number.isFinite(v)?'':Math.round(v*100)/100;
+  const header=['วันที่','วัน','สาขา','รหัสมิเตอร์','ชนิด','จุด','ใช้ต่อวัน','หน่วย','ประมาณ','ค่ากลาง','สถานะ'];
+  const rows=[];
+  pick.forEach(m=>m._res.days.filter(p=>p.date>=from&&p.date<=to).forEach(p=>{
+    const d=new Date(p.date+'T00:00:00');
+    rows.push([fmtD(d),DAYS[d.getDay()],brCode(br),m.meter_id,(UT_TYPE[m.type]||m.type).replace(/^\S+\s/,''),m.location||'',
+      n2(p.units),utU(m),p.est||p.fill?'≈':'',n2(p.base),(UT_LEVEL[p.level]||UT_LEVEL.nodata).txt]);
+  }));
+  if(!rows.length) return say('ช่วงนี้ไม่มีข้อมูล');
+  const note=document.getElementById('uxNote').value.trim();
+  go.disabled=true; say('กำลังบันทึกประวัติ…');
+  try{ await window.logUtilExport({branch:brCode(br),from,to,meters:pick.map(m=>m.meter_id),rows:rows.length,note}); }
+  catch(e){ go.disabled=false; console.error('UTIL-51 บันทึกประวัติไม่ได้:',e); return say('บันทึกประวัติไม่ได้ · ยังไม่ได้ดาวน์โหลด ('+(e.code||e.message||e)+')'); }
+  const csv='﻿'+[header,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  const a=document.createElement('a');
+  a.href=url; a.download=`SaveOneGo_น้ำไฟ_${brCode(br)}_${from}_${to}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  go.disabled=false; say(`ดาวน์โหลดแล้ว ${utFmt(rows.length)} แถว`);
+}
+// ประวัติการดึง — admin เท่านั้น (ปุ่มแยกในแถบบน · คนอื่นไม่เห็นปุ่ม · กฎ exportLog อ่านได้แค่ admin)
+async function utExpLog(){
+  if(window.userRole!=='admin') return;
+  umModal('🗂 ประวัติการดึง CSV','30 ครั้งล่าสุด · ทุกสาขา','<div id="uxLog" class="ux-log">กำลังโหลด…</div>');
+  const el=document.getElementById('uxLog');
+  try{
+    const xs=await window.loadUtilExportLog(30);
+    el.innerHTML=xs.length?`<table class="ux-tbl"><tr><th>เมื่อ</th><th>ใคร</th><th>สาขา · ช่วง</th><th>มิเตอร์</th><th>แถว</th><th>ให้ใคร / ใช้ทำอะไร</th></tr>${xs.map(x=>
+      `<tr><td>${x.at?utWhen(x.at):'—'}</td><td>${utEsc(x.by)}<small>${utEsc(x.device)}</small></td><td>${utEsc(x.branch)} · ${utEsc(x.from&&utDM(x.from))}–${utEsc(x.to&&utDM(x.to))}</td>`
+      +`<td>${utEsc((x.meters||[]).join(', '))}</td><td>${utFmt(x.rows)}</td><td>${utEsc(x.note||'—')}</td></tr>`).join('')}</table>`:'ยังไม่มีประวัติ';
+  }catch(e){ el.textContent='โหลดประวัติไม่ได้ ('+(e.code||e.message||e)+')'; }
 }
 
 // ── ชื่อเดือนไทย (แท็บเทียบสาขา + มิเตอร์) ──

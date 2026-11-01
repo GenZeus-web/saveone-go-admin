@@ -15,7 +15,7 @@
 
 import { auth, db } from "./init.js";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { doc, getDoc, addDoc, collection, query, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { loadSettings } from "./settings.js";
 
 // ---- ORIGINAL (index.html) ----
@@ -338,6 +338,24 @@ window.fetchUtilFromFirestore = async function(branch, withBills){
     // UTIL-23: หน่วยในบิล ไม่มียอดเงิน (อยู่ใน data/ ใช้กฎสาขาเดิม) · Apps Script เก่ายังไม่ส่ง = ค่าว่าง
     billUnitsCsv: u && typeof u.billUnitsCsv === 'string' ? u.billUnitsCsv : ''
   };
+};
+
+// UTIL-51: ประวัติการส่งออก CSV น้ำ-ไฟ · exportLog/{id} เพิ่มได้อย่างเดียว · อ่านได้เฉพาะ admin (กฎใน docs/firestore-rules/)
+//   by ต้องเป็นอีเมลคนที่ล็อกอิน (กฎตรวจ) · เขียนไม่ได้ = throw → views/util.js ไม่ปล่อยไฟล์ (ดึงต้องมีประวัติ)
+//   device เขียนซ้ำที่นี่ ไม่ import จาก settings.js (import ภายใน js/firebase/ ไม่มี ?v= → ไฟล์เก่าในแคชไม่มีชื่อใหม่ = auth.js ล้มทั้งไฟล์)
+window.logUtilExport = async function(x){
+  const ua = navigator.userAgent || '';
+  const device = (/iPhone|iPad/.test(ua)?'iOS' : /Android/.test(ua)?'Android' : /Windows/.test(ua)?'Windows' : /Mac OS X/.test(ua)?'Mac' : 'อื่นๆ')
+    + ' · ' + (/Edg\//.test(ua)?'Edge' : /Chrome\//.test(ua)?'Chrome' : /Safari\//.test(ua)?'Safari' : /Firefox\//.test(ua)?'Firefox' : 'อื่นๆ');
+  await addDoc(collection(db, 'exportLog'), {
+    at: serverTimestamp(), by: auth.currentUser?.email || '', device, kind: 'util',
+    branch: String(x.branch), from: String(x.from), to: String(x.to),
+    meters: (x.meters || []).map(String), rows: Number(x.rows) || 0, note: String(x.note || '').slice(0, 200)
+  });
+};
+window.loadUtilExportLog = async function(n){
+  const snap = await getDocs(query(collection(db, 'exportLog'), orderBy('at', 'desc'), limit(n || 30)));
+  return snap.docs.map(d => { const x = d.data(); return {...x, at: x.at?.toDate ? x.at.toDate().getTime() : null}; });
 };
 
 // ดึง ID token ของ user ปัจจุบัน (ไว้แนบไป Apps Script)
