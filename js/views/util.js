@@ -452,6 +452,9 @@ function utExportOpen(){
         <input type="date" id="uxFrom" value="${from}" min="${lo}" max="${hi}"> ถึง <input type="date" id="uxTo" value="${to}" min="${lo}" max="${hi}"></div>
       <div class="ux-row"><b>มิเตอร์</b> <button type="button" class="mc-pill" onclick="utExpAll(true)">เลือกทั้งหมด</button><button type="button" class="mc-pill" onclick="utExpAll(false)">ไม่เลือก</button></div>
       <div class="ux-ms">${box}</div>
+      <div class="ux-row"><b>เรียงตาม</b>
+        <label class="ux-m"><input type="radio" name="uxSort" value="date" checked> วันที่</label>
+        <label class="ux-m"><input type="radio" name="uxSort" value="pt"> จุด</label></div>
       <div class="ux-row"><b>ดึงให้ใคร / ใช้ทำอะไร</b></div>
       <input type="text" id="uxNote" maxlength="200" placeholder="ไม่บังคับ" class="ux-note">
       <div class="ux-row"><button type="button" class="mc-pill sel" id="uxGo" onclick="utExportRun()">⬇️ ดาวน์โหลด</button><span id="uxMsg" class="ux-msg"></span></div>
@@ -468,12 +471,16 @@ async function utExportRun(){
   if(!pick.length) return say('เลือกมิเตอร์อย่างน้อย 1 ตัว');
   const n2=v=>v==null||!Number.isFinite(v)?'':Math.round(v*100)/100;
   const header=['วันที่','วัน','สาขา','รหัสมิเตอร์','ชนิด','จุด','ใช้ต่อวัน','หน่วย','ประมาณ','ค่ากลาง','สถานะ'];
-  const rows=[];
-  pick.forEach(m=>m._res.days.filter(p=>p.date>=from&&p.date<=to).forEach(p=>{
+  // เรียง (เจ้าของเลือกในกล่อง): วันที่ → ลำดับการ์ด · หรือ จุด (ลำดับการ์ด) → วันที่ · k = ลำดับใน pick (น้ำก่อนไฟ)
+  const recs=[], byPt=document.querySelector('input[name=uxSort]:checked')?.value==='pt';
+  pick.forEach((m,k)=>m._res.days.filter(p=>p.date>=from&&p.date<=to).forEach(p=>recs.push({m,k,p})));
+  const dc=(a,b)=>a.p.date<b.p.date?-1:a.p.date>b.p.date?1:0;
+  recs.sort((a,b)=>byPt?(a.k-b.k)||dc(a,b):dc(a,b)||(a.k-b.k));
+  const rows=recs.map(({m,p})=>{
     const d=new Date(p.date+'T00:00:00');
-    rows.push([fmtD(d),DAYS[d.getDay()],brCode(br),m.meter_id,(UT_TYPE[m.type]||m.type).replace(/^\S+\s/,''),m.location||'',
-      n2(p.units),utU(m),p.est||p.fill?'≈':'',n2(p.base),(UT_LEVEL[p.level]||UT_LEVEL.nodata).txt]);
-  }));
+    return [fmtD(d),DAYS[d.getDay()],brCode(br),m.meter_id,(UT_TYPE[m.type]||m.type).replace(/^\S+\s/,''),m.location||'',
+      n2(p.units),utU(m),p.est||p.fill?'≈':'',n2(p.base),(UT_LEVEL[p.level]||UT_LEVEL.nodata).txt];
+  });
   if(!rows.length) return say('ช่วงนี้ไม่มีข้อมูล');
   const note=document.getElementById('uxNote').value.trim();
   go.disabled=true; say('กำลังบันทึกประวัติ…');
