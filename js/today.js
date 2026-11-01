@@ -86,7 +86,7 @@ function _tgMax(br){
   ['st','car'].forEach(k=>{ let best=null; (_todayRows(br)||[]).forEach(r=>{ const v=_tgZoneLock[k](r); if(v>0&&(!best||v>best.v)) best={v,date:r.date}; }); o[k]=best; });
   return o;
 }
-let _tgPicks=[], _tgNote='';
+let _tgPicks=[];
 
 function _tgZones(br,r){
   if(!r) return null;
@@ -123,7 +123,7 @@ function _tgHtml(){
       h+= c ? `<div class="tg-cell tg-${p.br}"${go}>${_tgCell(c,p.br)}</div>` : `<div class="tg-cell tg-${p.br} tg-na">—</div>`;
     });
   });
-  return h+`</div>${_tgNote}<div class="tg-foot">แตะช่องเพื่อดูรายละเอียด</div></div>`;
+  return h+`</div><div class="tg-foot">แตะช่องเพื่อดูรายละเอียด</div></div>`;
 }
 
 // รายงานเดิม (TODAY-01) ของสาขาเดียว — เปิดจากการแตะช่อง/แถบสาขา
@@ -172,19 +172,19 @@ function openTodayModal(dateKey){
     const keys=brs.flatMap(br=>(_todayRows(br)||[]).filter(_hasSales).map(r=>getDateKey(r.date))).sort();
     din.min=keys[0]||''; din.max=todayKey; din.value=key||todayKey;
   }
+  // ยังไม่มียอดวันนี้: บอกเวลาที่บรรทัดหัว (เดิมเป็นกล่องใต้กราฟ → กินความสูงจอ กราฟหดแถวละ ~24px · เจ้าของเห็น 31 → 1 พ.ย.)
   document.getElementById('todayTitle').textContent=key?'ยอดจองย้อนหลัง':allToday?'ยอดจองวันนี้':'ยอดจองล่าสุด';
   document.getElementById('todaySub').innerHTML=key
     ? `วัน${TODAY_DAY_FULL[day.getDay()]} ${fmtD(day)} <button class="tdy-live done tdy-today" onclick="openTodayModal()">↺ วันนี้</button>`
     : allToday
     ? `วัน${TODAY_DAY_FULL[now.getDay()]} `+(now.getHours()<22?'<span class="tdy-live">ยอดระหว่างวัน · ปิดยอด 22:00</span>':'<span class="tdy-live done">ปิดยอดแล้ว</span>')
-    : `วันนี้ ${DAYS[now.getDay()]} ${fmtD(now)} · ยอดวันนี้ยังไม่เข้า`;
+    : `ยอดวันนี้ยังไม่เข้า <span class="tdy-live done">ดูได้ 15:00–16:00</span>`;   // วันที่วันนี้อยู่ที่ป้ายปฏิทินแล้ว · สั้นให้มือถือ 1 บรรทัด
 
   let h='';
   if(!picks.length){
     h='<div class="tdy-old"><div class="tdy-note">บัญชีนี้ไม่มีสาขาที่เปิดอยู่ (SG/SB)</div></div>';
   }else{
     _tgPicks=picks;
-    _tgNote=(allToday||key)?'':'<div class="tdy-note">🕒 ยอดวันนี้ยังไม่เข้าระบบ — กลับมาดูใหม่ช่วง <b>15:00–16:00</b></div>';
     h=_tgHtml();   // TODAY-02: เปิดมาเป็นกราฟเต็มจอ · รายงานเดิมอยู่ใน _tdyDetail()
   }
   document.getElementById('todayRows').innerHTML=h;
