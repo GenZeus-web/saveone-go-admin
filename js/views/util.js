@@ -470,7 +470,15 @@ async function utExportRun(){
   if(!from||!to) return say('เลือกวันที่ให้ครบ');
   if(!pick.length) return say('เลือกมิเตอร์อย่างน้อย 1 ตัว');
   const n2=v=>v==null||!Number.isFinite(v)?'':Math.round(v*100)/100;
-  const header=['วันที่','วัน','สาขา','รหัสมิเตอร์','ชนิด','จุด','ใช้ต่อวัน','หน่วย','ประมาณ','ค่ากลาง','สถานะ'];
+  const header=['วันที่','วัน','สาขา','รหัสมิเตอร์','ชนิด','จุด','เลขหน้าปัด','เวลาจด','ใช้ต่อวัน','หน่วย','ประมาณ','ค่ากลาง','สถานะ'];
+  // เลขหน้าปัด + เวลาจด ของ read_date วันนั้น (เจ้าของขอ) · วันละหลายแถว = แถวหลังสุด · ไม่ได้จด / ใบจดกระดาษไม่มีเวลา = ว่าง
+  //   ไม่ใส่ "เลขวันถัดไป" ไว้แถวเดียวกัน: ยอดวัน D นับ 16:00 → 16:00 แต่จดจริง ~15:20 → ระบบแบ่งตามเวลา (UTIL-47)
+  //   จบ − เริ่ม ≠ ใช้ต่อวัน แทบทุกแถว (SG เมน 25/10: 9221 − 9212 = 9 · ใช้ต่อวัน 9.29) คนเปิดไฟล์จะเข้าใจว่าผิด
+  const rd={};
+  upLive(UT.cache[br]).forEach(r=>{ const k=r.meter_id+'@'+r.read_date, o=rd[k];
+    if(!o||(upT(r)||0)>=(upT(o)||0)) rd[k]=r; });
+  const dial=(id,iso)=>{ const r=rd[id+'@'+iso]; return r?String(r.reading).replace(/[,\s]/g,''):''; };
+  const dialT=(id,iso)=>{ const r=rd[id+'@'+iso]; return r&&r.ts?String(r.ts).slice(11,16):''; };
   // เรียง (เจ้าของเลือกในกล่อง): วันที่ → ลำดับการ์ด · หรือ จุด (ลำดับการ์ด) → วันที่ · k = ลำดับใน pick (น้ำก่อนไฟ)
   const recs=[], byPt=document.querySelector('input[name=uxSort]:checked')?.value==='pt';
   pick.forEach((m,k)=>m._res.days.filter(p=>p.date>=from&&p.date<=to).forEach(p=>recs.push({m,k,p})));
@@ -479,6 +487,7 @@ async function utExportRun(){
   const rows=recs.map(({m,p})=>{
     const d=new Date(p.date+'T00:00:00');
     return [fmtD(d),DAYS[d.getDay()],brCode(br),m.meter_id,(UT_TYPE[m.type]||m.type).replace(/^\S+\s/,''),m.location||'',
+      dial(m.meter_id,p.date),dialT(m.meter_id,p.date),
       n2(p.units),utU(m),p.est||p.fill?'≈':'',n2(p.base),(UT_LEVEL[p.level]||UT_LEVEL.nodata).txt];
   });
   if(!rows.length) return say('ช่วงนี้ไม่มีข้อมูล');
