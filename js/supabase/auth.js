@@ -17,6 +17,24 @@
 import { sb, sbErr, setCurrentUser, currentEmail, signOutHere } from "./init.js";
 import { loadSettings } from "./settings.js";
 
+// ---- ลิงก์เก่าบอกทาง (ARCH-02 วันสลับ) ----
+// หลัง merge เข้า main ลิงก์ github.io เสิร์ฟเว็บชุดเดียวกันนี้ → ขึ้นแถบบนสุดชี้ไปลิงก์ใหม่ (ยังใช้งานต่อได้ระหว่างเปิดป้าย ~1 สัปดาห์)
+//   ?movedtest = ดูแถบในเครื่อง (localhost) ก่อนขึ้นจริง
+const NEW_HOME = 'https://saveone-go-admin.anansit-gen-m.workers.dev/';
+if (location.hostname === 'genzeus-web.github.io' || new URLSearchParams(location.search).has('movedtest')) {
+  const bar = document.createElement('div');
+  bar.className = 'moved-bar';
+  bar.setAttribute('role', 'status');
+  const msg = document.createElement('span');
+  msg.textContent = '📢 แดชบอร์ดย้ายไปลิงก์ใหม่แล้ว · ใช้รหัสผ่านใหม่';
+  const go = document.createElement('a');
+  go.href = NEW_HOME;
+  go.textContent = 'ไปลิงก์ใหม่ →';
+  bar.append(msg, go);
+  document.body.prepend(bar);
+  document.body.style.paddingTop = bar.offsetHeight + 'px';
+}
+
 // แถวใน goadmin.profiles → รูปเดียวกับเอกสาร users/{uid} เดิม ({role, branches, bmBranches, showX…})
 //   โค้ดสิทธิ์ข้างล่างจึงไม่ต้องเปลี่ยน · perms เก็บเป็น jsonb ก้อนเดียว
 //   (user-admin.js มีตัวเดียวกัน — import ภายใน js/supabase/ ไม่มี ?v= จึงไม่แชร์ชื่อใหม่ข้ามไฟล์)
