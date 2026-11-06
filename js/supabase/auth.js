@@ -1,10 +1,11 @@
 // ============================================================
-// firebase/auth.js — เข้าสู่ระบบ / ออกจากระบบ / กระจายสิทธิ์ตาม role
+// supabase/auth.js — เข้าสู่ระบบ / ออกจากระบบ / กระจายสิทธิ์ตาม role (ย้ายจาก firebase/auth.js · ย้ายใหญ่ ขั้น 3)
 // ============================================================
 //
-// รับผิดชอบ: onAuthStateChanged (สลับหน้า login <-> dashboard),
-//   อ่าน role + branches + perms จาก Firestore แล้วซ่อน/แสดง UI ตามสิทธิ์,
+// รับผิดชอบ: onAuthStateChange (สลับหน้า login <-> dashboard),
+//   อ่าน role + branches + perms จาก goadmin.profiles แล้วซ่อน/แสดง UI ตามสิทธิ์,
 //   doLogin / doLogout / getIdToken / fetchBundleFromFirestore
+//   (ชื่อ fetch*FromFirestore คงไว้ — js/data-load.js · views/util.js เรียกชื่อนี้ ไม่ต้องแตะ classic script)
 //
 // ผูกกับหน้าเว็บผ่าน window.* เพราะ index.html ยังเรียกด้วย onclick="..."
 //   (โค้ดใน ES module ไม่ได้อยู่ใน global scope จึงต้องแปะไว้ที่ window เอง)
@@ -13,14 +14,48 @@
 //   และหลังไฟล์ js/*.js (classic script ท้าย body) ทั้งหมดแล้ว
 //   จึงเรียก showSplash() / loadAll() / setBranch() ที่นิยามในไฟล์เหล่านั้นได้
 
-import { auth, db } from "./init.js";
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { doc, getDoc, addDoc, collection, query, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { sb, sbErr, setCurrentUser, currentEmail, signOutHere } from "./init.js";
 import { loadSettings } from "./settings.js";
 
-// ---- ORIGINAL (index.html) ----
-// เช็ค login state
-onAuthStateChanged(auth, async (user) => {
+// ---- ลิงก์เก่าบอกทาง (ARCH-02 วันสลับ) ----
+// หลัง merge เข้า main ลิงก์ github.io เสิร์ฟเว็บชุดเดียวกันนี้ → ขึ้นแถบบนสุดชี้ไปลิงก์ใหม่ (ยังใช้งานต่อได้ระหว่างเปิดป้าย ~1 สัปดาห์)
+//   ?movedtest = ดูแถบในเครื่อง (localhost) ก่อนขึ้นจริง
+const NEW_HOME = 'https://saveone-go-admin.anansit-gen-m.workers.dev/';
+if (location.hostname === 'genzeus-web.github.io' || new URLSearchParams(location.search).has('movedtest')) {
+  const bar = document.createElement('div');
+  bar.className = 'moved-bar';
+  bar.setAttribute('role', 'status');
+  const msg = document.createElement('span');
+  msg.textContent = '📢 แดชบอร์ดย้ายไปลิงก์ใหม่แล้ว · ใช้รหัสผ่านใหม่';
+  const go = document.createElement('a');
+  go.href = NEW_HOME;
+  go.textContent = 'ไปลิงก์ใหม่ →';
+  bar.append(msg, go);
+  document.body.prepend(bar);
+  document.body.style.paddingTop = bar.offsetHeight + 'px';
+}
+
+// แถวใน goadmin.profiles → รูปเดียวกับเอกสาร users/{uid} เดิม ({role, branches, bmBranches, showX…})
+//   โค้ดสิทธิ์ข้างล่างจึงไม่ต้องเปลี่ยน · perms เก็บเป็น jsonb ก้อนเดียว
+//   (user-admin.js มีตัวเดียวกัน — import ภายใน js/supabase/ ไม่มี ?v= จึงไม่แชร์ชื่อใหม่ข้ามไฟล์)
+const profileDoc = (r) => ({ ...(r.perms || {}), uid: r.user_id, email: r.email, role: r.role,
+  branches: r.branches, bmBranches: r.bm_branches, active: r.active });
+
+// ---- สถานะล็อกอิน ----
+// Supabase ยิงเหตุการณ์บ่อยกว่า Firebase (INITIAL_SESSION · SIGNED_IN ตอนสลับแท็บ/ใส่รหัสยืนยันราคา · TOKEN_REFRESHED)
+//   → ทำงานจริงเฉพาะตอน "คนเปลี่ยน" (uid ใหม่ / ออกจากระบบ) · คนเดิม = แค่อัปเดตข้อมูลผู้ใช้ในตัวแปร
+//   ห้าม await คำสั่ง Supabase ในตัวรับเหตุการณ์ตรงๆ (ค้างตาย — คู่มือ supabase-js) → setTimeout ออกไปก่อน
+let shownUid;   // undefined = ยังไม่เคยตัดสิน · null = หน้า login
+sb.auth.onAuthStateChange((event, session) => {
+  const user = session ? session.user : null;
+  setCurrentUser(user);
+  const uid = user ? user.id : null;
+  if (uid === shownUid) return;
+  shownUid = uid;
+  setTimeout(() => onUser(user), 0);
+});
+
+async function onUser(user) {
   if (user) {
     // UI-3D: เพิ่งกดเข้าสู่ระบบ → เริ่มพุ่งทันที คู่ขนานกับการอ่านสิทธิ์ด้านล่าง (ไม่ให้หน้าจอนิ่งค้างระหว่างรอ Firestore)
     if (window.__loginZoom && typeof window.beginLoginWarp === 'function') window.beginLoginWarp();
@@ -51,9 +86,11 @@ onAuthStateChanged(auth, async (user) => {
     };
 
     try {
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (userDoc.exists()) {
-        const d = userDoc.data();
+      const { data: row, error } = await sb.from('profiles').select('*').eq('user_id', user.id).maybeSingle();
+      if (error) throw sbErr(error);
+      // ปิดบัญชีไว้ (active = false) = เหมือนไม่มีโปรไฟล์ · กติกาสิทธิ์ก็ไม่ให้อ่านข้อมูลอยู่แล้ว
+      if (row && row.active) {
+        const d = profileDoc(row);
         role = d.role || 'manager';
         branches = d.branches || ['SS'];
         // BM-04: อ่าน field ใหม่ — ไม่มี/ผิดชนิด = ว่าง (ไม่ใช่ ['SS'] แบบ branches)
@@ -95,12 +132,12 @@ onAuthStateChanged(auth, async (user) => {
           perms.showUtilMoney = perms.showUtil && d.showUtilMoney === true;
         }
       } else {
-        // ERR-02: ล็อกอินได้แต่ไม่มีเอกสาร users/{uid} (สร้างบัญชีนอกหน้าจัดการผู้ใช้ / ถูกลบโปรไฟล์)
+        // ERR-02: ล็อกอินได้แต่ไม่มีโปรไฟล์แดชบอร์ด (เช่น พนักงานสต็อก — บัญชีชุดเดียวกัน · ถูกลบโปรไฟล์ / ปิดบัญชี)
         //   เดิมได้ค่าตั้งต้น SS แล้วอ่านข้อมูลไม่ได้ (กฎต้อง hasProfile) → แดชบอร์ดว่าง · ตอนนี้ปฏิบัติเหมือนไม่มีสิทธิ์
         throw Object.assign(new Error('no user profile'), { code: 'no-profile' });
       }
     } catch(e) {
-      console.error('Firestore error:', e);
+      console.error('profile error:', e);
       // ERR-01: อ่านโปรไฟล์ไม่ได้ = ไม่เปิดแดชบอร์ด
       //   เดิมเปิดต่อด้วยค่าตั้งต้น (branches=['SS']) → ทุกสาขา 0/0 · admin ก็ได้แค่ SS
       //   ผู้ใช้แยกไม่ออกว่า "ไม่มีข้อมูล" หรือ "เน็ตหลุด" (เจอจริง 25 ก.ย. 20:10 · client is offline)
@@ -232,16 +269,16 @@ onAuthStateChanged(auth, async (user) => {
     document.getElementById('mainHeader').style.display = 'none';
     document.getElementById('mainLayout').style.display = 'none';
   }
-});
+}
 
 // ERR-01: ค้างที่หน้า login พร้อมบอกสาเหตุ
 //   ไม่มีสิทธิ์อ่านโปรไฟล์ / ไม่มีโปรไฟล์ (ERR-02) = ออกจากระบบ ให้ติดต่อ admin (ลองซ้ำก็ไม่ผ่าน)
 //   อย่างอื่น (เน็ตหลุด/Firestore ล่ม) = ยังล็อกอินค้างไว้ ปุ่มกลายเป็น "ลองใหม่" → โหลดหน้าใหม่
-//   (กดเข้าสู่ระบบซ้ำด้วย user เดิมไม่ได้ผล — onAuthStateChanged ไม่ยิงซ้ำถ้า uid ไม่เปลี่ยน)
+//   (กดเข้าสู่ระบบซ้ำด้วย user เดิมไม่ได้ผล — ตัวรับสถานะข้างบนไม่ทำงานซ้ำถ้า uid ไม่เปลี่ยน)
 async function showProfileError(e) {
   if (typeof window.abortLoginWarp === 'function') window.abortLoginWarp();
   const denied = e && (e.code === 'permission-denied' || e.code === 'no-profile');   // ERR-02
-  if (denied) { try { await signOut(auth); } catch(_) {} }
+  if (denied) { try { await signOutHere(); } catch(_) {} }
   document.getElementById('loginPage').style.display = 'flex';
   document.getElementById('mainHeader').style.display = 'none';
   document.getElementById('mainLayout').style.display = 'none';
@@ -274,19 +311,22 @@ window.doLogin = async function() {
   errEl.textContent = '';
   
   try {
-    await signInWithEmailAndPassword(auth, email, password);
+    const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
+    if (error) throw error;
   } catch (e) {
     window.__loginZoom = false;
     if (typeof window.loginCharge === 'function') window.loginCharge(false);
     btn.textContent = 'เข้าสู่ระบบ';
     btn.disabled = false;
-    errEl.textContent = 'Email หรือ Password ไม่ถูกต้อง';
+    errEl.textContent = (e && /fetch|network/i.test(e.message || ''))
+      ? 'เชื่อมต่อไม่ได้ — เช็คอินเทอร์เน็ตแล้วลองใหม่'
+      : 'Email หรือ Password ไม่ถูกต้อง';
   }
 };
 
-// Logout function
+// Logout function — ออกเฉพาะเครื่องนี้ (แอปสต็อกที่ใช้บัญชีเดียวกันในเครื่องอื่นไม่หลุด)
 window.doLogout = async function() {
-  await signOut(auth);
+  await signOutHere();
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -294,41 +334,41 @@ window.doLogout = async function() {
    Apps Script ดันข้อมูลขึ้น collection `data` เองทุก 10 นาที (time trigger)
    ผู้ใช้จึงไม่ต้องรอ Apps Script อีกเลย — อ่าน Firestore ตรงๆ ไม่ถึงวินาที
    ══════════════════════════════════════════════════════════════ */
+// ย้ายใหญ่ ขั้น 3: อ่านจาก goadmin.data_docs (Apps Script เขียนผ่าน Edge Function goadmin-ingest)
+//   payload = ช่องเดียวกับเอกสาร data/{id} เดิม (csv · rows · ts · branch · sheet)
+//   กติกาสิทธิ์กรองแถวเอง: ไม่มีสิทธิ์ = ไม่ได้แถวนั้นกลับมา (ไม่ใช่ error) → แยก "ยังไม่มี" กับ "ไม่มีสิทธิ์" ไม่ได้
 window.fetchBundleFromFirestore = async function(docIds){
   const out = {};   // { ss_st:'csv…', … }
   const meta = {};  // { ss_st:{ts,rows}, … }
   const errs = [];
-  const jobs = docIds.map(async id => {
-    const key = id.toLowerCase();   // SS_ST -> ss_st (ให้ตรงกับ key เดิมทั้งระบบ)
-    try{
-      const snap = await getDoc(doc(db, 'data', id));
-      if(!snap.exists()){ errs.push({url:id, msg:'ยังไม่มีข้อมูล (Apps Script ยังไม่เคยดันขึ้นมา)'}); return; }
-      const d = snap.data();
-      if(!d || typeof d.csv !== 'string' || !d.csv){ errs.push({url:id, msg:'เอกสารว่าง'}); return; }
+  try{
+    const { data, error } = await sb.from('data_docs').select('doc_id,payload').in('doc_id', docIds);
+    if(error) throw sbErr(error);
+    const got = new Map((data || []).map(r => [r.doc_id, r.payload]));
+    docIds.forEach(id => {
+      const key = id.toLowerCase();   // SS_ST -> ss_st (ให้ตรงกับ key เดิมทั้งระบบ)
+      const d = got.get(id);
+      if(!d){ errs.push({url:id, msg:'ยังไม่มีข้อมูล หรือไม่มีสิทธิ์อ่าน (เช็คสาขาของผู้ใช้)'}); return; }
+      if(typeof d.csv !== 'string' || !d.csv){ errs.push({url:id, msg:'เอกสารว่าง'}); return; }
       out[key]  = d.csv;
       meta[key] = { ts:Number(d.ts)||0, rows:Number(d.rows)||0 };
-    }catch(e){
-      errs.push({url:id, msg: e.code === 'permission-denied'
-        ? 'ไม่มีสิทธิ์อ่าน (เช็ค branches ของผู้ใช้ / Firestore Rules)'
-        : (e.message || String(e))});
-    }
-  });
-  await Promise.all(jobs);   // อ่าน Firestore ขนานได้เต็มที่ ไม่มีปัญหาแบบ Apps Script
-  return { csv:out, meta, errs };
+    });
+  }catch(e){
+    const msg = e.code === 'permission-denied' ? 'ไม่มีสิทธิ์อ่าน (เช็คสาขาของผู้ใช้)' : (e.message || String(e));
+    docIds.forEach(id => errs.push({url:id, msg}));
+  }
+  return { csv:out, meta, errs };   // ครั้งเดียวได้ครบทุกเอกสาร (เดิมอ่าน Firestore ทีละเอกสารขนานกัน)
 };
 
-// UTIL-03: น้ำ-ไฟ ของสาขาเดียว · data/{BR}_UTIL = เลขไมล์ + รายการมิเตอร์ (กฎ data/ เดิม)
-//   withBills = อ่าน utilbill/{BR} ด้วย (ยอดเงิน · กฎแยก ต้องมี showUtilMoney) · ไม่มีสิทธิ์อย่าส่ง true
-//   ไม่มีเอกสาร = ค่าว่าง ไม่ใช่ error (สาขาที่ยังไม่เคยจด)
+// UTIL-03: น้ำ-ไฟ ของสาขาเดียว · data_docs {BR}_UTIL = เลขไมล์ + รายการมิเตอร์ (กติกาสาขาที่ดูแล + showUtil)
+//   withBills = อ่าน util_bills ด้วย (ยอดเงิน · กติกาแยก ต้องมี showUtilMoney) · ไม่มีสิทธิ์อย่าส่ง true
+//   ไม่มีแถว = ค่าว่าง ไม่ใช่ error (สาขาที่ยังไม่เคยจด)
 window.fetchUtilFromFirestore = async function(branch, withBills){
-  const read = async (col, id) => {
-    const snap = await getDoc(doc(db, col, id));
-    return snap.exists() ? snap.data() : null;
-  };
-  // บิลอ่านไม่ได้ (กฎยังไม่วาง / ถูกถอดสิทธิ์) ต้องไม่ล้มทั้งแท็บ → เลขไมล์ยังขึ้น แค่บอกว่าบิลอ่านไม่ได้
+  const one = async (q) => { const { data, error } = await q.maybeSingle(); if(error) throw sbErr(error); return data ? data.payload : null; };
+  // บิลอ่านไม่ได้ (ถูกถอดสิทธิ์ / เน็ตสะดุด) ต้องไม่ล้มทั้งแท็บ → เลขไมล์ยังขึ้น แค่บอกว่าบิลอ่านไม่ได้
   let billsErr = '';
-  const [u, b] = await Promise.all([read('data', branch + '_UTIL'),
-    withBills ? read('utilbill', branch).catch(e => { billsErr = e.code || e.message || String(e); return null; }) : null]);
+  const [u, b] = await Promise.all([one(sb.from('data_docs').select('payload').eq('doc_id', branch + '_UTIL')),
+    withBills ? one(sb.from('util_bills').select('payload').eq('branch', branch)).catch(e => { billsErr = e.code || e.message || String(e); return null; }) : null]);
   return {
     billsErr,
     csv: u && typeof u.csv === 'string' ? u.csv : '',
@@ -340,29 +380,32 @@ window.fetchUtilFromFirestore = async function(branch, withBills){
   };
 };
 
-// UTIL-51: ประวัติการส่งออก CSV น้ำ-ไฟ · exportLog/{id} เพิ่มได้อย่างเดียว · อ่านได้เฉพาะ admin (กฎใน docs/firestore-rules/)
-//   by ต้องเป็นอีเมลคนที่ล็อกอิน (กฎตรวจ) · เขียนไม่ได้ = throw → views/util.js ไม่ปล่อยไฟล์ (ดึงต้องมีประวัติ)
-//   device เขียนซ้ำที่นี่ ไม่ import จาก settings.js (import ภายใน js/firebase/ ไม่มี ?v= → ไฟล์เก่าในแคชไม่มีชื่อใหม่ = auth.js ล้มทั้งไฟล์)
+// UTIL-51: ประวัติการส่งออก CSV น้ำ-ไฟ · goadmin.export_log เพิ่มได้อย่างเดียว · อ่านได้เฉพาะ admin
+//   by_email ต้องเป็นอีเมลคนที่ล็อกอิน (กติกาตรวจ) · เขียนไม่ได้ = throw → views/util.js ไม่ปล่อยไฟล์ (ดึงต้องมีประวัติ)
+//   device เขียนซ้ำที่นี่ ไม่ import จาก settings.js (import ภายใน js/supabase/ ไม่มี ?v= → ไฟล์เก่าในแคชไม่มีชื่อใหม่ = auth.js ล้มทั้งไฟล์)
 window.logUtilExport = async function(x){
   const ua = navigator.userAgent || '';
   const device = (/iPhone|iPad/.test(ua)?'iOS' : /Android/.test(ua)?'Android' : /Windows/.test(ua)?'Windows' : /Mac OS X/.test(ua)?'Mac' : 'อื่นๆ')
     + ' · ' + (/Edg\//.test(ua)?'Edge' : /Chrome\//.test(ua)?'Chrome' : /Safari\//.test(ua)?'Safari' : /Firefox\//.test(ua)?'Firefox' : 'อื่นๆ');
-  await addDoc(collection(db, 'exportLog'), {
-    at: serverTimestamp(), by: auth.currentUser?.email || '', device, kind: 'util',
-    branch: String(x.branch), from: String(x.from), to: String(x.to),
+  const { error } = await sb.from('export_log').insert({
+    by_email: currentEmail(), device, kind: 'util',
+    branch: String(x.branch), from_date: String(x.from), to_date: String(x.to),
     meters: (x.meters || []).map(String), rows: Number(x.rows) || 0, note: String(x.note || '').slice(0, 200)
   });
+  if(error) throw sbErr(error);
 };
 window.loadUtilExportLog = async function(n){
-  const snap = await getDocs(query(collection(db, 'exportLog'), orderBy('at', 'desc'), limit(n || 30)));
-  return snap.docs.map(d => { const x = d.data(); return {...x, at: x.at?.toDate ? x.at.toDate().getTime() : null}; });
+  const { data, error } = await sb.from('export_log').select('*').order('at', { ascending: false }).limit(n || 30);
+  if(error) throw sbErr(error);
+  // รูปเดียวกับเอกสาร exportLog เดิม (views/util.js อ่าน at · by · device · branch · from · to · meters · rows · note)
+  return (data || []).map(x => ({ at: x.at ? Date.parse(x.at) : null, by: x.by_email, device: x.device, kind: x.kind,
+    branch: x.branch, from: x.from_date, to: x.to_date, meters: x.meters || [], rows: x.rows, note: x.note }));
 };
 
-// ดึง ID token ของ user ปัจจุบัน (ไว้แนบไป Apps Script)
-// ไม่ force = คืน token ที่ cache ในเครื่องทันที (ไม่พึ่งเน็ต) Firebase จะ refresh ให้เองตอนใกล้/หมดอายุ
-// → token นิ่ง ~55 นาที ทำให้ cache ฝั่ง Apps Script hit ซ้ำได้ + กัน Unauthorized ตอนเน็ตสะดุด
-window.getIdToken = function() {
-  return auth.currentUser ? auth.currentUser.getIdToken() : Promise.resolve(null);
+// token ของผู้ใช้ปัจจุบัน (เดิมแนบไป Apps Script ยุคก่อน ARCH-01 · ตอนนี้ไม่มีที่เรียก คงไว้ให้ชื่อเดิมยังอยู่)
+window.getIdToken = async function() {
+  const { data } = await sb.auth.getSession();
+  return data.session ? data.session.access_token : null;
 };
 
 // Enter key login
