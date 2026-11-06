@@ -342,12 +342,19 @@ function pushToFirestore() {
       // สาขาอื่นมีแถว แต่สาขานี้ 0 = ลบจริง → เขียนว่างทับ (15 ต.ค. 69: ลบข้อมูลตัวอย่าง BG หมด แต่เว็บยังโชว์ของเก่า)
       if (rs.length || readings.length) {
         // UTIL-23: หน่วยในบิล (ไม่มียอดเงิน/หมายเหตุ) ไว้ใน data/ ด้วย → ผจก. ที่ไม่มี showUtilMoney เห็นบิลเทียบเดือน + ค่าเฉลี่ยบิลเป็นค่ากลางช่วงแรก
-        writeDoc_('data', br + '_UTIL', { csv: csv_(R_COLS, rs),
+        const d = { csv: csv_(R_COLS, rs),
           metersCsv: csv_(M_COLS, meters.filter(m => String(m.branch_code) === br)),
-          billUnitsCsv: csv_(BU_COLS, bsLive), rows: rs.length, branch: br });
+          billUnitsCsv: csv_(BU_COLS, bsLive), rows: rs.length, branch: br };
+        pushSupabase_('data', br + '_UTIL', Object.assign({ ts: Date.now() }, d));   // ย้ายใหญ่ ขั้น 2 · ไม่ throw
+        writeDoc_('data', br + '_UTIL', d);
         ok++;
       }
-      if (bs.length || bills.length) { writeDoc_('utilbill', br, { csv: csv_(B_COLS, bsLive), rows: bsLive.length, branch: br }); ok++; }
+      if (bs.length || bills.length) {
+        const b = { csv: csv_(B_COLS, bsLive), rows: bsLive.length, branch: br };
+        pushSupabase_('utilbill', br, Object.assign({ ts: Date.now() }, b));
+        writeDoc_('utilbill', br, b);
+        ok++;
+      }
       Logger.log(br + ': เลขไมล์ ' + rs.length + ' แถว · บิล ' + bsLive.length + ' แถว (ยกเลิก ' + (bs.length - bsLive.length) + ')');
     } catch (err) {
       Logger.log('FAIL ' + br + ': ' + err);
@@ -384,6 +391,31 @@ function writeDoc_(collection, docId, data) {
   });
   if (res.getResponseCode() !== 200)
     throw new Error('Firestore ตอบ ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 300));
+}
+
+// ── ย้ายใหญ่ ขั้น 2: เขียน "บ้านใหม่" (Supabase schema goadmin) คู่กับ Firestore ──
+// ผ่าน Edge Function goadmin-ingest (saveone-stock-v3/supabase/functions/) · ไม่ถือกุญแจ service_role
+// Script property (เจ้าของวางเอง): SUPABASE_INGEST_KEY = secret GOADMIN_INGEST_KEY · ที่อยู่ฟังก์ชันอยู่ในโค้ด (สาธารณะ)
+// ยังไม่ตั้ง = ข้าม · ส่งพลาด = จด log ไม่ throw → Firestore ทำงานเหมือนเดิมเสมอระหว่างทดลอง
+// (ตัวเดียวกับ Supabase.js ในสคริปต์ชีตจอง BG/BN)
+function pushSupabase_(table, id, payload) {
+  const props = PropertiesService.getScriptProperties();
+  const url = props.getProperty('SUPABASE_INGEST_URL') || 'https://xwbbxribzbarwywtadqd.supabase.co/functions/v1/goadmin-ingest', key = props.getProperty('SUPABASE_INGEST_KEY');
+  if (!key) { Logger.log('Supabase ข้าม ' + id + ' (ยังไม่ตั้ง SUPABASE_INGEST_KEY)'); return false; }
+  try {
+    const res = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'x-ingest-key': key },
+      payload: JSON.stringify({ table: table, id: id, payload: payload }),
+      muteHttpExceptions: true
+    });
+    if (res.getResponseCode() === 200) { Logger.log('Supabase OK ' + table + '/' + id); return true; }
+    Logger.log('Supabase FAIL ' + table + '/' + id + ' ตอบ ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 200));
+  } catch (err) {
+    Logger.log('Supabase FAIL ' + table + '/' + id + ': ' + err);
+  }
+  return false;
 }
 
 // ── ภายใน ──
