@@ -1,23 +1,41 @@
 // ============================================================
-// firebase/user-admin.js — เมนูโปรไฟล์ (USR-02) + จัดการผู้ใช้ (USR-01, admin เท่านั้น)
+// supabase/user-admin.js — เมนูโปรไฟล์ (USR-02) + จัดการผู้ใช้ (USR-01, admin เท่านั้น · ย้ายใหญ่ ขั้น 3)
 // ============================================================
 //
 // ⚠️ ทุกฟังก์ชันเช็ค window.userRole === 'admin' ซ้ำอีกชั้นก่อนทำงาน
-//    การซ่อนปุ่มอย่างเดียวไม่ใช่การป้องกัน — ด่านจริงอยู่ที่ Firestore Security Rules
+//    การซ่อนปุ่มอย่างเดียวไม่ใช่การป้องกัน — ด่านจริงอยู่ที่กติกาสิทธิ์ goadmin.profiles + Edge Function goadmin-users
+//
+// บัญชีล็อกอิน (auth.users) ใช้ร่วมกับแอปอื่น (สต็อก) → หน้านี้ "ลบ" = ลบสิทธิ์แดชบอร์ดเท่านั้น บัญชียังอยู่
+//   สร้างบัญชี / ตั้งรหัสใหม่ ต้องใช้กุญแจลับ → Edge Function goadmin-users (เช็ค admin ฝั่งเซิร์ฟเวอร์อีกชั้น)
+//   อีเมล @saveone.go ไม่มีจริง ส่งลิงก์ตั้งรหัสไม่ได้ → admin ตั้งรหัสให้ในแถวแก้ไข
 //
 // ต้องโหลด "หลัง" auth.js เพราะ auth.js เป็นคนตั้ง window.userRole
 //   (ในทางปฏิบัติไม่ race: โค้ดในไฟล์นี้ทำงานตอนผู้ใช้กดปุ่มเท่านั้น)
 
-import { db, firebaseConfig } from "./init.js";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getAuth, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { sb, sbErr } from "./init.js";
+
+// แถว goadmin.profiles ↔ รูปเอกสาร users/{uid} เดิม (ตัวเดียวกับใน auth.js)
+const profileDoc = (r) => ({ ...(r.perms || {}), uid: r.user_id, email: r.email, role: r.role,
+  branches: r.branches, bmBranches: r.bm_branches, active: r.active });
+const profileRow = (p) => ({ role: p.role, branches: p.branches, bm_branches: p.bmBranches,
+  perms: Object.fromEntries(PERM_KEYS.map(k => [k, p[k] === true])) });
+
+// เรียก Edge Function goadmin-users (ส่ง token ของ admin ที่ล็อกอินอยู่ไปให้ฟังก์ชันเช็ค)
+async function usersFn(body){
+  const { data, error } = await sb.functions.invoke('goadmin-users', { body });
+  if(error){
+    let msg = error.message;
+    try{ const j = await error.context.json(); if(j && j.error) msg = j.error; }catch(_){}
+    throw new Error(msg);
+  }
+  return data;
+}
 
 // ---- ORIGINAL (index.html) ----
 /* ══════════════════════════════════════════════════════════════
    USR-01: จัดการผู้ใช้ (admin เท่านั้น)
    ⚠️ ทุกฟังก์ชันเช็ค window.userRole==='admin' ซ้ำอีกชั้นก่อนทำงาน
-      (ซ่อนปุ่มอย่างเดียวไม่พอ — ด่านจริงอยู่ที่ Firestore Rules)
+      (ซ่อนปุ่มอย่างเดียวไม่พอ — ด่านจริงอยู่ที่กติกาสิทธิ์ใน goadmin)
    ══════════════════════════════════════════════════════════════ */
 /* ── USR-02: เมนูโปรไฟล์ + เปิด/ปิดหน้าจัดการผู้ใช้ ── */
 window.toggleProfMenu = function(ev){
@@ -90,9 +108,9 @@ window.loadUserList = async function(){
   usrErr('');
   tb.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--ink3)">กำลังโหลด…</td></tr>';
   try{
-    const snap = await getDocs(collection(db, 'users'));
-    const rows = [];
-    snap.forEach(d => rows.push({ uid: d.id, ...d.data() }));
+    const { data, error } = await sb.from('profiles').select('*');
+    if(error) throw sbErr(error);
+    const rows = (data || []).map(profileDoc);
     rows.sort((a,b) => String(a.email||'').localeCompare(String(b.email||'')));
     if(!rows.length){
       tb.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--ink3)">ยังไม่มีผู้ใช้</td></tr>';
@@ -104,7 +122,7 @@ window.loadUserList = async function(){
     console.error('loadUserList:', e);
     tb.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--ink3)">โหลดไม่สำเร็จ</td></tr>';
     usrErr(e.code === 'permission-denied'
-      ? 'Firestore ปฏิเสธการอ่าน — ยังไม่ได้อัปเดต Security Rules ให้ admin อ่าน collection users ได้ (กฎฉบับเต็ม docs/firestore-rules/)'
+      ? 'ฐานข้อมูลปฏิเสธการอ่าน — บัญชีนี้ไม่ใช่ admin ใน goadmin.profiles'
       : ('โหลดไม่สำเร็จ: ' + (e.message || e)));
   }
 };
@@ -137,8 +155,9 @@ window.editUser = async function(uid){
   usrErr('');
   let u = {};
   try{
-    const d = await getDoc(doc(db, 'users', uid));
-    if(d.exists()) u = d.data();
+    const { data, error } = await sb.from('profiles').select('*').eq('user_id', uid).maybeSingle();
+    if(error) throw sbErr(error);
+    if(data) u = profileDoc(data);
   }catch(e){ usrErr('อ่านข้อมูลไม่สำเร็จ: ' + (e.message||e)); return; }
 
   const brs = Array.isArray(u.branches) ? u.branches : [];
@@ -159,6 +178,10 @@ window.editUser = async function(uid){
       + '<div><div style="font-size:10px;color:var(--ink3);margin-bottom:4px">สิทธิ์</div>'
         + '<div id="edPermBox_' + uid + '" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 14px">'
         + PERM_KEYS.map(k => cb('edP_' + uid + '_' + k, u[k] === true, PERM_LABEL[k])).join('') + '</div></div>'
+      // ย้ายใหญ่: อีเมลไม่มีจริง ส่งลิงก์ตั้งรหัสไม่ได้ → admin ตั้งให้ · เว้นว่าง = ไม่เปลี่ยน · ใช้กับทุกแอปที่ใช้บัญชีนี้
+      + '<div><div style="font-size:10px;color:var(--ink3);margin-bottom:4px">ตั้งรหัสผ่านใหม่</div>'
+        + '<input type="password" id="edPw_' + uid + '" autocomplete="new-password" placeholder="เว้นว่าง = ไม่เปลี่ยน" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:12px;width:160px">'
+        + '<div style="font-size:9px;color:var(--ink3);margin-top:3px">อย่างน้อย 6 ตัว · ใช้กับระบบสต็อกด้วย</div></div>'
     + '</div>'
     + '<div style="display:flex;gap:8px;margin-top:12px">'
       + '<button onclick="saveUser(\'' + uid + '\')" style="background:var(--gold);color:#1a1f2e;border:none;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;font-family:\'Noto Sans Thai\',sans-serif">บันทึก</button>'
@@ -227,13 +250,20 @@ window.saveUser = async function(uid){
   if(payload.showWhatIf === true) payload.showForecast = true;
   if(payload.showUtilMoney === true) payload.showUtil = true;   // UTIL-03: สิทธิ์ย่อยต้องมีแม่
 
+  const pw = (document.getElementById('edPw_' + uid) || {}).value || '';
+  if(pw && pw.length < 6){ usrErr('รหัสผ่านต้องอย่างน้อย 6 ตัว'); return; }
+
   try{
-    await setDoc(doc(db, 'users', uid), payload, { merge: true });
+    // แก้ตัวเองไม่ได้ (กติกาเดิม) → RLS ปฏิเสธเงียบ = 0 แถว · นับแถวเพื่อบอกให้ชัด
+    const { data, error } = await sb.from('profiles').update(profileRow(payload)).eq('user_id', uid).select('user_id');
+    if(error) throw sbErr(error);
+    if(!data || !data.length) throw Object.assign(new Error('no rows'), { code: 'permission-denied' });
+    if(pw) await usersFn({ action: 'password', user_id: uid, password: pw });
     await window.loadUserList();
   }catch(e){
     console.error('saveUser:', e);
     usrErr(e.code === 'permission-denied'
-      ? 'Firestore ปฏิเสธการเขียน — ยังไม่ได้อัปเดต Security Rules (กฎฉบับเต็ม docs/firestore-rules/)'
+      ? 'บันทึกไม่ได้ — แก้สิทธิ์ตัวเองไม่ได้ (ให้ admin อีกคนแก้) หรือบัญชีนี้ไม่ใช่ admin'
       : ('บันทึกไม่สำเร็จ: ' + (e.message || e)));
   }
 };
@@ -243,17 +273,19 @@ window.removeUser = async function(uid){
   usrErr('');
   let email = uid;
   try{
-    const d = await getDoc(doc(db, 'users', uid));
-    if(d.exists()) email = d.data().email || uid;
+    const { data } = await sb.from('profiles').select('email').eq('user_id', uid).maybeSingle();
+    if(data) email = data.email || uid;
   }catch(e){}
-  if(!confirm('ลบสิทธิ์ของ ' + email + ' ?\n\nบัญชี login จะยังอยู่ — ต้องลบใน Firebase Console อีกที')) return;
+  if(!confirm('ลบสิทธิ์แดชบอร์ดของ ' + email + ' ?\n\nบัญชีล็อกอินยังอยู่ (ใช้ร่วมกับระบบสต็อก) — แค่เข้าแดชบอร์ดไม่ได้')) return;
   try{
-    await deleteDoc(doc(db, 'users', uid));
+    const { data, error } = await sb.from('profiles').delete().eq('user_id', uid).select('user_id');
+    if(error) throw sbErr(error);
+    if(!data || !data.length) throw Object.assign(new Error('no rows'), { code: 'permission-denied' });
     await window.loadUserList();
   }catch(e){
     console.error('removeUser:', e);
     usrErr(e.code === 'permission-denied'
-      ? 'Firestore ปฏิเสธการลบ — ยังไม่ได้อัปเดต Security Rules'
+      ? 'ลบไม่ได้ — ลบสิทธิ์ตัวเองไม่ได้ หรือบัญชีนี้ไม่ใช่ admin'
       : ('ลบไม่สำเร็จ: ' + (e.message || e)));
   }
 };
@@ -332,16 +364,9 @@ window.submitAddUser = async function(){
 
   btn.disabled = true; btn.textContent = 'กำลังสร้าง…';
 
-  // สร้าง auth account ผ่าน "แอปสำรอง" — ไม่งั้น createUser จะสลับ session
-  // ทำให้ admin หลุดออกจากระบบทันทีที่สร้างคนใหม่
-  let secondary = null;
+  // สร้างบัญชีผ่าน Edge Function goadmin-users (กุญแจลับอยู่ฝั่งเซิร์ฟเวอร์ · admin ไม่หลุดจากระบบ)
+  //   อีเมลนี้มีบัญชีอยู่แล้ว (เช่น ใช้ระบบสต็อกอยู่) = ใช้บัญชีเดิม รหัสเดิม แค่เพิ่มสิทธิ์แดชบอร์ด
   try{
-    secondary = initializeApp(firebaseConfig, 'usrAdmin_' + Date.now());
-    const secAuth = getAuth(secondary);
-    const cred = await createUserWithEmailAndPassword(secAuth, email, pass);
-    const newUid = cred.user.uid;
-    await signOut(secAuth);
-
     const payload = { email, role, branches, bmBranches };
     PERM_KEYS.forEach(k => {
       const el = document.getElementById('nu' + k.charAt(0).toUpperCase() + k.slice(1));
@@ -350,20 +375,14 @@ window.submitAddUser = async function(){
     // WI-01: normalize อีกชั้นก่อนเขียน
     if(payload.showWhatIf === true) payload.showForecast = true;
     if(payload.showUtilMoney === true) payload.showUtil = true;   // UTIL-03: สิทธิ์ย่อยต้องมีแม่
-    await setDoc(doc(db, 'users', newUid), payload);
+    const r = await usersFn({ action: 'create', email, password: pass, profile: { email, ...profileRow(payload) } });
 
     window.closeAddUser();
     await window.loadUserList();
+    if(r && r.existed) usrErr('ℹ️ ' + email + ' มีบัญชีอยู่แล้ว (เช่น ระบบสต็อก) — เพิ่มสิทธิ์แดชบอร์ดให้แล้ว รหัสผ่านยังเป็นรหัสเดิม');
   }catch(e){
     console.error('submitAddUser:', e);
-    const map = {
-      'auth/email-already-in-use': 'อีเมลนี้มีบัญชีอยู่แล้ว — ถ้าต้องการให้สิทธิ์ ให้หา uid ใน Firebase Console แล้วเพิ่มเอกสารเอง',
-      'auth/invalid-email': 'รูปแบบอีเมลไม่ถูกต้อง',
-      'auth/weak-password': 'รหัสผ่านอ่อนเกินไป (ต้องอย่างน้อย 6 ตัว)',
-      'auth/operation-not-allowed': 'Firebase ปิดการสมัครด้วย Email/Password อยู่ — เปิดใน Console → Authentication → Sign-in method',
-      'permission-denied': 'สร้างบัญชีแล้วแต่เขียนสิทธิ์ลง Firestore ไม่ได้ — ยังไม่ได้อัปเดต Security Rules (บัญชีถูกสร้างไปแล้ว ต้องไปเพิ่มเอกสารเองใน Console)'
-    };
-    show(map[e.code] || ('สร้างไม่สำเร็จ: ' + (e.message || e)));
+    show('สร้างไม่สำเร็จ: ' + (e.message || e));
   }finally{
     btn.disabled = false; btn.textContent = 'สร้างผู้ใช้';
   }

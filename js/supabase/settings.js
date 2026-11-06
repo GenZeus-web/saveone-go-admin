@@ -1,11 +1,13 @@
 // ============================================================
-// firebase/settings.js — หน้าตั้งค่า: ราคา · ฤดูกาล · เป้ายอด · ประวัติการแก้ (SET-01)
+// supabase/settings.js — หน้าตั้งค่า: ราคา · ฤดูกาล · เป้ายอด · ประวัติการแก้ (SET-01 · ย้ายใหญ่ ขั้น 3)
 // ============================================================
 //
-// เอกสารใน Firestore
-//   settings/pricing   { versions:[ชุดราคา…] }  ชุดราคา = วันเริ่มใช้ + ฤดูกาล + ราคาทุกช่อง
-//   settings/targets   { SS:{st,non}, BG:{…}, BN:{…} }
-//   settingsLog/{id}   ประวัติการแก้ — เพิ่มได้อย่างเดียว อ่านได้เฉพาะ OWNER_EMAIL
+// ตารางใน goadmin (แทนเอกสาร Firestore เดิม · value = เนื้อเอกสารเดิม ไม่มี updatedAt/updatedBy)
+//   settings key=pricing   { versions:[ชุดราคา…] }  ชุดราคา = วันเริ่มใช้ + ฤดูกาล + ราคาทุกช่อง
+//   settings key=targets   { SS:{st,non}, BG:{…}, BN:{…} }
+//   settings key=utility   เกณฑ์น้ำ-ไฟ
+//   settings_log           ประวัติการแก้ — เพิ่มได้อย่างเดียว อ่านได้เฉพาะ OWNER_EMAIL · payload = ช่องเดิม (action · changes …)
+//   บันทึก = goadmin.save_setting() ตั้งค่า + ประวัติในธุรกรรมเดียว (แทน runTransaction) · กันบันทึกทับด้วย updated_at
 //
 // กติกา (ตกลงกับเจ้าของ 23 ก.ย. 2569 · ADR 0001)
 //   - ราคาวันที่ผ่านไปแล้วไม่เปลี่ยน: บันทึก = เพิ่มชุดใหม่ที่มีวันเริ่มใช้ เร็วสุดพรุ่งนี้
@@ -20,10 +22,27 @@
 // ใช้ฟังก์ชัน/ค่าคงที่จาก classic script ผ่าน global: setPricing, pricingDoc, seasonHas,
 //   DEFAULT_PRICING, PRICE_BRANCHES, MONTHS, applySharedTargets, TARGETS, applyAll ฯลฯ
 
-import { auth, db } from "./init.js";
-import { EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { doc, getDoc, runTransaction, collection, query, orderBy, limit, getDocs, serverTimestamp }
-  from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { sb, sbErr, currentEmail } from "./init.js";
+
+// อ่านตั้งค่าหลายตัวในครั้งเดียว → { pricing:{value,updated_at}, … } (ไม่มีแถว / ไม่มีสิทธิ์ = ไม่มี key)
+async function readSettings(keys){
+  const { data, error } = await sb.from('settings').select('key,value,updated_at').in('key', keys);
+  if(error) throw sbErr(error);
+  return Object.fromEntries((data || []).map(r => [r.key, r]));
+}
+// บันทึก + ประวัติ ในธุรกรรมเดียว (goadmin.save_setting) · expect = updated_at ที่อ่านมา (null = ต้องยังไม่มีแถว)
+async function saveSetting(key, value, log, opt = {}){
+  const { error } = await sb.rpc('save_setting', { p_key: key, p_value: value,
+    p_log: { device: deviceLabel(), effective: null, ...log },
+    p_check: 'expect' in opt, p_expect: opt.expect ?? null, p_merge: !!opt.merge });
+  if(error) throw sbErr(error);
+}
+// ใส่รหัสผ่านยืนยันก่อนแก้ราคา (แทน reauthenticateWithCredential)
+//   ล็อกอินซ้ำด้วยอีเมลเดิม = ได้ token ใหม่ที่จดเวลาใส่รหัส → กติกา recently_authed() (5 นาที) ผ่าน
+async function confirmPassword(pw){
+  const { error } = await sb.auth.signInWithPassword({ email: currentEmail(), password: pw });
+  if(error) throw sbErr(error);
+}
 
 const OWNER_EMAIL = 'anansit@saveone.go';
 const PRICE_CACHE = 'saveone_pricing_v1';
@@ -36,7 +55,7 @@ const DAYK = ['ธรรมดา','ศ–อา'];
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clone = o => JSON.parse(JSON.stringify(o));
 const isAdmin = () => window.userRole === 'admin';
-const isOwner = () => (auth.currentUser?.email||'').toLowerCase() === OWNER_EMAIL;
+const isOwner = () => currentEmail().toLowerCase() === OWNER_EMAIL;
 
 // ── วันที่ ──
 const todayIso = () => isoDate(new Date());
@@ -101,18 +120,19 @@ async function fetchSettings(){
   fetchUtil();   // เกณฑ์น้ำ-ไฟ แยกต่างหาก — อ่านไม่ได้ (กฎยังไม่วาง) ต้องไม่ทำให้ราคา/เป้ายอดพังตาม
   try{
     const readP = mayReadPricing();
-    const [p, t] = await Promise.all([readP ? getDoc(doc(db,'settings','pricing')) : null, getDoc(doc(db,'settings','targets'))]);
+    const got = await readSettings(readP ? ['pricing','targets'] : ['targets']);
+    const p = got.pricing, t = got.targets;
     const before = JSON.stringify(PRICING);
     let changed = false;
     if(readP){
-      const pd = p.exists() ? p.data() : null;
+      const pd = p ? p.value : null;
       setPricing(pd, pd ? 'fresh' : 'default');
       try{ localStorage.setItem(PRICE_CACHE, JSON.stringify(pd ? {doc:pd} : {none:true})); }catch(e){}
       changed = before !== JSON.stringify(PRICING);
     }
-    if(t.exists()){
+    if(t){
       const b2 = JSON.stringify(TARGETS);
-      applySharedTargets(t.data());
+      applySharedTargets(t.value);
       if(JSON.stringify(TARGETS) !== b2) changed = true;
     }
     setPriceUnavailable(false);
@@ -158,7 +178,6 @@ function lockTargetInputs(){
 // ═══════════════════════════════════════════════════════════════
 window.saveSharedTargets = async function(T, before){
   if(!isAdmin()) return;
-  const email = auth.currentUser?.email || '';
   const changes = [];
   PRICE_BRANCHES.forEach(b => ['st','non'].forEach(z => {
     const a = before?.[b]?.[z], n = T[b]?.[z];
@@ -166,11 +185,7 @@ window.saveSharedTargets = async function(T, before){
   }));
   if(!changes.length) return;
   try{
-    await runTransaction(db, async tx => {
-      tx.set(doc(db,'settings','targets'), {...clone(T), updatedAt:serverTimestamp(), updatedBy:email});
-      tx.set(doc(collection(db,'settingsLog')), {at:serverTimestamp(), by:email, device:deviceLabel(),
-        action:'target_save', effective:null, changes});
-    });
+    await saveSetting('targets', clone(T), {action:'target_save', changes});
     toast('บันทึกเป้ายอดแล้ว · ทุกคนเห็นค่านี้');
   }catch(e){
     console.error('บันทึกเป้าไม่สำเร็จ', e);
@@ -407,7 +422,7 @@ window.reviewSave = function(){
       <div class="set-note">📅 <b>มีผลตั้งแต่ ${thDate(S.effective)}</b> · ทุกคนเห็นราคาใหม่ตอนเปิดเว็บ/รีเฟรชครั้งถัดไป<br>
         ↩️ วันก่อน ${thDate(S.effective)} ยังคิดราคาเดิมทุกบาท — ยอดที่รายงานไปแล้วไม่เปลี่ยน<br>
         ⏳ เปลี่ยนใจได้: กดยกเลิกได้ถึง 23:59 ของ ${thDate(addDaysIso(S.effective,-1))}<br>
-        🗂 เก็บประวัติ: ${esc(auth.currentUser?.email)} · ${esc(deviceLabel())} · เวลาที่กดบันทึก</div>`,
+        🗂 เก็บประวัติ: ${esc(currentEmail())} · ${esc(deviceLabel())} · เวลาที่กดบันทึก</div>`,
     okText: 'ยืนยันบันทึก',
     run: () => doSave(changes),
   });
@@ -450,8 +465,7 @@ window.runConfirm = async function(){
   if(!pw){ errEl.style.display=''; errEl.textContent='กรุณาใส่รหัสผ่าน'; return; }
   ok.disabled = true; ok.textContent = 'กำลังตรวจรหัสผ่าน…';
   try{
-    const u = auth.currentUser;
-    await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, pw));
+    await confirmPassword(pw);
     ok.textContent = 'กำลังบันทึก…';
     await pendingAction.run();
     closeConfirm();
@@ -463,16 +477,18 @@ window.runConfirm = async function(){
 };
 function errText(e){
   const c = e?.code || '';
-  if(c==='auth/wrong-password' || c==='auth/invalid-credential' || c==='auth/invalid-login-credentials') return 'รหัสผ่านไม่ถูกต้อง';
-  if(c==='auth/too-many-requests') return 'ใส่รหัสผิดหลายครั้ง ระบบพักไว้ชั่วคราว ลองใหม่ภายหลัง';
-  if(c==='permission-denied') return 'ไม่มีสิทธิ์บันทึก (เช็ค Firestore Rules — ดู docs/firestore-rules-settings.md)';
-  if(c==='auth/network-request-failed' || c==='unavailable') return 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง';
+  if(c==='auth/invalid_credentials') return 'รหัสผ่านไม่ถูกต้อง';
+  if(c==='auth/over_request_rate_limit' || c==='auth/over_email_send_rate_limit') return 'ใส่รหัสผิดหลายครั้ง ระบบพักไว้ชั่วคราว ลองใหม่ภายหลัง';
+  // ราคาต้องใส่รหัสภายใน 5 นาที (recently_authed) · RLS ปฏิเสธเงียบ = 42501 เหมือนไม่มีสิทธิ์
+  if(c==='permission-denied') return 'ไม่มีสิทธิ์บันทึก (ต้องเป็น admin · ราคาต้องใส่รหัสผ่านใหม่ภายใน 5 นาที)';
+  if(c==='conflict') return e.message;   // ข้อความจาก save_setting: มีคนบันทึกระหว่างที่คุณแก้อยู่
+  if(c==='unavailable') return 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง';
   return e?.message || String(e);
 }
 
-// ── บันทึกชุดราคาใหม่ (transaction: กันสอง admin บันทึกทับกัน) ──
+// ── บันทึกชุดราคาใหม่ (อ่าน → ตรวจ → บันทึกพร้อม updated_at ที่อ่านมา: กันสอง admin บันทึกทับกัน) ──
 async function doSave(changes){
-  const email = auth.currentUser.email;
+  const email = currentEmail();
   const summary = changes.map(changeLine);
   const v = {
     id: 'v' + Date.now().toString(36),
@@ -481,42 +497,30 @@ async function doSave(changes){
     prices: clone(S.draft.prices),
     summary, savedBy: email, savedAt: new Date().toISOString(),
   };
-  const ref = doc(db,'settings','pricing');
-  const saved = await runTransaction(db, async tx => {
-    const snap = await tx.get(ref);
-    const cur = snap.exists() ? snap.data() : clone(DEFAULT_PRICING);   // บันทึกครั้งแรก = วางราคาเดิมเป็นชุดฐานด้วย
-    const vs = cur.versions || [];
-    const last = [...vs].sort((a,b)=>a.effective<b.effective?-1:1).slice(-1)[0];
-    if(last && last.id !== S.baseId) throw new Error('มีคนบันทึกราคาระหว่างที่คุณแก้อยู่ — ปิดหน้าตั้งค่าแล้วเปิดใหม่เพื่อดูค่าล่าสุด');
-    if(vs.some(x => x.effective >= v.effective)) throw new Error('วันเริ่มใช้ต้องหลังชุดที่รอมีผลอยู่แล้ว');
-    const next = {versions:[...vs, v], updatedAt:serverTimestamp(), updatedBy:email};
-    tx.set(ref, next);
-    tx.set(doc(collection(db,'settingsLog')), {at:serverTimestamp(), by:email, device:deviceLabel(),
-      action:'price_save', effective:v.effective, versionId:v.id, changes});
-    return {versions:[...vs, v]};
-  });
+  const row = (await readSettings(['pricing'])).pricing;
+  const cur = row ? row.value : clone(DEFAULT_PRICING);   // บันทึกครั้งแรก = วางราคาเดิมเป็นชุดฐานด้วย
+  const vs = cur.versions || [];
+  const last = [...vs].sort((a,b)=>a.effective<b.effective?-1:1).slice(-1)[0];
+  if(last && last.id !== S.baseId) throw new Error('มีคนบันทึกราคาระหว่างที่คุณแก้อยู่ — ปิดหน้าตั้งค่าแล้วเปิดใหม่เพื่อดูค่าล่าสุด');
+  if(vs.some(x => x.effective >= v.effective)) throw new Error('วันเริ่มใช้ต้องหลังชุดที่รอมีผลอยู่แล้ว');
+  const saved = {versions:[...vs, v]};
+  await saveSetting('pricing', saved, {action:'price_save', effective:v.effective, versionId:v.id, changes},
+    {expect: row ? row.updated_at : null});
   applyLocal(saved);
   resetDraft(); render();
   toast(`บันทึกแล้ว · ราคาใหม่มีผล ${thDate(v.effective)}`);
 }
 
 async function doCancel(v){
-  const email = auth.currentUser.email;
-  const ref = doc(db,'settings','pricing');
-  const saved = await runTransaction(db, async tx => {
-    const snap = await tx.get(ref);
-    if(!snap.exists()) throw new Error('ไม่พบชุดราคา');
-    const vs = snap.data().versions || [];
-    const t = vs.find(x => x.id === v.id);
-    if(!t) throw new Error('ชุดนี้ถูกยกเลิกไปแล้ว');
-    if(t.effective <= todayIso()) throw new Error('ชุดนี้มีผลแล้ว ยกเลิกย้อนหลังจากหน้าเว็บไม่ได้');
-    const rest = vs.filter(x => x.id !== v.id);
-    tx.set(ref, {versions:rest, updatedAt:serverTimestamp(), updatedBy:email});
-    tx.set(doc(collection(db,'settingsLog')), {at:serverTimestamp(), by:email, device:deviceLabel(),
-      action:'price_cancel', effective:t.effective, versionId:t.id,
-      changes:(t.summary||[]).map(s => ({label:s, from:null, to:null}))});
-    return {versions:rest};
-  });
+  const row = (await readSettings(['pricing'])).pricing;
+  if(!row) throw new Error('ไม่พบชุดราคา');
+  const vs = row.value.versions || [];
+  const t = vs.find(x => x.id === v.id);
+  if(!t) throw new Error('ชุดนี้ถูกยกเลิกไปแล้ว');
+  if(t.effective <= todayIso()) throw new Error('ชุดนี้มีผลแล้ว ยกเลิกย้อนหลังจากหน้าเว็บไม่ได้');
+  const saved = {versions: vs.filter(x => x.id !== v.id)};
+  await saveSetting('pricing', saved, {action:'price_cancel', effective:t.effective, versionId:t.id,
+    changes:(t.summary||[]).map(s => ({label:s, from:null, to:null}))}, {expect: row.updated_at});
   applyLocal(saved);
   resetDraft(); render();
   toast(`ยกเลิกชุดราคาที่จะมีผล ${thDate(v.effective)} แล้ว`);
@@ -561,8 +565,8 @@ window.saveTargetsTab = async function(){
 // หน้าจอเป็นประโยคสูตรมีช่องกรอกในตัว "ค่ากลาง × [1.5] < ที่ใช้" (เจ้าของสั่ง 14 ต.ค.: ช่องสูตรแบบเข้าใจง่าย)
 async function fetchUtil(){
   try{
-    const u = await getDoc(doc(db,'settings','utility'));
-    setUtil(u.exists() ? u.data() : null);
+    const u = (await readSettings(['utility'])).utility;
+    setUtil(u ? u.value : null);
   }catch(e){ console.warn('settings: อ่านเกณฑ์น้ำ-ไฟไม่ได้ ใช้ค่าตั้งต้น', e); }
 }
 function setUtil(d){
@@ -699,14 +703,10 @@ window.saveUtilTab = async function(){
   if(!isAdmin() || utilErrs().length) return;
   const changes = utilDiff();
   if(!changes.length) return;
-  const email = auth.currentUser?.email || '', next = clone(S.util);
+  const next = clone(S.util);
   try{
-    await runTransaction(db, async tx => {
-      // merge: แตะเฉพาะช่องในหน้านี้ — ช่องอื่นในเอกสาร (hours · rates) ไม่หาย
-      tx.set(doc(db,'settings','utility'), {...next, updatedAt:serverTimestamp(), updatedBy:email}, {merge:true});
-      tx.set(doc(collection(db,'settingsLog')), {at:serverTimestamp(), by:email, device:deviceLabel(),
-        action:'util_save', effective:null, changes});
-    });
+    // merge: แตะเฉพาะช่องในหน้านี้ — ช่องอื่นในแถว (hours · rates) ไม่หาย (รวมระดับบนสุด เหมือน {merge:true} เดิม)
+    await saveSetting('utility', next, {action:'util_save', changes}, {merge: true});
     setUtil({...(window.UTIL_SETTINGS||{}), ...next}); S.util = utilCur(); render();
     toast('บันทึกเกณฑ์น้ำ-ไฟแล้ว · มีผลทันที');
   }catch(e){
@@ -721,12 +721,13 @@ async function loadHistory(){
   if(!box) return;
   if(!isOwner()){ box.textContent = 'ไม่มีสิทธิ์ดูประวัติ'; return; }
   try{
-    const snap = await getDocs(query(collection(db,'settingsLog'), orderBy('at','desc'), limit(300)));
-    if(snap.empty){ box.textContent = 'ยังไม่มีประวัติการแก้'; return; }
+    const { data, error } = await sb.from('settings_log').select('at,by_email,payload').order('at', { ascending: false }).limit(300);
+    if(error) throw sbErr(error);
+    if(!data || !data.length){ box.textContent = 'ยังไม่มีประวัติการแก้'; return; }
     const act = {price_save:'💰 บันทึกราคา', price_cancel:'↩️ ยกเลิกราคาที่รอมีผล', target_save:'🎯 แก้เป้ายอด', util_save:'💧 แก้เกณฑ์น้ำ-ไฟ'};
-    box.innerHTML = snap.docs.map(d => {
-      const x = d.data();
-      const at = x.at?.toDate ? x.at.toDate().toLocaleString('th-TH') : '—';
+    box.innerHTML = data.map(r => {
+      const x = {...(r.payload || {}), by: r.by_email};
+      const at = r.at ? new Date(r.at).toLocaleString('th-TH') : '—';
       return `<div class="set-log">
         <div><b>${act[x.action]||esc(x.action)}</b>${x.effective?` · มีผล ${thDate(x.effective)}`:''}</div>
         <div class="set-muted">${esc(at)} · ${esc(x.by)} · ${esc(x.device)}</div>
