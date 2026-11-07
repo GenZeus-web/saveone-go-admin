@@ -236,7 +236,7 @@ function umBillDetail(i,mo){
   c.bills.filter(b=>b.meter_id===m.meter_id).forEach(b=>{ const u=utNum(b.units); if(u>0){ by[b.bill_month]=(by[b.bill_month]||0)+u; amt[b.bill_month]=(amt[b.bill_month]||0)+(utNum(b.amount_incl_vat)||0); } });
   const ks=Object.keys(by).sort(), j=ks.indexOf(mo); if(j<0) return;
   const u=by[mo], prev=ks.slice(Math.max(0,j-B.lookback),j), unit=utU(m), min=B.minDiff[m.type]??0;
-  const f=c.chk&&c.chk[m.meter_id+'@'+mo], use=utilBillUsageMonth(mo);
+  const f=c.chk&&c.chk[m.meter_id+'@'+mo], use=mo;   // UTIL-52 บิลแปลงเป็นเดือนที่ใช้จริงตอนโหลดแล้ว
   const warm=umBillWarm(c,mo);   // ไม่ตรวจ warmup เดือนแรกนับจากบิลใบแรกของ "สาขา"
   let calc;
   if(prev.length<B.minPrev) calc=`<p>บิลก่อนหน้ามี ${prev.length} ใบ ต้องมีอย่างน้อย ${B.minPrev} ใบถึงจะเทียบได้</p>`;
@@ -251,7 +251,8 @@ function umBillDetail(i,mo){
   }
   const q=f&&f.dup?`<p class="um-sub2">? ${utFlagText(UT.br||activeBranch,f).filter(x=>x.k==='q').map(x=>x.t.replace(/<[^>]+>/g,'')).join(' · ')}</p>`:'';
   const got=m._res?.days.filter(d=>d.date.startsWith(use))||[], gu=got.reduce((s,d)=>s+d.units,0), gc=got.reduce((s,d)=>s+d.cover,0);
-  umModal(`${umName(m)} · บิล ${utMonthTh(mo)}`,`ใช้จริงเดือน ${utMonthTh(use)} (บิลออกเดือนถัดไป)`,
+  const raw=(c.bills.find(b=>b.meter_id===m.meter_id&&b.bill_month===mo)||{}).bill_month_raw||mo;   // UTIL-52 เดือนบนบิลกระดาษ
+  umModal(`${umName(m)} · ใช้เดือน ${utMonthTh(mo)}`,raw===mo?`บิลเดือน ${utMonthTh(raw)}`:`บิลเดือน ${utMonthTh(raw)} (อ่านมิเตอร์ต้นเดือน)`,
     `<div class="um-dbig">${utFmt(u)} <small>${unit}</small>${amt[mo]?`<span>${utFmt(amt[mo],2)} บาท · ${utFmt(amt[mo]/u,2)} บาท/${unit}</span>`:''}</div>
      ${calc}${q}${got.length?`<p class="um-sub2">จากเลขที่จดเดือน ${utMonthTh(use)}: ${utFmt(gu)} ${unit} (${Math.round(gc)} วัน)</p>`:''}
      <button class="mc-pill" onclick="umMeterDetail(${i})">ดูมิเตอร์นี้ทั้งหมด</button>`);
@@ -260,7 +261,7 @@ function umBillDetail(i,mo){
 // ค่าต่อวันของแต่ละเดือนที่ใช้หาค่าเฉลี่ยบิล — ตรงกับ utilBillDaily
 function umBillAvgRows(c,m,months){
   const S=utilSettings(utSet(),m.branch_code||UT.br), per={};
-  c.bills.filter(b=>b.meter_id===m.meter_id).forEach(b=>{ const u=utNum(b.units); if(u>0){ const k=utilBillUsageMonth(b.bill_month,S.billMonthOffset); per[k]=(per[k]||0)+u; } });
+  c.bills.filter(b=>b.meter_id===m.meter_id).forEach(b=>{ const u=utNum(b.units); if(u>0){ const k=utilBillMonthOf(b,S); per[k]=(per[k]||0)+u; } });
   return (months||[]).map(k=>{ const [y,mo]=k.split('-').map(Number); return {t:utMonthTh(k),v:per[k]/new Date(Date.UTC(y,mo,0)).getUTCDate()}; });
 }
 
@@ -310,7 +311,7 @@ function umBillPts(m){
   const c=UT.cache[UT.br];
   if(!['elec','water'].includes(m.type)||!utilTrue(m.active)||!c||!c.bills.length) return [];
   const S=utilSettings(utSet(),m.branch_code||UT.br), per={};
-  c.bills.filter(b=>b.meter_id===m.meter_id).forEach(b=>{ const u=utNum(b.units); if(u>0){ const k=utilBillUsageMonth(b.bill_month,S.billMonthOffset); per[k]=(per[k]||0)+u; } });
+  c.bills.filter(b=>b.meter_id===m.meter_id).forEach(b=>{ const u=utNum(b.units); if(u>0){ const k=utilBillMonthOf(b,S); per[k]=(per[k]||0)+u; } });
   const dim=k=>{ const [y,mo]=k.split('-').map(Number); return new Date(Date.UTC(y,mo,0)).getUTCDate(); };
   const t=new Date(), ym=t.getFullYear()*12+t.getMonth(), ix=k=>{ const [y,mo]=k.split('-').map(Number); return y*12+mo-1; };
   const ks=Object.keys(per).sort().filter(k=>ym-ix(k)<=6).slice(-6); if(!ks.length) return [];   // บิลเก่ากว่า 6 เดือน (BN-E-TEMP ม.ค. 69) ไม่ใช่ภาพปัจจุบัน
@@ -391,7 +392,7 @@ function umMeterDetail(i){
       // MOB-02: 12 เดือน × 52px กว้างกว่าจอมือถือ → เลื่อนในกรอบตัวเอง (เดิมทั้งกล่องเลื่อนซ้ายขวา) · เปิดมาเห็นเดือนล่าสุด (ท้ายฟังก์ชัน)
       const row=`<div class="um-hscroll"><div class="um-hg" style="grid-template-columns:repeat(${last12.length},minmax(52px,1fr))">${last12.map(k=>`<span class="ch">${utMonthTh(k)}</span>`).join('')}
         ${last12.map(k=>umBillCell(c,m,i,k,R[k])).join('')}</div></div>`;
-      const tr=[...ks].reverse().map(k=>{ const x=R[k], f=c.chk&&c.chk[m.meter_id+'@'+k], use=utilBillUsageMonth(k);
+      const tr=[...ks].reverse().map(k=>{ const x=R[k], f=c.chk&&c.chk[m.meter_id+'@'+k], use=k;   // UTIL-52
         const md=r.days.filter(d=>d.date.startsWith(use)), got=md.reduce((s,d)=>s+d.units,0);
         const mk=!f?'':f.high?' <span class="ut-mk hi">⚠</span>':' <span class="ut-mk q">?</span>';
         return `<tr class="um-link" onclick="umBillDetail(${i},'${k}')"><td>${utMonthTh(k)}${mk}</td><td class="n">${utFmt(x.units)}</td><td class="n">${x.med?umFb(x.med,0):'—'}</td>

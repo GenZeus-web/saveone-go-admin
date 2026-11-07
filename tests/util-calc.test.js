@@ -6,7 +6,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('fs'),path=require('path'),vm=require('vm');
 vm.runInThisContext(fs.readFileSync(path.join(__dirname,'..','js','util-calc.js'),'utf8')+
-  '\n;Object.assign(globalThis,{utilAnalyze,utilValueAt,utilBillUsageMonth,utilMedian,utilBands,utilBillCheck,utilBillCfg,utilSettings,utilRound,UTIL_DEFAULTS});');
+  '\n;Object.assign(globalThis,{utilAnalyze,utilValueAt,utilBillUsageMonth,utilBillOffset,utilBillMapMonths,utilMedian,utilBands,utilBillCheck,utilBillCfg,utilSettings,utilRound,UTIL_DEFAULTS});');
 
 const OFFICE={meter_id:'BN-W-OFFICE',type:'water',branch_code:'BN'};
 const TOILET={meter_id:'BN-W-TOILET',type:'water',branch_code:'BN'};
@@ -375,4 +375,26 @@ test('รอบจด: ก่อน 15:00 = รอบเมื่อวาน (�
   // ซักล้างจดล่าสุด 22 ต.ค. 16:53 → ไม่นับเป็นรอบ 23 · เมน 23 ต.ค. 15:58 นับ
   assert.ok(Date.parse('2026-10-22T16:53:00+07:00')<R('17:30').from);
   assert.ok(Date.parse('2026-10-23T15:58:00+07:00')>=R('17:30').from);
+});
+
+// ── UTIL-52 เดือนในบิล → เดือนที่ใช้จริง แยกชนิด ──
+//   ไฟ อ่านปลายเดือน (30/10/69 = ใช้ ต.ค.) → ไม่เลื่อน · น้ำ อ่านต้นเดือน (SB 05/11/69 = ใช้ ต.ค.) → เลื่อน −1
+test('UTIL-52: ไฟไม่เลื่อน · น้ำเลื่อน −1 · แปลงตอนโหลดแล้วไม่เลื่อนซ้ำ',()=>{
+  assert.equal(utilBillOffset('elec',{}),0);
+  assert.equal(utilBillOffset('water',{}),-1);
+  assert.equal(utilBillOffset(undefined,{}),-1);   // แถวไม่มีชนิด = แบบเดิม
+  const bills=utilBillMapMonths([{bill_month:'2026-10',type:'elec',meter_id:'E',units:'27563'},
+    {bill_month:'2026-11',type:'water',meter_id:'W',units:'797'},{bill_month:'2026-01',type:'water',meter_id:'W',units:'5'}],{});
+  assert.deepEqual(bills.map(b=>b.bill_month),['2026-10','2026-10','2025-12']);
+  assert.deepEqual(bills.map(b=>b.bill_month_raw),['2026-10','2026-11','2026-01']);
+  assert.equal(utilBillMapMonths(bills,{}),bills);   // แปลงซ้ำ = ไม่เปลี่ยน
+  assert.deepEqual(bills.map(b=>b.bill_month),['2026-10','2026-10','2025-12']);
+});
+test('UTIL-52: ค่าเฉลี่ยบิลไฟ (type elec) ใช้เดือนบิลตรงๆ · บิลที่แปลงแล้วไม่เลื่อนซ้ำ',()=>{
+  const el=BG_E1_BILLS.map(b=>({...b,type:'elec'}));   // บิล มิ.ย.–ก.ย. = ใช้ มิ.ย.–ก.ย.
+  const d=utilAnalyze(elDaily('2026-10-19',1,()=>900),ELEC1,{},NOW,el).days[0];
+  assert.deepEqual(d.billMonths,['2026-07','2026-08','2026-09']);
+  const w=utilBillMapMonths([{bill_month:'2026-10',type:'water',meter_id:'W',units:'600'}],{});   // ใช้จริง ก.ย.
+  const oct=utilAnalyze(daily(()=>20,1,'2026-10-10'),W,{},NOW,w).days[0];
+  assert.deepEqual(oct.billMonths,['2026-09']);
 });

@@ -148,7 +148,7 @@ function utilBillDaily(bills,meterId,iso,S){
   for(const b of bills||[]){
     const u=Number(String(b.units??'').replace(/[,\s]/g,''));
     if(b.meter_id!==meterId||!(u>0)) continue;
-    const k=utilBillUsageMonth(b.bill_month,S.billMonthOffset);
+    const k=utilBillMonthOf(b,S);   // UTIL-52
     per[k]=(per[k]||0)+u;
   }
   const ix=k=>{ const [y,m]=k.split('-').map(Number); return y*12+m; };
@@ -263,3 +263,15 @@ function utilBillUsageMonth(billMonth,offset){
   const [y,m]=billMonth.split('-').map(Number), n=y*12+(m-1)+(offset??UTIL_DEFAULTS.billMonthOffset);
   return `${Math.floor(n/12)}-${String(n%12+1).padStart(2,'0')}`;
 }
+// UTIL-52: เลื่อนเดือนแยกชนิด — ไฟ กฟน. อ่านปลายเดือน (30/10/69 = ใช้ ต.ค.) → 0
+//   น้ำ กปน. อ่านต้นเดือน (SB 05/11/69 = ใช้ 5 ต.ค.–5 พ.ย.) → billMonthOffset (ตั้งต้น −1) · แถวไม่มีชนิด = แบบน้ำ (เดิม)
+function utilBillOffset(type,S){ return type==='elec'?0:((S&&S.billMonthOffset)??UTIL_DEFAULTS.billMonthOffset); }
+// แปลง bill_month ของทุกบิลเป็นเดือนที่ใช้จริงครั้งเดียวตอนโหลด (กราฟ/ตาราง/กล่องตรวจใช้เดือนเดียวกันหมด)
+//   เดือนบนบิลกระดาษเก็บไว้ที่ bill_month_raw · แปลงแล้วไม่แปลงซ้ำ (แก้ตัวเดิมในที่ · คืนอาเรย์เดิม)
+function utilBillMapMonths(bills,S){
+  (bills||[]).forEach(b=>{ if(b.bill_month_raw!=null||!/^\d{4}-\d{2}$/.test(String(b.bill_month||''))) return;
+    b.bill_month_raw=b.bill_month; b.bill_month=utilBillUsageMonth(b.bill_month,utilBillOffset(b.type,S)); });
+  return bills;
+}
+// เดือนที่ใช้จริงของบิล 1 ใบ (แปลงแล้ว = ใช้ตามนั้น)
+function utilBillMonthOf(b,S){ return b.bill_month_raw!=null?b.bill_month:utilBillUsageMonth(b.bill_month,utilBillOffset(b.type,S)); }

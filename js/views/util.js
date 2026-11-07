@@ -38,7 +38,7 @@ async function utLoad(br){
     try{
       const r=await window.fetchUtilFromFirestore(br,money);
       // UTIL-23: มีสิทธิ์เงิน = บิลเต็ม · ไม่มี (หรืออ่านบิลเต็มไม่ได้) = หน่วยในบิลจาก data/ (ไม่มี amount_incl_vat → ทุกจุดที่โชว์เงินไม่มีเลขให้โชว์)
-      const readings=utCsv(r.csv), full=utCsv(r.billsCsv), bills=full.length?full:utCsv(r.billUnitsCsv||'');
+      const readings=utCsv(r.csv), full=utCsv(r.billsCsv), bills=utilBillMapMonths(full.length?full:utCsv(r.billUnitsCsv||''),utSet());   // UTIL-52 เดือนที่ใช้จริง
       // มิเตอร์ที่เปิดอยู่ + มิเตอร์ที่ปิดแล้วแต่ยังมีข้อมูล (SS ปิดสาขา = active FALSE ทุกตัว แต่ต้องดูย้อนหลังได้)
       // ไม่มีเอกสาร data/{BR}_UTIL (สาขาที่ไม่เคยจดผ่านแอป) แต่มีบิล → สร้างการ์ดจากบิล
       const used=new Set([...readings,...bills].map(x=>x.meter_id));
