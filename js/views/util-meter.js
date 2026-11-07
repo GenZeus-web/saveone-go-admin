@@ -93,7 +93,7 @@ function umOnColor(rgb,a){
   const l=L(mix), dark=[27,23,20];
   return (1.05/(l+.05))>=((l+.05)/(L(dark)+.05))?'#fff':'#1b1714';
 }
-// TICK-01: กะพริบแบบกระดานหุ้น เฉพาะตัวที่เกินเกณฑ์ (เหลือง/แดง/ม่วง · บิล ⚠) 3 ที เป็นสีระดับ (เจ้าของ: กะพริบแค่ตัวที่เข้าเกณฑ์)
+// TICK-01: กะพริบแบบกระดานหุ้น เฉพาะตัวที่เกินเกณฑ์ (เหลือง/แดง/ม่วง · บิล ⚠) 2 ที (รอบละ 1.4 วิ) เป็นสีระดับ (เจ้าของ: กะพริบแค่ตัวที่เข้าเกณฑ์)
 //   ตัวที่กะพริบ = เลขบนการ์ด + ช่องวันล่าสุด/บิลเดือนล่าสุดของแต่ละมิเตอร์ (ช่องเก่าในตารางไม่กะพริบ จะได้ไม่วูบทั้งจอ)
 //   จังหวะ = เปิดแท็บ / สลับสาขา / ข้อมูลชุดใหม่เข้า (c.ts เปลี่ยน) · กดเปิดปิดกล่องหรือวาดซ้ำข้อมูลเดิม = ไม่กะพริบ
 //   ▲/▼ บนการ์ด = เลขเปลี่ยนจากรอบก่อน
@@ -107,9 +107,9 @@ function umTick(host,br,ts){
     if(!go||!UM_TICK_HOT.has(el.dataset.tl)||(m&&last[m[1]+m[2]]!==m[3])) return;
     const a=same?parseFloat(P.v[k]):NaN, b=parseFloat(v), dir=isNaN(a)||isNaN(b)||a===b?'':b>a?'▲':'▼';
     const col=`rgb(${umRgb(el.dataset.tl)})`;
-    el.style.setProperty('--tk',col); el.style.setProperty('--tk-ink',umOnColor(col,1)); el.classList.add('tick');   // ตัวเลขบนพื้นทึบ: ขาว/ดำตามสี
+    el.style.setProperty('--tk',col); el.classList.add('tick');
     if(dir&&el.classList.contains('um-big')) el.insertAdjacentHTML('beforeend',`<span class="um-tk">${dir}</span>`);
-    setTimeout(()=>{ el.classList.remove('tick'); el.querySelector('.um-tk')?.remove(); },1900);   // ไม่ใช้ animationend: ลดการเคลื่อนไหว = ไม่มี animation (กรอบค้าง 1.8 วิแทน)
+    setTimeout(()=>{ el.classList.remove('tick'); el.querySelector('.um-tk')?.remove(); },2900);   // ไม่ใช้ animationend: ลดการเคลื่อนไหว = ไม่มี animation (กรอบค้าง 2.9 วิแทน)
   });
   UT.tick={br,sub:UT.shown,ts,v:now};
 }
