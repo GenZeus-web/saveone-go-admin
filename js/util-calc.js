@@ -265,13 +265,19 @@ function utilBillUsageMonth(billMonth,offset){
 }
 // UTIL-52: เลื่อนเดือนแยกชนิด — ไฟ กฟน. อ่านปลายเดือน (30/10/69 = ใช้ ต.ค.) → 0
 //   น้ำ กปน. อ่านต้นเดือน (SB 05/11/69 = ใช้ 5 ต.ค.–5 พ.ย.) → billMonthOffset (ตั้งต้น −1) · แถวไม่มีชนิด = แบบน้ำ (เดิม)
-function utilBillOffset(type,S){ return type==='elec'?0:((S&&S.billMonthOffset)??UTIL_DEFAULTS.billMonthOffset); }
+//   UTIL-53: น้ำ SG ไม่เลื่อน — บัญชี SG ลงเดือนที่คิดค่าน้ำ · SB ลงเดือนที่บิลออก จึงต้องเลื่อน (เจ้าของ 7 พ.ย. 69)
+const UTIL_WATER_NO_SHIFT=['SG-'];
+function utilBillOffset(type,S,meterId){
+  if(type==='elec') return 0;
+  if(type==='water'&&UTIL_WATER_NO_SHIFT.some(p=>String(meterId||'').startsWith(p))) return 0;
+  return (S&&S.billMonthOffset)??UTIL_DEFAULTS.billMonthOffset;
+}
 // แปลง bill_month ของทุกบิลเป็นเดือนที่ใช้จริงครั้งเดียวตอนโหลด (กราฟ/ตาราง/กล่องตรวจใช้เดือนเดียวกันหมด)
 //   เดือนบนบิลกระดาษเก็บไว้ที่ bill_month_raw · แปลงแล้วไม่แปลงซ้ำ (แก้ตัวเดิมในที่ · คืนอาเรย์เดิม)
 function utilBillMapMonths(bills,S){
   (bills||[]).forEach(b=>{ if(b.bill_month_raw!=null||!/^\d{4}-\d{2}$/.test(String(b.bill_month||''))) return;
-    b.bill_month_raw=b.bill_month; b.bill_month=utilBillUsageMonth(b.bill_month,utilBillOffset(b.type,S)); });
+    b.bill_month_raw=b.bill_month; b.bill_month=utilBillUsageMonth(b.bill_month,utilBillOffset(b.type,S,b.meter_id)); });
   return bills;
 }
 // เดือนที่ใช้จริงของบิล 1 ใบ (แปลงแล้ว = ใช้ตามนั้น)
-function utilBillMonthOf(b,S){ return b.bill_month_raw!=null?b.bill_month:utilBillUsageMonth(b.bill_month,utilBillOffset(b.type,S)); }
+function utilBillMonthOf(b,S){ return b.bill_month_raw!=null?b.bill_month:utilBillUsageMonth(b.bill_month,utilBillOffset(b.type,S,b.meter_id)); }

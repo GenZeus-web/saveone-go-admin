@@ -390,6 +390,16 @@ test('UTIL-52: ไฟไม่เลื่อน · น้ำเลื่อน 
   assert.equal(utilBillMapMonths(bills,{}),bills);   // แปลงซ้ำ = ไม่เปลี่ยน
   assert.deepEqual(bills.map(b=>b.bill_month),['2026-10','2026-10','2025-12']);
 });
+// ── UTIL-53 น้ำ SG ไม่เลื่อน (บิลเดือน 9 = ก.ย. ตรงตารางบัญชี) · น้ำ SB/SR ยังเลื่อน −1 ──
+test('UTIL-53: น้ำ SG เดือนตรงบิล · น้ำ SB เลื่อน −1',()=>{
+  assert.equal(utilBillOffset('water',{},'SG-W-MAIN'),0);
+  assert.equal(utilBillOffset('water',{},'SB-W-TOILET'),-1);
+  assert.equal(utilBillOffset('water',{},'SR-W-MAIN'),-1);
+  assert.equal(utilBillOffset('elec',{},'SG-E-1'),0);
+  const b=utilBillMapMonths([7,8,9].map(m=>({bill_month:'2026-0'+m,type:'water',meter_id:'SG-W-MAIN',units:'607'}))
+    .concat([{bill_month:'2026-11',type:'water',meter_id:'SB-W-TOILET',units:'797'}]),{});
+  assert.deepEqual(b.map(x=>x.bill_month),['2026-07','2026-08','2026-09','2026-10']);
+});
 test('UTIL-52: ค่าเฉลี่ยบิลไฟ (type elec) ใช้เดือนบิลตรงๆ · บิลที่แปลงแล้วไม่เลื่อนซ้ำ',()=>{
   const el=BG_E1_BILLS.map(b=>({...b,type:'elec'}));   // บิล มิ.ย.–ก.ย. = ใช้ มิ.ย.–ก.ย.
   const d=utilAnalyze(elDaily('2026-10-19',1,()=>900),ELEC1,{},NOW,el).days[0];
