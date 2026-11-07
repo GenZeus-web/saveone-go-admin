@@ -113,12 +113,19 @@ function umTick(host,br,ts){
   });
   UT.tick={br,sub:UT.shown,ts,v:now};
 }
+// UTIL-59: ช่องบิลเหลือง/แดงในช่วงเตือน (2 เดือนล่าสุด · UTIL-58) กะพริบกรอบช้าๆ ไม่หยุด (เจ้าของ: เนิบๆ สมูทๆ ไม่ให้ตาลาย)
+//   ช่องเก่ากว่านั้นไม่กะพริบ = ไม่เตือนซ้ำ · ชุดเดือนในช่วงเตือนเก็บไว้ที่ c (คิดใหม่เมื่อผลตรวจเปลี่ยน)
+function umBillLive(c){
+  if(!c._live||c._liveFor!==c.check){ c._liveFor=c.check; c._live=new Set(utilBillRecent(c.check,utilBillCfg(utSet()).recent).map(x=>x.meter_id+'@'+x.bill_month)); }
+  return c._live;
+}
 function umBillCell(c,m,i,k,x){
   const f=c.chk&&c.chk[m.meter_id+'@'+k], lv=umBillLv(x,f), col=lv?`rgb(${umRgb(lv)})`:'';
+  const live=(lv==='yellow'||lv==='red')&&umBillLive(c).has(m.meter_id+'@'+k);
   // ⚠ อยู่ในช่อง (กรอบแดงเดิมมองไม่เห็นบนช่องแดง) · ช่องเทา = หน่วยของบิล (ไม่มี % ไม่มีค่ากลาง จะได้ไม่อ่านเป็นค่ากลาง)
   const body=x.ratio!=null?`${f?.high?'⚠ ':''}${umPct(x)}<small>${utFmt(x.med)}</small>`:`<span class="u">${utFmt(x.units)}</span>`;
-  return `<span class="c mo${f?.high?' flag':''}${lv?'':' grey'}" onclick="umBillDetail(${i},'${k}')" ${umTk(m.meter_id+'@'+k,x.units,lv||'nodata')} data-tip="${umName(m)}|บิล ${utMonthTh(k)} · ${utFmt(x.units)} ${utU(m)}${x.ratio!=null?'|'+umPct(x)+' จากค่ากลาง '+utFmt(x.med):x.warm?'|ยังไม่ตรวจ: '+utilBillCfg(utSet()).warmup+' เดือนแรกของสาขา':'|ยังเทียบไม่ได้: บิลก่อนหน้าไม่พอ'}${f?.high?'|⚠ บิลสูงผิดปกติ':''}"
-    style="background:${lv==='red'?`color-mix(in srgb,rgb(${umRgb('red')}) 78%,#000);color:#fff`:lv?`rgba(${umRgb(lv)},.8);color:${umOnColor(col,.8)}`:'var(--surface2)'}">${body}</span>`;   // แดง: ขาวบนแดงจาง .8 อ่านยาก (เจ้าของ 7 พ.ย.) → แดงเข้มทึบ   // .8 ไม่ใช่ .9 แบบช่องรายวัน: ช่องบิลมีตัวเลข · เขียวโหมดสว่าง .9 ตัวดำ contrast ~4.2
+  return `<span class="c mo${f?.high?' flag':''}${lv?'':' grey'}${live?' pulse':''}" onclick="umBillDetail(${i},'${k}')" ${umTk(m.meter_id+'@'+k,x.units,lv||'nodata')} data-tip="${umName(m)}|บิล ${utMonthTh(k)} · ${utFmt(x.units)} ${utU(m)}${x.ratio!=null?'|'+umPct(x)+' จากค่ากลาง '+utFmt(x.med):x.warm?'|ยังไม่ตรวจ: '+utilBillCfg(utSet()).warmup+' เดือนแรกของสาขา':'|ยังเทียบไม่ได้: บิลก่อนหน้าไม่พอ'}${f?.high?'|⚠ บิลสูงผิดปกติ':''}"
+    style="${live?`--tk:${col};`:''}background:${lv==='red'?`color-mix(in srgb,rgb(${umRgb('red')}) 78%,#000);color:#fff`:lv?`rgba(${umRgb(lv)},.8);color:${umOnColor(col,.8)}`:'var(--surface2)'}">${body}</span>`;   // แดง: ขาวบนแดงจาง .8 อ่านยาก (เจ้าของ 7 พ.ย.) → แดงเข้มทึบ   // .8 ไม่ใช่ .9 แบบช่องรายวัน: ช่องบิลมีตัวเลข · เขียวโหมดสว่าง .9 ตัวดำ contrast ~4.2
 }
 
 // ใช้ 0 ในช่วงล่าสุดที่จดครบ (7 วัน) = มิเตอร์ไม่ขยับ: ค้าง หรือลอกเลขเดิม

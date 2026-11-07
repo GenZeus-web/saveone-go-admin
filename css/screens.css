@@ -79,9 +79,13 @@
 @keyframes umTick{0%,100%{box-shadow:0 0 0 0 transparent;}50%{box-shadow:0 0 0 2px var(--tk,var(--gold)),0 0 12px 1px var(--tk,var(--gold));}}
 .tick{animation:umTick 1.4s ease-in-out 2;position:relative;z-index:1;border-radius:6px;}
 .um-tk{margin-left:6px;font-size:.6em;color:var(--tk,var(--gold));}
+/* UTIL-59: ช่องบิลเกินเกณฑ์ในช่วงเตือน กะพริบกรอบช้าๆ ไม่หยุด (รอบละ 3 วิ · ease-in-out ให้นุ่ม) — ชนะ .tick (selector เจาะจงกว่า) */
+@keyframes umPulse{0%,100%{box-shadow:0 0 0 0 transparent;}50%{box-shadow:0 0 0 2px var(--tk,var(--gold)),0 0 10px 1px var(--tk,var(--gold));}}
+.um-hg .c.mo.pulse{animation:umPulse 3s ease-in-out infinite;position:relative;z-index:1;}
 /* ผู้ใช้ตั้ง "ลดการเคลื่อนไหว" ในเครื่อง = ฉากนิ่ง (js วาดเฟรมเดียว) ไม่พุ่ง แค่มืดลง */
 @media (prefers-reduced-motion:reduce){
   .tick{animation:none;outline:2px solid var(--tk,var(--gold));outline-offset:1px;}
+  .um-hg .c.mo.pulse{animation:none;outline:2px solid var(--tk,var(--gold));outline-offset:1px;}
   .login-box{animation:none;transition:none;}
   .login-truck img{animation:none;}
   #loginPage::after{transition-delay:0s;}
