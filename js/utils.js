@@ -123,7 +123,11 @@ function getNonPrice(date,br=activeBranch){ return lockPrices(date,'non',br).po;
 function getNonWalkPrice(date,br=activeBranch){ return lockPrices(date,'non',br).pw; }
 // วันฝน: SS ลดครึ่งเฉพาะออนไลน์ · BG/BN ลดครึ่งทุกประเภท
 const rainHalvesWalkIn=(br=activeBranch)=>br!=='SS';
+// REFUND-01: ช่อง FreeDay ในชีต — n/0/ว่าง = ปกติ · 50 (หรือ 1/true แถวเก่า) = ฝน ลดครึ่ง · 100 = คืนเต็มวัน (เช่น น้ำท่วม 26–27 ก.ย. 69)
+//   คืนเต็ม = freeDay ด้วย (นับเป็นวันฝนในแท็บ/ปฏิทินเหมือนเดิม) + full → รายรับ 0 · ส่วนลด = รายรับปกติ
+function fdFlag(v){const s=String(v??'').trim().toLowerCase();return s==='100'?2:(s==='50'||s==='1'||s==='true')?1:0;}
 function revST(r,g='all',br=activeBranch){
+  if(r.full) return 0;
   const{po,pw}=getBranchPrice(r.date,br);
   const fd=r.freeDay;
   // เลือก lock ตาม group
@@ -147,6 +151,7 @@ function revSTNormal(r,g='all',br=activeBranch){
 }
 function revNon(r,g='all',br=activeBranch){
   if(!r||!r.date) return 0;
+  if(r.nonFull||r.full) return 0; // REFUND-01 · ตาม nonFree||freeDay
   const p=getNonPrice(r.date,br);
   const fd=r.nonFree||r.freeDay||false;
   const online = (g==='all'||g==='online') ? (r.nonOnlineLock||0) : 0;
@@ -200,6 +205,9 @@ function calcDiscount(r,g='all',br=activeBranch){
       nonDisc=(online*(r.nonOnlineLock||0)*np + (walkin*(r.nonWalkInLock||0)+extra*(r.nonExtraLock||0))*npw)*0.5;
     }
   }
+  // REFUND-01: คืนเต็ม = ส่วนลดเท่ารายรับปกติทั้งก้อน
+  if(r.full) stDisc=revSTNormal(r,g,br);
+  if(r.nonFull||r.full) nonDisc=revNonNormal(r,g,br);
   return stDisc+nonDisc;
 }
 
@@ -242,7 +250,7 @@ const mapST=r=>{
   return{date,dateStr:r['วันที่'],onlineLock:n(r['Online_Lock']),onlineRai:n(r['Online_Rai']),
     walkInLock:n(r['WalkIn_Lock']),walkInRai:n(r['WalkIn_Rai']),extraLock:n(r['ล็อกเสริม-Lock']),extraRai:n(r['ล็อกเสริม_Rai']),
     cancelLock:n(r['Cancel_Lock']),absentLock:n(r['Absent_Lock']),cancelRai:n(r['Cancel_Rai']),absentRai:n(r['Absent_Rai']),
-    freeDay:['1','true','1'].includes(String(r['FreeDay']).trim().toLowerCase())&&String(r['FreeDay']).trim()!=='0'&&String(r['FreeDay']).trim().toLowerCase()!=='n'&&String(r['FreeDay']).trim().toLowerCase()!=='false',
+    freeDay:fdFlag(r['FreeDay'])>=1,full:fdFlag(r['FreeDay'])===2,
     l1,l2};
 };
 const mapNon=r=>{
@@ -261,14 +269,14 @@ const mapNon=r=>{
   const cancelRai=n(r['Cancel_Rai']);
   const absentRai=n(r['Absent_Rai']);
   const cutLock=n(r['ตัดไม่มาทำการค้า_Lock']);
-  const fd_raw=String(r['FreeDay']||'').trim().toLowerCase();const freeDay=fd_raw==='1'||fd_raw==='true';
+  const fdf=fdFlag(r['FreeDay']);const freeDay=fdf>=1, full=fdf===2;
   // รวม lock ทั้งหมดสำหรับโซน Non/Car
   const totalLock=onlineLock+walkInLock+extraLock;
   const totalRai=onlineRai+walkInRai;
   return{date,dateStr:r['วันที่'],
     onlineLock,onlineRai,walkInLock,walkInRai,extraLock,extraRai,
     cancelLock,absentLock,cancelRai,absentRai,cutLock,
-    freeDay,l1,l2,
+    freeDay,full,l1,l2,
     // เก็บไว้ backward compat
     totalLock,totalRai};
 };

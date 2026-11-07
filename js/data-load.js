@@ -184,10 +184,10 @@ function mergeBranch(stArr, nonArr){
       extraLock:r.extraLock||0, extraRai:r.extraRai||0,
       cancelLock:r.cancelLock||0, absentLock:r.absentLock||0,
       cancelRai:r.cancelRai||0, absentRai:r.absentRai||0,
-      freeDay:r.freeDay,
+      freeDay:r.freeDay, full:!!r.full,
       l1:r.l1||0, l2:r.l2||0,
       // Non fields เริ่มที่ 0
-      nonLock:0, nonRai:0, l1n:0, l2n:0, nonFree:false,
+      nonLock:0, nonRai:0, l1n:0, l2n:0, nonFree:false, nonFull:false,
       nonOnlineLock:0, nonWalkInLock:0, nonExtraLock:0,
       nonCancelLock:0, nonAbsentLock:0,
       nonOnlineRai:0, nonWalkInRai:0,
@@ -221,6 +221,7 @@ function mergeBranch(stArr, nonArr){
       map[key].l1n=r.l1||0;
       map[key].l2n=r.l2||0;
       map[key].nonFree=r.freeDay;
+      map[key].nonFull=!!r.full;
     } else {
       // มี Non แต่ไม่มี ST วันนั้น
       map[key]={
@@ -235,7 +236,7 @@ function mergeBranch(stArr, nonArr){
         nonCancelLock:r.cancelLock||0, nonAbsentLock:r.absentLock||0,
         nonExtraRai:r.extraRai||0, nonCancelRai:r.cancelRai||0, nonAbsentRai:r.absentRai||0,
         nonOnlineRai:nOnlineRai, nonWalkInRai:nWalkInRai,
-        l1n:r.l1||0, l2n:r.l2||0, nonFree:r.freeDay
+        l1n:r.l1||0, l2n:r.l2||0, nonFree:r.freeDay, nonFull:!!r.full
       };
     }
   });

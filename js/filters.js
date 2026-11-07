@@ -100,7 +100,7 @@ function applyZone(d){
     return d.map(r=>({...r,nonLock:0,nonRai:0,l1n:0,l2n:0,
       nonOnlineLock:0,nonWalkInLock:0,nonExtraLock:0,nonCancelLock:0,nonAbsentLock:0,
       nonOnlineRai:0,nonWalkInRai:0,
-      nonExtraRai:0,nonCancelRai:0,nonAbsentRai:0,nonFree:false}));
+      nonExtraRai:0,nonCancelRai:0,nonAbsentRai:0,nonFree:false,nonFull:false}));
   } else if(zone==='non'){
     return d.map(r=>({...r,
       onlineLock:0,onlineRai:0,walkInLock:0,walkInRai:0,extraLock:0,
