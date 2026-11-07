@@ -74,8 +74,15 @@
   .login-truck img{width:124px;}
   .login-wordmark{width:200px;}
 }
+/* TICK-01: ค่าเปลี่ยนจากข้อมูลรอบก่อน กะพริบ 3 ที (umTick ใน util-meter.js ใส่ --tk = สีระดับใหม่) */
+/*   ทั้งช่องเป็นสีทึบ + เรืองรอบ (เจ้าของ: แรงกว่ากรอบเรือง) · animation ทับ background inline ได้ (ไม่ใช่ !important) */
+@keyframes umTick{0%,100%{box-shadow:0 0 0 0 transparent;}40%,60%{background:var(--tk,var(--gold));color:var(--tk-ink,#fff);box-shadow:0 0 0 2px var(--tk,var(--gold)),0 0 16px 2px var(--tk,var(--gold));}}
+.tick{animation:umTick .6s ease-in-out 3;position:relative;z-index:1;border-radius:6px;}
+.tick small,.tick .um-delta{color:inherit!important;}
+.um-tk{margin-left:6px;font-size:.6em;color:var(--tk,var(--gold));}
 /* ผู้ใช้ตั้ง "ลดการเคลื่อนไหว" ในเครื่อง = ฉากนิ่ง (js วาดเฟรมเดียว) ไม่พุ่ง แค่มืดลง */
 @media (prefers-reduced-motion:reduce){
+  .tick{animation:none;outline:2px solid var(--tk,var(--gold));outline-offset:1px;}
   .login-box{animation:none;transition:none;}
   .login-truck img{animation:none;}
   #loginPage::after{transition-delay:0s;}
@@ -148,7 +155,8 @@
 .um-hg .c{height:26px;min-width:22px;border-radius:3px;font-size:10px;display:flex;align-items:center;justify-content:center;color:var(--ink);cursor:pointer;}
 .um-hg .c.mo{min-width:52px;height:36px;flex-direction:column;line-height:1.15;}
 .um-hg .c.mo small{font-size:9px;color:inherit;}
-.um-hg .c.flag{outline:2px solid var(--red);outline-offset:-2px;font-weight:700;}
+.um-hg .c.flag{font-weight:700;}   /* UTIL-55: ⚠ อยู่ในช่องแดงแทนกรอบแดง (กรอบแดงบนช่องแดงมองไม่เห็น) */
+.um-hg .c.mo.grey .u{color:var(--ink2);font-style:italic;}   /* ช่องเทา = หน่วยของบิล ไม่ใช่ % / ค่ากลาง */
 .um-hg .c.na{background:transparent;border:1px dashed var(--border);cursor:default;}
 .um-dcard{max-width:620px;}
 .um-full{max-width:1000px;} .um-fsum{margin:6px 0 4px;} .um-fsum .um-big small{font-size:12px;}

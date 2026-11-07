@@ -78,12 +78,11 @@ function umBillRatios(c,id){
   return out;
 }
 const umPct=x=>x.ratio==null?'':(x.ratio>=1?'+':'')+Math.round((x.ratio-1)*100)+'%';
-// สีช่องบิล: สีเดียว อ่อน→เข้ม ตามสูงกว่าค่ากลางกี่ % (ไม่สูงกว่า = พื้นเรียบ)
-const UM_SEQ=[[1,.0],[1.15,.18],[1.3,.38],[1.6,.6],[Infinity,.75]];   // ขั้นบนสุด .75: .85 เป็นส้มกลางที่ตัวขาว/ดำได้ไม่ถึง 4.5
-// โหมดมืด: ส้มจางบนพื้นเกือบดำกลายเป็นน้ำตาลหม่น แยกจากช่อง "ไม่สูงกว่า" ไม่ออก → ขั้นต่ำเข้มขึ้น
-const UM_SEQ_DARK={.18:.32,.38:.5,.6:.68,.75:.85};
-const umAlpha=a=>document.body.classList.contains('light-mode')?a:(UM_SEQ_DARK[a]??a);
-function umSeqA(r){ if(r==null||r<=1) return 0; return umAlpha(UM_SEQ.find(([t])=>r<=t)[1]); }
+// UTIL-55 สีช่องบิล = เขียว/เหลือง/แดงชุดเดียวกับตารางรายวัน (เดิมส้มอ่อน→เข้ม · 2 ป้ายสีในหน้าเดียว ผู้ใช้สับสน)
+//   แบบ ก. (เจ้าของให้เลือก 7 พ.ย. 69): แดง = ⚠ บิลสูงผิดปกติเท่านั้น → ไม่มีช่องแดงที่ไม่มีธง (บิล มิ.ย. 69 บางนา +41% สีเข้มไม่มี ⚠ เคยงง 14 ต.ค.)
+//   เหลือง = เกิน +15% แต่ไม่ถึงเกณฑ์ ⚠ · เขียว = ไม่เกิน +15% หรือใช้น้อยลง · ยังเทียบไม่ได้ (warmup / บิลก่อนหน้าไม่พอ) = เทา
+const UM_BILL_YELLOW=1.15;
+function umBillLv(x,f){ return f?.high?'red':x.ratio==null?null:x.ratio>UM_BILL_YELLOW?'yellow':'green'; }
 // สีตัวหนังสือบนช่องสี: ผสมสีช่องกับพื้นการ์ดจริง แล้วเลือกขาว/เข้มตัวที่ contrast สูงกว่า
 //   (เดิมใช้สีเดียวทุกช่อง — วัด 14 ต.ค. เลขค่ากลางบนช่องส้มเข้ม contrast 1.6 โหมดมืด / 2.4 โหมดสว่าง)
 function umOnColor(rgb,a){
@@ -94,10 +93,32 @@ function umOnColor(rgb,a){
   const l=L(mix), dark=[27,23,20];
   return (1.05/(l+.05))>=((l+.05)/(L(dark)+.05))?'#fff':'#1b1714';
 }
+// TICK-01: กะพริบแบบกระดานหุ้น เฉพาะตัวที่เกินเกณฑ์ (เหลือง/แดง/ม่วง · บิล ⚠) 3 ที เป็นสีระดับ (เจ้าของ: กะพริบแค่ตัวที่เข้าเกณฑ์)
+//   ตัวที่กะพริบ = เลขบนการ์ด + ช่องวันล่าสุด/บิลเดือนล่าสุดของแต่ละมิเตอร์ (ช่องเก่าในตารางไม่กะพริบ จะได้ไม่วูบทั้งจอ)
+//   จังหวะ = เปิดแท็บ / สลับสาขา / ข้อมูลชุดใหม่เข้า (c.ts เปลี่ยน) · กดเปิดปิดกล่องหรือวาดซ้ำข้อมูลเดิม = ไม่กะพริบ
+//   ▲/▼ บนการ์ด = เลขเปลี่ยนจากรอบก่อน
+const umTk=(k,v,lv)=>`data-tk="${k}" data-tv="${v==null?'':v}" data-tl="${lv||'nodata'}"`;
+const UM_TICK_HOT=new Set(['yellow','red','leak']);
+function umTick(host,br,ts){
+  const now={}, P=UT.tick, same=P&&P.br===br&&P.sub===UT.shown, go=!same||P.ts!==ts, els=[...host.querySelectorAll('[data-tk]')], last={};
+  els.forEach(el=>{ const m=/^(.+?)([#@])(.+)$/.exec(el.dataset.tk); if(m){ const g=m[1]+m[2]; if(!(g in last)||m[3]>last[g]) last[g]=m[3]; } });
+  els.forEach(el=>{
+    const k=el.dataset.tk, v=el.dataset.tv, m=/^(.+?)([#@])(.+)$/.exec(k); now[k]=v;
+    if(!go||!UM_TICK_HOT.has(el.dataset.tl)||(m&&last[m[1]+m[2]]!==m[3])) return;
+    const a=same?parseFloat(P.v[k]):NaN, b=parseFloat(v), dir=isNaN(a)||isNaN(b)||a===b?'':b>a?'▲':'▼';
+    const col=`rgb(${umRgb(el.dataset.tl)})`;
+    el.style.setProperty('--tk',col); el.style.setProperty('--tk-ink',umOnColor(col,1)); el.classList.add('tick');   // ตัวเลขบนพื้นทึบ: ขาว/ดำตามสี
+    if(dir&&el.classList.contains('um-big')) el.insertAdjacentHTML('beforeend',`<span class="um-tk">${dir}</span>`);
+    setTimeout(()=>{ el.classList.remove('tick'); el.querySelector('.um-tk')?.remove(); },1900);   // ไม่ใช้ animationend: ลดการเคลื่อนไหว = ไม่มี animation (กรอบค้าง 1.8 วิแทน)
+  });
+  UT.tick={br,sub:UT.shown,ts,v:now};
+}
 function umBillCell(c,m,i,k,x){
-  const f=c.chk&&c.chk[m.meter_id+'@'+k], a=umSeqA(x.ratio), col=sc('rgb(240,122,53)');
-  return `<span class="c mo${f?.high?' flag':''}" onclick="umBillDetail(${i},'${k}')" data-tip="${umName(m)}|บิล ${utMonthTh(k)} · ${utFmt(x.units)} ${utU(m)}${x.ratio!=null?'|'+umPct(x)+' จากค่ากลาง '+utFmt(x.med):x.warm?'|ยังไม่ตรวจ: '+utilBillCfg(utSet()).warmup+' เดือนแรกของสาขา':''}${f?.high?'|⚠ บิลสูงผิดปกติ':''}"
-    style="background:${a?col.replace('rgb(','rgba(').replace(')',`,${a})`):'var(--surface2)'}${a?`;color:${umOnColor(col,a)}`:''}">${umPct(x)||'—'}${x.med?`<small>${utFmt(x.med)}</small>`:''}</span>`;
+  const f=c.chk&&c.chk[m.meter_id+'@'+k], lv=umBillLv(x,f), col=lv?`rgb(${umRgb(lv)})`:'';
+  // ⚠ อยู่ในช่อง (กรอบแดงเดิมมองไม่เห็นบนช่องแดง) · ช่องเทา = หน่วยของบิล (ไม่มี % ไม่มีค่ากลาง จะได้ไม่อ่านเป็นค่ากลาง)
+  const body=x.ratio!=null?`${f?.high?'⚠ ':''}${umPct(x)}<small>${utFmt(x.med)}</small>`:`<span class="u">${utFmt(x.units)}</span>`;
+  return `<span class="c mo${f?.high?' flag':''}${lv?'':' grey'}" onclick="umBillDetail(${i},'${k}')" ${umTk(m.meter_id+'@'+k,x.units,lv||'nodata')} data-tip="${umName(m)}|บิล ${utMonthTh(k)} · ${utFmt(x.units)} ${utU(m)}${x.ratio!=null?'|'+umPct(x)+' จากค่ากลาง '+utFmt(x.med):x.warm?'|ยังไม่ตรวจ: '+utilBillCfg(utSet()).warmup+' เดือนแรกของสาขา':'|ยังเทียบไม่ได้: บิลก่อนหน้าไม่พอ'}${f?.high?'|⚠ บิลสูงผิดปกติ':''}"
+    style="background:${lv==='red'?`color-mix(in srgb,rgb(${umRgb('red')}) 78%,#000);color:#fff`:lv?`rgba(${umRgb(lv)},.8);color:${umOnColor(col,.8)}`:'var(--surface2)'}">${body}</span>`;   // แดง: ขาวบนแดงจาง .8 อ่านยาก (เจ้าของ 7 พ.ย.) → แดงเข้มทึบ   // .8 ไม่ใช่ .9 แบบช่องรายวัน: ช่องบิลมีตัวเลข · เขียวโหมดสว่าง .9 ตัวดำ contrast ~4.2
 }
 
 // ใช้ 0 ในช่วงล่าสุดที่จดครบ (7 วัน) = มิเตอร์ไม่ขยับ: ค้าง หรือลอกเลขเดิม
@@ -141,7 +162,7 @@ function umTilesHtml(c){
     else{
       head=`ใช้ ${umRange(m,p)} · จดล่าสุด ${utWhen(m._res.last)}`;   // UTIL-26
       const d=p.base?Math.round((p.units/p.base-1)*100):null;
-      big=`<div class="um-big um-link" onclick="event.stopPropagation();umPointDetail(${i},'${p.date}')" title="ดูวิธีคิด">${umApprox(p)}${utFmt(p.units,dp)}<small>${utU(m)}</small>${d==null?'':`<span class="um-delta" style="color:${umHot(lv)?`rgb(${umRgb(lv)})`:'var(--ink2)'}">${d>0?'+':''}${d}% จากค่ากลาง ${utFmt(p.base,dp)}</span>`}</div>`;
+      big=`<div class="um-big um-link" onclick="event.stopPropagation();umPointDetail(${i},'${p.date}')" ${umTk(m.meter_id,p.units,lv)} title="ดูวิธีคิด">${umApprox(p)}${utFmt(p.units,dp)}<small>${utU(m)}</small>${d==null?'':`<span class="um-delta" style="color:${umHot(lv)?`rgb(${umRgb(lv)})`:'var(--ink2)'}">${d>0?'+':''}${d}% จากค่ากลาง ${utFmt(p.base,dp)}</span>`}</div>`;
     }
     let bill='';
     if(money){
@@ -160,6 +181,10 @@ function umTilesHtml(c){
 }
 
 // ── ตารางความร้อน (ล่าง) ──
+// UTIL-55: บิลใช้สีชุดเดียวกับรายวัน (ป้ายสีอยู่ท้ายกล่องที่เดียว) · ใต้ตารางบิลเหลือแค่ความหมายของบิล ไม่มีชุดสีที่สอง
+const umBillKey=()=>{ const p=Math.round((UM_BILL_YELLOW-1)*100), sw=lv=>`<i style="background:rgba(${umRgb(lv)},.8)"></i>`;
+  return `<span>บิล:</span><span>${sw('green')}ไม่เกิน +${p}%</span><span>${sw('yellow')}เกิน +${p}%</span><span>${sw('red')}⚠ บิลสูงผิดปกติ</span>
+  <span>เลขบน = % จากค่ากลาง · เลขล่าง = ค่ากลาง</span><span><i style="background:var(--surface2)"></i>ช่องเทา = หน่วยของบิล (ยังเทียบไม่ได้)</span>`; };
 function umHeatHtml(c){
   const ord=umOrder(c), money=c.bills.length>0;   // UTIL-23
   let h='';
@@ -171,13 +196,11 @@ function umHeatHtml(c){
         <div class="um-hg" style="grid-template-columns:max-content repeat(${all.length},minmax(52px,1fr))"><span></span>${all.map(mo=>`<span class="ch">${utMonthTh(mo)}</span>`).join('')}
         ${withB.map(({m,i})=>{ const R=umBillRatios(c,m.meter_id);
           return `<span class="rl" onclick="umMeterDetail(${i})">${umName(m)}</span>${all.map(mo=>R[mo]?umBillCell(c,m,i,mo,R[mo]):'<span class="c mo na"></span>').join('')}`; }).join('')}</div>
-        <div class="um-key">${UM_SEQ.slice(1).map(([,a],k)=>`<span><i style="background:${sc(`rgba(240,122,53,${umAlpha(a)})`)}"></i>${['ไม่เกิน +15%','+15–30%','+30–60%','เกิน +60%'][k]}</span>`).join('')}
-          <span><i style="background:var(--surface2)"></i>ไม่สูงกว่าค่ากลาง · ยังไม่ตรวจ</span><span>เลขบน = % จากค่ากลาง · เลขล่าง = ค่ากลาง</span>
-          <span><i style="outline:2px solid var(--red);outline-offset:-2px"></i>⚠ บิลสูงผิดปกติ</span></div>`;
+        <div class="um-key">${umBillKey()}</div>`;
     }
   }
   const lvCell=(m,i,d)=>!d?'<span class="c na"></span>'
-    :`<span class="c" onclick="umPointDetail(${i},'${d.date}')" data-tip="${umName(m)}|${umWhen(m,d)}|ใช้ ${utFmt(d.units,1)} ${utU(m)}${d.base!=null?' · ค่ากลาง '+utFmt(d.base,1):''}|${(UT_LEVEL[d.level]||UT_LEVEL.nodata).icon} ${(UT_LEVEL[d.level]||UT_LEVEL.nodata).txt}${d.est?'|ไม่ได้จด (ยอดเฉลี่ย)':d.fill?'|จดคลาดรอบ (เฉลี่ยเต็มวัน)':''}"
+    :`<span class="c" onclick="umPointDetail(${i},'${d.date}')" ${umTk(m.meter_id+'#'+d.date,d.units,d.level)} data-tip="${umName(m)}|${umWhen(m,d)}|ใช้ ${utFmt(d.units,1)} ${utU(m)}${d.base!=null?' · ค่ากลาง '+utFmt(d.base,1):''}|${(UT_LEVEL[d.level]||UT_LEVEL.nodata).icon} ${(UT_LEVEL[d.level]||UT_LEVEL.nodata).txt}${d.est?'|ไม่ได้จด (ยอดเฉลี่ย)':d.fill?'|จดคลาดรอบ (เฉลี่ยเต็มวัน)':''}"
        style="background:rgba(${umRgb(d.level)},${d.level==='partial'||d.level==='nodata'?.3:d.est?.55:.9})"></span>`;
   umGroups(c).forEach(([t,ms])=>{
     const dates=[...new Set(ms.flatMap(({m})=>umPts(m).map(d=>d.date)))].sort().slice(-28);
@@ -188,7 +211,7 @@ function umHeatHtml(c){
         return `<span class="rl" onclick="umMeterDetail(${i})">${umName(m)}</span>${dates.map(d=>lvCell(m,i,by.get(d))).join('')}`; }).join('')}</div>`;
   });
   if(!h) return '';
-  return `<div class="um-heat">${h}<div class="um-key">${['green','yellow','red','leak'].map(k=>`<span><i style="background:rgba(${umRgb(k)},.9)"></i>${UT_LEVEL[k].icon} ${UT_LEVEL[k].txt}</span>`).join('')}
+  return `<div class="um-heat">${h}<div class="um-key">${['green','yellow','red','leak'].map(k=>`<span><i style="background:rgba(${umRgb(k)},.9)"></i>${UT_LEVEL[k].txt}</span>`).join('')}
     <span><i style="background:rgba(${umRgb('green')},.55)"></i>สีจาง = วันที่ไม่ได้จด (เฉลี่ย)</span><span><i style="background:rgba(${umRgb('partial')},.3)"></i>จดยังไม่ครบ</span>
     <span><i style="border:1px dashed var(--border)"></i>ไม่มีข้อมูล</span></div></div>`;
 }
@@ -371,7 +394,7 @@ function umMeterDetail(i){
     :`<p class="um-sub2">${!r.last?(utilTrue(m.active)?'ยังไม่มีการจด':'ปิดใช้แล้ว'):'ข้อมูลยังไม่พอเทียบ'}</p>`;
   // เตือน + ช่วงตลาดปิดล่าสุด + เลขจดที่ต้องเช็ค (เดิมอยู่บนการ์ดเก่า)
   const cl=r.closed.filter(x=>x.level).pop(), w=umWarns(m).filter(x=>!x.startsWith('🔴')&&!x.includes('รายการต้องเช็ค'));
-  const info=[...w, cl?`ช่วงตลาดปิดล่าสุด ${utFmt(cl.rate,2)} ${unit}/ชม. ${cl.level==='red'?'🔴 เกินเกณฑ์':'✅'}`:'']
+  const info=[...w, cl?`ช่วงตลาดปิดล่าสุด ${utFmt(cl.rate,2)} ${unit}/ชม. ${cl.level==='red'?'🟥 เกินเกณฑ์':'✅'}`:'']
     .concat((m._anoms||[]).map(a=>'⚠️ '+utEsc(a))).filter(Boolean);
   const cnt=k=>pts.filter(x=>x.level===k).length, flags=[['leak','สงสัยรั่ว'],['red','แดง'],['yellow','เหลือง']].filter(([k])=>cnt(k))
     .map(([k,t])=>`<span class="ut-chip ${k}">${t} ${cnt(k)} วัน</span>`).join('');
@@ -398,7 +421,7 @@ function umMeterDetail(i){
         return `<tr class="um-link" onclick="umBillDetail(${i},'${k}')"><td>${utMonthTh(k)}${mk}</td><td class="n">${utFmt(x.units)}</td><td class="n">${x.med?umFb(x.med,0):'—'}</td>
           <td class="n">${umPct(x)||'—'}</td>${cash?`<td class="n">${amt[k]?utFmt(amt[k],2):'—'}</td><td class="n">${amt[k]?utFmt(amt[k]/x.units,2):'—'}</td>`:''}<td class="n">${md.length?utFmt(got):'—'}</td></tr>`; }).join('');
       bills=`<div class="um-dh">บิลรายเดือน · % จากค่ากลาง ${utilBillCfg(utSet()).lookback} บิลก่อน</div>${row}
-        <div class="um-key"><span>เลขบน = % จากค่ากลาง · เลขล่าง = ค่ากลาง · กรอบแดง = ⚠ บิลสูงผิดปกติ · กดช่องหรือแถวดูวิธีคิด</span></div>
+        <div class="um-key">${umBillKey()}<span>กดช่องหรือแถวดูวิธีคิด</span></div>
         <div class="ut-bills ut-bills-all"><table><thead><tr><th>เดือนในบิล</th><th class="n">${unit} ตามบิล</th><th class="n">ค่ากลาง</th><th class="n">%</th>${cash?`<th class="n">ยอดเงิน (รวม VAT)</th><th class="n">บาท/${unit}</th>`:''}<th class="n">จากเลขที่จด</th></tr></thead><tbody>${tr}</tbody></table></div>`;
     }
   }

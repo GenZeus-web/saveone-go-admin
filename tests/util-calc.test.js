@@ -6,7 +6,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('fs'),path=require('path'),vm=require('vm');
 vm.runInThisContext(fs.readFileSync(path.join(__dirname,'..','js','util-calc.js'),'utf8')+
-  '\n;Object.assign(globalThis,{utilAnalyze,utilValueAt,utilBillUsageMonth,utilBillOffset,utilBillMapMonths,utilMedian,utilBands,utilBillCheck,utilBillCfg,utilSettings,utilRound,UTIL_DEFAULTS});');
+  '\n;Object.assign(globalThis,{utilAnalyze,utilValueAt,utilBillUsageMonth,utilBillOffset,utilBillMapMonths,utilBillMissing,utilMedian,utilBands,utilBillCheck,utilBillCfg,utilSettings,utilRound,UTIL_DEFAULTS});');
 
 const OFFICE={meter_id:'BN-W-OFFICE',type:'water',branch_code:'BN'};
 const TOILET={meter_id:'BN-W-TOILET',type:'water',branch_code:'BN'};
@@ -407,4 +407,24 @@ test('UTIL-52: ค่าเฉลี่ยบิลไฟ (type elec) ใช้�
   const w=utilBillMapMonths([{bill_month:'2026-10',type:'water',meter_id:'W',units:'600'}],{});   // ใช้จริง ก.ย.
   const oct=utilAnalyze(daily(()=>20,1,'2026-10-10'),W,{},NOW,w).days[0];
   assert.deepEqual(oct.billMonths,['2026-09']);
+});
+// ── UTIL-54 เดือนที่บิลยังมาไม่ครบ (SG ต.ค. 69: บิลซักล้างมาแล้ว บิลเมนยังไม่มา → ไม่นับในเทียบสาขา) ──
+test('UTIL-54: บิลยังไม่ครบ = มิเตอร์ที่เคยมีบิลแต่เดือนนั้นยังไม่มา',()=>{
+  const B=(mo,id,type='water')=>({bill_month:mo,meter_id:id,type,units:'1'});
+  const M=[{meter_id:'SG-W-MAIN',active:'TRUE'},{meter_id:'SG-W-WASH',active:'TRUE'},{meter_id:'SB-E-TEMP',active:'FALSE'},{meter_id:'SB-E-MAIN',active:'TRUE'}];
+  const sg=['2026-06','2026-07','2026-08','2026-09'].map(mo=>B(mo,'SG-W-MAIN')).concat([B('2026-10','SG-W-WASH')]);
+  assert.deepEqual(utilBillMissing(sg,M,'water',4),{'2026-10':['SG-W-MAIN']});   // ก.ย. ไม่ขาด (ซักล้างเพิ่งเริ่มมีบิล ต.ค.)
+  // บิลเมน ต.ค. มาแล้ว = ครบ
+  assert.deepEqual(utilBillMissing(sg.concat([B('2026-10','SG-W-MAIN')]),M,'water',4),{});
+  // ปิดใช้แล้ว (active FALSE) ไม่รอ · ไฟไม่ปนน้ำ
+  const sb=[B('2026-01','SB-E-TEMP','elec'),B('2026-02','SB-E-TEMP','elec'),B('2026-02','SB-E-MAIN','elec'),B('2026-03','SB-E-MAIN','elec')];
+  assert.deepEqual(utilBillMissing(sb,M,'elec',4),{});
+  assert.deepEqual(utilBillMissing(sb,M,'water',4),{});
+  // บิลหยุดเกิน maxAge เดือน = เลิกรอ · ช่องว่างกลางประวัติ = ขาด
+  const gap=[B('2026-01','SG-W-MAIN'),B('2026-01','SG-W-WASH'),B('2026-02','SG-W-WASH'),B('2026-06','SG-W-WASH'),B('2026-03','SG-W-MAIN'),B('2026-06','SG-W-MAIN')];
+  assert.deepEqual(utilBillMissing(gap,M,'water',4),{'2026-02':['SG-W-MAIN'],'2026-03':['SG-W-WASH']});
+  const old=[B('2026-01','SG-W-MAIN'),B('2026-06','SG-W-WASH'),B('2026-04','SG-W-WASH')];
+  assert.deepEqual(utilBillMissing(old,M,'water',4),{'2026-04':['SG-W-MAIN']});   // เม.ย. ห่าง 3 เดือน รอ · มิ.ย. ห่าง 5 เลิกรอ
+  // มิเตอร์ที่ไม่มีในรายการ (สร้างจากบิล) = ไม่รอ
+  assert.deepEqual(utilBillMissing([B('2026-01','X-W-1'),B('2026-02','SG-W-WASH')],M,'water',4),{});
 });

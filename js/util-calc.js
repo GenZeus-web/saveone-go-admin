@@ -281,3 +281,20 @@ function utilBillMapMonths(bills,S){
 }
 // เดือนที่ใช้จริงของบิล 1 ใบ (แปลงแล้ว = ใช้ตามนั้น)
 function utilBillMonthOf(b,S){ return b.bill_month_raw!=null?b.bill_month:utilBillUsageMonth(b.bill_month,utilBillOffset(b.type,S,b.meter_id)); }
+// UTIL-54: เดือนที่บิลของสาขายังมาไม่ครบ → { 'YYYY-MM': [meter_id ที่ยังไม่มา] }
+//   SG ต.ค. 69: บิลซักล้าง (เจ้าของที่) มาก่อน บิลเมน (ประปา) ยังไม่มา → เทียบสาขาเห็นน้ำ SG ต.ค. 117 จากปกติ ~600 ดูเหมือนลดฮวบ
+//   รอมิเตอร์ที่: เปิดใช้อยู่ · มีบิลก่อนเดือนนั้น · บิลถัดไปยังมีอยู่ หรือบิลล่าสุดห่างไม่เกิน maxAge เดือน (หยุดนานกว่านั้น = เลิกรอ)
+//   มิเตอร์ที่เพิ่งเริ่มมีบิล ไม่ทำให้เดือนก่อนหน้าขาด · ดูเฉพาะเดือนที่สาขามีบิลชนิดนั้นอย่างน้อย 1 ใบ
+function utilBillMissing(bills,meters,type,maxAge){
+  const ix=k=>{ const [y,m]=k.split('-').map(Number); return y*12+m; };
+  const on=new Set((meters||[]).filter(m=>utilTrue(m.active)).map(m=>m.meter_id)), have={}, span={};
+  (bills||[]).filter(b=>b.type===type&&/^\d{4}-\d{2}$/.test(String(b.bill_month||''))).forEach(b=>{
+    (have[b.bill_month]=have[b.bill_month]||new Set()).add(b.meter_id);
+    const s=span[b.meter_id]||(span[b.meter_id]={first:b.bill_month,last:b.bill_month});
+    if(b.bill_month<s.first) s.first=b.bill_month; if(b.bill_month>s.last) s.last=b.bill_month; });
+  const out={};
+  Object.keys(have).sort().forEach(mo=>{
+    const miss=Object.keys(span).filter(id=>on.has(id)&&!have[mo].has(id)&&span[id].first<mo&&(span[id].last>mo||ix(mo)-ix(span[id].last)<=maxAge)).sort();
+    if(miss.length) out[mo]=miss; });
+  return out;
+}
