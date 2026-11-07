@@ -6,7 +6,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('fs'),path=require('path'),vm=require('vm');
 vm.runInThisContext(fs.readFileSync(path.join(__dirname,'..','js','util-calc.js'),'utf8')+
-  '\n;Object.assign(globalThis,{utilAnalyze,utilValueAt,utilBillUsageMonth,utilBillOffset,utilBillMapMonths,utilBillMissing,utilMedian,utilBands,utilBillCheck,utilBillCfg,utilSettings,utilRound,UTIL_DEFAULTS});');
+  '\n;Object.assign(globalThis,{utilAnalyze,utilValueAt,utilBillUsageMonth,utilBillOffset,utilBillMapMonths,utilBillMissing,utilBillRecent,utilMedian,utilBands,utilBillCheck,utilBillCfg,utilSettings,utilRound,UTIL_DEFAULTS});');
 
 const OFFICE={meter_id:'BN-W-OFFICE',type:'water',branch_code:'BN'};
 const TOILET={meter_id:'BN-W-TOILET',type:'water',branch_code:'BN'};
@@ -427,4 +427,17 @@ test('UTIL-54: บิลยังไม่ครบ = มิเตอร์ท�
   assert.deepEqual(utilBillMissing(old,M,'water',4),{'2026-04':['SG-W-MAIN']});   // เม.ย. ห่าง 3 เดือน รอ · มิ.ย. ห่าง 5 เลิกรอ
   // มิเตอร์ที่ไม่มีในรายการ (สร้างจากบิล) = ไม่รอ
   assert.deepEqual(utilBillMissing([B('2026-01','X-W-1'),B('2026-02','SG-W-WASH')],M,'water',4),{});
+});
+
+test('UTIL-58: เตือนบิลสูงแค่เดือนล่าสุด + ก่อนหน้า 1 เดือน (นับจากบิลล่าสุดของสาขา·ชนิด)',()=>{
+  const C=(type,meter_id,bill_month,high)=>({type,meter_id,bill_month,high});
+  const ck=[C('water','T','2026-08',{pct:40}),C('water','T','2026-09',null),C('water','T','2026-10',null),
+    C('water','O','2026-02',{pct:60}),                                // บิลหยุดไปนาน = ไม่เตือนค้าง
+    C('elec','E','2026-08',null),C('elec','E','2026-09',{pct:35})];   // ไฟบิลล่าสุด ก.ย. → ส.ค.–ก.ย.
+  const k=r=>r.map(x=>x.meter_id+'@'+x.bill_month).sort();
+  assert.equal(UTIL_DEFAULTS.billCheck.recent,2);
+  assert.deepEqual(k(utilBillRecent(ck,2)),['E@2026-08','E@2026-09','T@2026-09','T@2026-10']);
+  assert.deepEqual(k(utilBillRecent(ck,2).filter(x=>x.high)),['E@2026-09']);          // ส.ค. น้ำ (เดือนนั้น ต.ค. = +2) ไม่เตือนแล้ว
+  assert.deepEqual(k(utilBillRecent(ck.slice(0,1).concat(ck.slice(1,2)),2).filter(x=>x.high)),['T@2026-08']);   // บิลล่าสุด ก.ย. = +1 ยังเตือน
+  assert.deepEqual(utilBillRecent([],2),[]);
 });

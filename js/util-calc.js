@@ -34,7 +34,8 @@ const UTIL_DEFAULTS={
   billMonthOffset:-1, // บิลเดือน M = ใช้จริงเดือน M-1 (เทียบใบจดบางนา ก.ย.–ต.ค. 69) — รอบัญชียืนยัน
   // ตรวจบิลรายเดือน (UTIL-09) — เพิ่มหลังน้ำ BN บิล ก.ค.–ก.ย. 69 พุ่งแต่ตัวตรวจรายวันไม่เห็น (เริ่มจดรายวัน 4 ก.ย.)
   // ask = ป้าย ? (บิลซ้ำทุกหลัก) — ปิดเป็นค่าตั้งต้น (เจ้าของ 20 ต.ค.: อาจเป็นเลขจริง เปิดเองในหน้าตั้งค่า · UTIL-36)
-  billCheck:{ratio:1.3,lookback:6,minPrev:3,warmup:6,minDiff:{water:50,elec:3000},recent:3,ask:false},
+  billCheck:{ratio:1.3,lookback:6,minPrev:3,warmup:6,minDiff:{water:50,elec:3000},recent:2,ask:false},
+  //   recent = เตือนบิลสูงกี่เดือนล่าสุด นับจากบิลล่าสุดของสาขา·ชนิด (UTIL-58 · เดิม 3 ใบล่าสุดต่อมิเตอร์ → ป้าย ส.ค. ค้างถึง พ.ย. เจ้าของงง)
   // ช่วงแรกที่ค่ากลางยังไม่พอ → ค่าเฉลี่ยต่อวันจาก n บิลล่าสุด (UTIL-21) · บิลล่าสุดเก่าเกิน maxAge เดือน = ไม่ใช้
   //   maxAge 4: บิลเดือน M ออกช้า (ต.ค. ยังไม่มีบิลไฟ BG ใช้จริง ก.ย.) → ต.ค. ยังได้ มิ.ย.–ส.ค. ครบ 3
   billBase:{n:3,maxAge:4}
@@ -285,6 +286,14 @@ function utilBillMonthOf(b,S){ return b.bill_month_raw!=null?b.bill_month:utilBi
 //   SG ต.ค. 69: บิลซักล้าง (เจ้าของที่) มาก่อน บิลเมน (ประปา) ยังไม่มา → เทียบสาขาเห็นน้ำ SG ต.ค. 117 จากปกติ ~600 ดูเหมือนลดฮวบ
 //   รอมิเตอร์ที่: เปิดใช้อยู่ · มีบิลก่อนเดือนนั้น · บิลถัดไปยังมีอยู่ หรือบิลล่าสุดห่างไม่เกิน maxAge เดือน (หยุดนานกว่านั้น = เลิกรอ)
 //   มิเตอร์ที่เพิ่งเริ่มมีบิล ไม่ทำให้เดือนก่อนหน้าขาด · ดูเฉพาะเดือนที่สาขามีบิลชนิดนั้นอย่างน้อย 1 ใบ
+// UTIL-58: ผลตรวจบิลที่ยัง "เตือน" = เดือนบิลล่าสุดของชนิดนั้น (ทั้งสาขา) และย้อนไป n-1 เดือน
+//   เจ้าของ 7 พ.ย. 69: แจ้งเตือนแค่เดือนนั้นหรือ +1 เดือนพอ ไม่งั้นงง (n=2)
+//   นับเป็นเดือน ไม่ใช่ n ใบล่าสุดต่อมิเตอร์ — มิเตอร์ที่บิลหยุดไปจะค้างธงเก่าไว้ตลอด
+function utilBillRecent(check,n){
+  const ix=k=>{ const [y,m]=String(k).split('-').map(Number); return y*12+m; }, last={};
+  (check||[]).forEach(x=>{ if(!last[x.type]||x.bill_month>last[x.type]) last[x.type]=x.bill_month; });
+  return (check||[]).filter(x=>ix(last[x.type])-ix(x.bill_month)<n);
+}
 function utilBillMissing(bills,meters,type,maxAge){
   const ix=k=>{ const [y,m]=k.split('-').map(Number); return y*12+m; };
   const on=new Set((meters||[]).filter(m=>utilTrue(m.active)).map(m=>m.meter_id)), have={}, span={};
